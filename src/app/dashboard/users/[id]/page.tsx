@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bell, UserX, Star } from "lucide-react";
+import { ArrowLeft, Bell, UserX, Star, ChevronDown } from "lucide-react";
 import SeekerPropertyCard, { type SeekerListing } from "@/components/SeekerPropertyCard";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%), from the Figma detail variants. */
@@ -60,11 +60,11 @@ const REVIEWS = [
   },
   {
     name: "Chinedu Okafor", avatar: "/images/seekers/bayo-lawal.png", rating: 4, time: "5 hours ago",
-    text: "Working with this owner was a breeze. Found me a cozy studio near Lekki with great amenities and a friendly neighborhood. Communication was clear throughout and there were no hidden charges along the way.",
+    text: "Working with Ibrahim was a breeze. He found me a cozy studio near Lekki with great amenities and a friendly neighborhood. ",
   },
   {
     name: "Sade Ajayi", avatar: "/images/seekers/olaide-batifeori.png", rating: 5, time: "1 week ago",
-    text: "Their expertise helped me secure a beautiful family home in Ikeja. The entire process was transparent from inspection to handover, and they were always available to answer my questions.",
+    text: "Ibrahim's expertise helped me secure a beautiful family home in Ikeja. The entire process was transparent, and he was always available to answer my questions. I felt supported every step of the way.",
   },
 ];
 
@@ -181,33 +181,40 @@ export default function UserDetailPage() {
         )
       )}
 
-      {/* Reviews — exact Figma review item (avatar 56 · name 16/24 · 5 stars 20px · time 14 · body 16/32) */}
+      {/* Reviews — exact Figma (item gap 24, full-width divider between, Show more) */}
       {tab === "Reviews" && (
         REVIEWS.length === 0 ? (
           <EmptyState>No reviews yet.</EmptyState>
         ) : (
-          <div className="flex flex-col" style={{ gap: 32 }}>
+          <div className="flex flex-col" style={{ gap: 24 }}>
             {REVIEWS.map((rv, i) => (
-              <div key={i} className="flex flex-col" style={{ gap: 16 }}>
-                <div className="flex" style={{ gap: 8 }}>
-                  <span className="relative shrink-0 overflow-hidden rounded-full" style={{ width: 56, height: 56 }}>
-                    <Image src={rv.avatar} alt={rv.name} fill sizes="56px" style={{ objectFit: "cover" }} />
-                  </span>
-                  <div className="flex flex-col" style={{ gap: 8 }}>
-                    <span style={{ fontSize: 16, fontWeight: 600, lineHeight: "24px", letterSpacing: "-0.01em", color: "#121212" }}>{rv.name}</span>
-                    <div className="flex items-center" style={{ gap: 8 }}>
-                      <span className="flex items-center" style={{ gap: 4 }}>
-                        {Array.from({ length: 5 }).map((_, s) => (
-                          <Star key={s} size={20} strokeWidth={0} fill={s < rv.rating ? "#FFAE00" : "#E3E8EE"} />
-                        ))}
-                      </span>
-                      <span style={{ fontSize: 14, lineHeight: "24px", letterSpacing: "-0.01em", color: "#807E7E" }}>{rv.time}</span>
+              <div key={i} className="flex flex-col" style={{ gap: 24 }}>
+                <div className="flex flex-col" style={{ gap: 16 }}>
+                  <div className="flex" style={{ gap: 8, width: 303, maxWidth: "100%" }}>
+                    <span className="relative shrink-0 overflow-hidden rounded-full" style={{ width: 56, height: 56 }}>
+                      <Image src={rv.avatar} alt={rv.name} fill sizes="56px" style={{ objectFit: "cover" }} />
+                    </span>
+                    <div className="flex flex-col min-w-0 flex-1" style={{ gap: 8 }}>
+                      <span style={{ fontSize: 16, fontWeight: 600, lineHeight: "24px", letterSpacing: "-0.01em", color: "#121212" }}>{rv.name}</span>
+                      <div className="flex items-center" style={{ gap: 8 }}>
+                        <span className="flex items-center" style={{ gap: 4 }}>
+                          {Array.from({ length: 5 }).map((_, s) => (
+                            <Star key={s} size={20} strokeWidth={0} fill={s < rv.rating ? "#FFAE00" : "rgba(255,174,0,0.15)"} />
+                          ))}
+                        </span>
+                        <span style={{ fontSize: 14, lineHeight: "24px", letterSpacing: "-0.01em", color: "#807E7E" }}>{rv.time}</span>
+                      </div>
                     </div>
                   </div>
+                  <p style={{ fontSize: 16, fontWeight: 400, lineHeight: "32px", color: "#333333" }}>{rv.text}</p>
                 </div>
-                <p style={{ fontSize: 16, fontWeight: 400, lineHeight: "32px", color: "#333333" }}>{rv.text}</p>
+                {i < REVIEWS.length - 1 && <div style={{ height: 1, background: "#F6F6F6" }} />}
               </div>
             ))}
+            <button type="button" className="flex items-center self-start hover:opacity-70" style={{ gap: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "24px", letterSpacing: "-0.02em", color: "#305E82" }}>Show more</span>
+              <ChevronDown size={16} color="#305E82" />
+            </button>
           </div>
         )
       )}
