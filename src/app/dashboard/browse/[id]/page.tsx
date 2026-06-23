@@ -15,6 +15,7 @@ import {
 } from "@/services/propertyApi";
 import { useOpenDirectConversationMutation } from "@/services/conversationApi";
 import { toSeekerListing } from "@/lib/property";
+import { DEMO_PROPERTIES, getDemoProperty } from "@/lib/demoProperties";
 import { unwrapApiError } from "@/services/api";
 import { useToast } from "@/components/Toast";
 import ScheduleInspectionModal from "@/components/ScheduleInspectionModal";
@@ -34,7 +35,7 @@ export default function BrowsePropertyDetailPage({
 }) {
   const router = useRouter();
   const { id } = use(params);
-  const { data, isLoading, isError } = useGetPropertyQuery(id);
+  const { data } = useGetPropertyQuery(id);
   const { data: savedPage } = useGetSavedPropertiesQuery({ page: 0, size: 100 });
   const [saveProperty] = useSavePropertyMutation();
   const [unsaveProperty] = useUnsavePropertyMutation();
@@ -54,43 +55,13 @@ export default function BrowsePropertyDetailPage({
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center" style={{ minHeight: "60vh", color: "#807E7E", fontSize: "14px" }}>
-        Loading property…
-      </div>
-    );
-  }
+  // UI-first: fall back to a static demo property so the full detail UI renders
+  // without backend data. Real data takes over once integration is wired.
+  const property = data ?? getDemoProperty(id);
 
-  if (isError || !data) {
-    return (
-      <div
-        className="flex flex-col items-center justify-center"
-        style={{ minHeight: "60vh", gap: "16px" }}
-      >
-        <h2 style={{ fontSize: "20px", fontWeight: 600, color: "#121212" }}>Listing not found</h2>
-        <button
-          type="button"
-          onClick={() => router.push("/dashboard/browse")}
-          style={{
-            padding: "8px 24px",
-            height: "48px",
-            background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)",
-            color: "#FFFFFF",
-            border: "none",
-            borderRadius: "12px",
-            cursor: "pointer",
-          }}
-        >
-          Back to Browse
-        </button>
-      </div>
-    );
-  }
-
-  const listing = toSeekerListing(data);
+  const listing = toSeekerListing(property);
   const isSaved = (savedPage?.content ?? []).some((p) => p.id === id);
-  const galleryImages = data.photos?.length ? data.photos.map((ph) => ph.url) : undefined;
+  const galleryImages = property.photos?.length ? property.photos.map((ph) => ph.url) : undefined;
 
   const tagLabel =
     listing.tag === "FOR SALE"
@@ -219,7 +190,7 @@ export default function BrowsePropertyDetailPage({
         </div>
 
         <div className="flex flex-col" style={{ gap: "24px" }}>
-          <InterestedCard saved={isSaved} onToggleSave={() => toggleSave(isSaved)} hostUserId={data.assignedAgentUserId ?? data.ownerUserId} />
+          <InterestedCard saved={isSaved} onToggleSave={() => toggleSave(isSaved)} hostUserId={property.assignedAgentUserId ?? property.ownerUserId} />
           <ListedByCard listing={listing} />
         </div>
       </div>
@@ -829,7 +800,9 @@ function ListedByCard({ listing }: { listing: SeekerListing }) {
 
 function RelatedListings({ currentId }: { currentId: string }) {
   const { data: propPage } = useGetActivePropertiesQuery({ page: 0, size: 12 });
-  const others = (propPage?.content ?? [])
+  // UI-first: fall back to demo listings when there's no backend data yet.
+  const source = propPage?.content?.length ? propPage.content : DEMO_PROPERTIES;
+  const others = source
     .filter((p) => p.id !== currentId)
     .slice(0, 3)
     .map(toSeekerListing);
