@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Bell, UserX, Star, ChevronDown } from "lucide-react";
 import SeekerPropertyCard, { type SeekerListing } from "@/components/SeekerPropertyCard";
 
@@ -87,6 +87,8 @@ function Field({ label, value }: { label: string; value: string }) {
 
 export default function UserDetailPage() {
   const router = useRouter();
+  const params = useParams();
+  const userId = String(params?.id ?? "");
   const [tab, setTab] = useState<(typeof TABS)[number]>("Profile Details");
 
   return (
@@ -175,7 +177,7 @@ export default function UserDetailPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gap: "24px 16px" }}>
             {LISTINGS.map((l) => (
-              <SeekerPropertyCard key={l.id} listing={l} />
+              <SeekerPropertyCard key={l.id} listing={l} hrefBase={`/dashboard/users/${userId}/listings`} />
             ))}
           </div>
         )

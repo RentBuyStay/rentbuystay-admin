@@ -38,10 +38,12 @@ export default function SeekerPropertyCard({
   listing,
   saved = false,
   onToggleSave,
+  hrefBase = "/dashboard/browse",
 }: {
   listing: SeekerListing;
   saved?: boolean;
   onToggleSave?: (id: string, saved: boolean) => void;
+  hrefBase?: string;
 }) {
   const router = useRouter();
   const [openDirect] = useOpenDirectConversationMutation();
@@ -61,7 +63,7 @@ export default function SeekerPropertyCard({
 
   return (
     <Link
-      href={`/dashboard/browse/${listing.id}`}
+      href={`${hrefBase}/${listing.id}`}
       className="block bg-white relative hover:shadow-md transition-shadow w-full"
       style={{
         height: "534px",

@@ -59,6 +59,10 @@ export const DEMO_PROPERTIES: PropertyResponse[] = [
     ownerName: "Olaitan Badejo",
     amenities: amenities(AMENITIES),
     photos: photos("/images/prop1.jpg"),
+    charges: [
+      { title: "Commission", amount: 280000, currency: "NGN" },
+      { title: "Agreement", amount: 150000, currency: "NGN" },
+    ],
   },
   {
     id: "2",
@@ -89,6 +93,10 @@ export const DEMO_PROPERTIES: PropertyResponse[] = [
     ownerName: "Olaitan Badejo",
     amenities: amenities(["Pool", "Gym", "Parking Space", ...AMENITIES.slice(2)]),
     photos: photos("/images/prop2.jpg"),
+    charges: [
+      { title: "Commission", amount: 65000, currency: "NGN" },
+      { title: "Agreement", amount: 100000, currency: "NGN" },
+    ],
   },
   {
     id: "3",
@@ -119,6 +127,10 @@ export const DEMO_PROPERTIES: PropertyResponse[] = [
     ownerName: "Olaitan Badejo",
     amenities: amenities(["BQ", "Garden", "Smart Home", "CCTV", ...AMENITIES.slice(0, 6)]),
     photos: photos("/images/prop3.jpg"),
+    charges: [
+      { title: "Commission", amount: 4750000, currency: "NGN" },
+      { title: "Agreement", amount: 1000000, currency: "NGN" },
+    ],
   },
 ];
 
