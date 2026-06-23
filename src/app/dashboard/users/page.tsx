@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, ChevronDown, Plus, MoreVertical, Eye, Bell, UserX } from "lucide-react";
+import Image from "next/image";
+import { MoreVertical } from "lucide-react";
 
 type Role = "Seeker" | "Owner" | "Agent" | "Agency";
 type UserRow = {
@@ -63,7 +64,7 @@ function FilterPill({ label }: { label: string }) {
       className="flex items-center justify-between gap-2 bg-[#F6F6F6] rounded-[12px] h-12 px-4 text-[14px] text-[#807e7e] hover:bg-[#ededed] transition-colors shrink-0"
     >
       {label}
-      <ChevronDown size={16} className="text-[#807e7e]" />
+      <Image src="/icons/admin/filter-arrow-down.svg" alt="" width={16} height={16} />
     </button>
   );
 }
@@ -99,7 +100,7 @@ export default function UsersPage() {
                   padding: "8px 12px",
                 }}
               >
-                {t.label} ({t.count.toLocaleString()})
+                {t.label} ({t.count})
               </button>
             );
           })}
@@ -109,7 +110,7 @@ export default function UsersPage() {
           className="flex items-center gap-2 text-white rounded-[12px] h-12 px-6 text-[14px] font-medium hover:opacity-90 transition-opacity"
           style={{ background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
         >
-          <Plus size={18} /> Create User
+          <Image src="/icons/admin/add-rounded.svg" alt="" width={20} height={20} /> Create User
         </button>
       </div>
 
@@ -120,7 +121,7 @@ export default function UsersPage() {
         <FilterPill label="Status" />
         <FilterPill label="Verification" />
         <div className="flex items-center gap-2 bg-[#F6F6F6] rounded-[12px] h-12 px-4 flex-1 min-w-[220px] lg:max-w-[394px] lg:ml-auto">
-          <Search size={18} className="text-[#807e7e] shrink-0" />
+          <Image src="/icons/admin/search-normal.svg" alt="" width={20} height={20} className="shrink-0" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -131,9 +132,19 @@ export default function UsersPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-[20px] border border-[#ededed] overflow-hidden bg-white">
+      <div className="rounded-[20px] border border-[#F6F6F6] overflow-hidden bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full" style={{ borderCollapse: "collapse", minWidth: 880 }}>
+          <table className="w-full" style={{ borderCollapse: "collapse", minWidth: 1012 }}>
+            <colgroup>
+              <col style={{ width: 262 }} />
+              <col style={{ width: 116 }} />
+              <col style={{ width: 141 }} />
+              <col style={{ width: 159 }} />
+              <col style={{ width: 76 }} />
+              <col style={{ width: 129 }} />
+              <col style={{ width: 129 }} />
+              <col style={{ width: 76 }} />
+            </colgroup>
             <thead>
               <tr style={{ borderBottom: "1px solid #F6F6F6" }}>
                 {["User", "Role", "Location", "Joined", "Listings", "Status", "Verification", ""].map((h, i) => (
@@ -200,13 +211,13 @@ export default function UsersPage() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button onClick={() => router.push(`/dashboard/users/${r.id}`)} className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium text-[#807e7e] hover:bg-[#fafafa]">
-                          <Eye size={16} /> View Profile
+                          <Image src="/icons/admin/menu-eye.svg" alt="" width={16} height={16} /> View Profile
                         </button>
                         <button className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium text-[#807e7e] hover:bg-[#fafafa]">
-                          <Bell size={16} /> Send Notification
+                          <Image src="/icons/admin/menu-notification.svg" alt="" width={16} height={16} /> Send Notification
                         </button>
                         <button className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium hover:bg-[#fafafa]" style={{ color: "#E30045" }}>
-                          <UserX size={16} /> Suspend
+                          <Image src="/icons/admin/menu-suspend.svg" alt="" width={16} height={16} /> Suspend
                         </button>
                       </div>
                     )}
