@@ -6,22 +6,16 @@ import { usePathname } from "next/navigation";
 import NotificationsBell from "@/components/NotificationsBell";
 
 const TITLES: { match: (path: string) => boolean; title: string }[] = [
-  { match: (p) => p === "/dashboard/properties/new", title: "Add New Property" },
-  { match: (p) => p.startsWith("/dashboard/properties"), title: "My Properties" },
-  { match: (p) => /^\/dashboard\/browse\/[^/]+$/.test(p), title: "Property Details" },
-  { match: (p) => p.startsWith("/dashboard/browse"), title: "Browse Properties" },
-  { match: (p) => /^\/dashboard\/agents-management\/[^/]+$/.test(p), title: "Agents Management" },
-  { match: (p) => p.startsWith("/dashboard/agents-management"), title: "Agents Management" },
-  { match: (p) => p.startsWith("/dashboard/saved"), title: "Saved Properties" },
-  { match: (p) => p.startsWith("/dashboard/agents"), title: "Discover Agents" },
-  { match: (p) => p.startsWith("/dashboard/requests"), title: "Property Requests" },
-  { match: (p) => p.startsWith("/dashboard/messages"), title: "Inquiries/Messages" },
-  { match: (p) => p.startsWith("/dashboard/appointments"), title: "Inspection Appointments" },
-  { match: (p) => p.startsWith("/dashboard/transactions"), title: "Transactions" },
-  { match: (p) => p.startsWith("/dashboard/subscription"), title: "Subscription" },
-  { match: (p) => p.startsWith("/dashboard/profile"), title: "Profile" },
-  { match: (p) => p.startsWith("/dashboard/verification"), title: "Verification (Qore ID)" },
-  { match: (p) => p.startsWith("/dashboard/settings"), title: "Settings" },
+  { match: (p) => p.startsWith("/dashboard/users"), title: "User Management" },
+  { match: (p) => p.startsWith("/dashboard/verifications"), title: "Verification Management" },
+  { match: (p) => p.startsWith("/dashboard/suspended-users"), title: "Suspended Users" },
+  { match: (p) => p.startsWith("/dashboard/properties"), title: "Property Management" },
+  { match: (p) => p.startsWith("/dashboard/awaiting-approval"), title: "Awaiting Approval" },
+  { match: (p) => p.startsWith("/dashboard/subscriptions"), title: "Subscription Management" },
+  { match: (p) => p.startsWith("/dashboard/analytics"), title: "Analytics" },
+  { match: (p) => p.startsWith("/dashboard/notifications"), title: "Notification/Email" },
+  { match: (p) => p.startsWith("/dashboard/blog"), title: "Blog Management" },
+  { match: (p) => p.startsWith("/dashboard/settings"), title: "Platform Settings" },
   { match: (p) => p.startsWith("/dashboard"), title: "Dashboard" },
 ];
 
