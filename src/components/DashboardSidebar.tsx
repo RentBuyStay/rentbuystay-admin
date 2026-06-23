@@ -3,172 +3,75 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { roleBadgeLabel, type AccountRole } from "@/lib/role";
+import {
+  LayoutDashboard,
+  Users,
+  ShieldCheck,
+  UserX,
+  Building2,
+  ClipboardCheck,
+  CreditCard,
+  TrendingUp,
+  Bell,
+  BookOpen,
+  Settings,
+  LogOut,
+  ShieldUser,
+  type LucideIcon,
+} from "lucide-react";
 import { useLogoutMutation } from "@/services/authApi";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logOut, selectRefreshToken } from "@/features/auth/authSlice";
 
-type NavItem = { label: string; href: string; icon: string };
+type NavItem = { label: string; href: string; Icon: LucideIcon };
 type NavGroup = { label: string; items: NavItem[] };
 
-const ownerGroups: NavGroup[] = [
+// Super Admin navigation (Figma "Admin" board sidebar).
+const adminGroups: NavGroup[] = [
   {
     label: "OVERVIEW",
-    items: [{ label: "Dashboard", href: "/dashboard", icon: "/icons/dash/nav-dashboard.svg" }],
+    items: [{ label: "Dashboard", href: "/dashboard", Icon: LayoutDashboard }],
+  },
+  {
+    label: "USERS",
+    items: [
+      { label: "User Management", href: "/dashboard/users", Icon: Users },
+      { label: "Verification Management", href: "/dashboard/verifications", Icon: ShieldCheck },
+      { label: "Suspended Users", href: "/dashboard/suspended-users", Icon: UserX },
+    ],
   },
   {
     label: "LISTINGS",
     items: [
-      { label: "My Properties", href: "/dashboard/properties", icon: "/icons/dash/nav-properties.svg" },
-      { label: "Add New Property", href: "/dashboard/properties/new", icon: "/icons/dash/nav-add-property.svg" },
-      { label: "Property Requests", href: "/dashboard/requests", icon: "/icons/dash/nav-requests.svg" },
-      { label: "Inquiries/Messages", href: "/dashboard/messages", icon: "/icons/dash/nav-messages.svg" },
-      { label: "Appointments", href: "/dashboard/appointments", icon: "/icons/dash/nav-calendar.svg" },
+      { label: "Property Management", href: "/dashboard/properties", Icon: Building2 },
+      { label: "Awaiting Approval", href: "/dashboard/awaiting-approval", Icon: ClipboardCheck },
     ],
   },
   {
     label: "FINANCE",
-    items: [
-      { label: "Transactions", href: "/dashboard/transactions", icon: "/icons/dash/nav-transactions.svg" },
-      { label: "Subscription", href: "/dashboard/subscription", icon: "/icons/dash/nav-subscription.svg" },
-    ],
+    items: [{ label: "Subscription Management", href: "/dashboard/subscriptions", Icon: CreditCard }],
   },
   {
-    label: "ACCOUNT",
-    items: [
-      { label: "Profile", href: "/dashboard/profile", icon: "/icons/dash/nav-profile.svg" },
-      { label: "Verification (Qore ID)", href: "/dashboard/verification", icon: "/icons/dash/nav-verification.svg" },
-      { label: "Settings", href: "/dashboard/settings", icon: "/icons/dash/nav-settings.svg" },
-    ],
-  },
-];
-
-const seekerGroups: NavGroup[] = [
-  {
-    label: "OVERVIEW",
-    items: [{ label: "Dashboard", href: "/dashboard", icon: "/icons/dash/nav-dashboard.svg" }],
+    label: "REPORTS",
+    items: [{ label: "Analytics", href: "/dashboard/analytics", Icon: TrendingUp }],
   },
   {
-    label: "DISCOVER",
+    label: "PLATFORM",
     items: [
-      { label: "Browse Properties", href: "/dashboard/browse", icon: "/icons/dash/nav-search.svg" },
-      { label: "Saved Properties", href: "/dashboard/saved", icon: "/icons/dash/nav-saved.svg" },
-      { label: "Property Requests", href: "/dashboard/requests", icon: "/icons/dash/nav-seeker-requests.svg" },
-      { label: "Discover Agents", href: "/dashboard/agents", icon: "/icons/dash/nav-discover-agents.svg" },
-    ],
-  },
-  {
-    label: "ACTIVITY",
-    items: [
-      { label: "Inquiries/Messages", href: "/dashboard/messages", icon: "/icons/dash/nav-messages.svg" },
-      { label: "Appointments", href: "/dashboard/appointments", icon: "/icons/dash/nav-calendar.svg" },
-    ],
-  },
-  {
-    label: "ACCOUNT",
-    items: [
-      { label: "Profile", href: "/dashboard/profile", icon: "/icons/dash/nav-profile.svg" },
-      { label: "Settings", href: "/dashboard/settings", icon: "/icons/dash/nav-settings.svg" },
+      { label: "Notification/Email", href: "/dashboard/notifications", Icon: Bell },
+      { label: "Blog Management", href: "/dashboard/blog", Icon: BookOpen },
+      { label: "Platform Settings", href: "/dashboard/settings", Icon: Settings },
     ],
   },
 ];
-
-const agentGroups: NavGroup[] = [
-  {
-    label: "OVERVIEW",
-    items: [{ label: "Dashboard", href: "/dashboard", icon: "/icons/dash/nav-dashboard.svg" }],
-  },
-  {
-    label: "LISTINGS",
-    items: [
-      { label: "My Properties", href: "/dashboard/properties", icon: "/icons/dash/nav-properties.svg" },
-      { label: "Add New Property", href: "/dashboard/properties/new", icon: "/icons/dash/nav-add-property.svg" },
-      { label: "Property Requests", href: "/dashboard/requests", icon: "/icons/dash/nav-requests.svg" },
-    ],
-  },
-  {
-    label: "CLIENT MANAGEMENT",
-    items: [
-      { label: "Inquiries/Messages", href: "/dashboard/messages", icon: "/icons/dash/nav-messages.svg" },
-      { label: "Appointments", href: "/dashboard/appointments", icon: "/icons/dash/nav-calendar.svg" },
-    ],
-  },
-  {
-    label: "FINANCE",
-    items: [
-      { label: "Transactions", href: "/dashboard/transactions", icon: "/icons/dash/nav-transactions.svg" },
-      { label: "Subscription", href: "/dashboard/subscription", icon: "/icons/dash/nav-subscription.svg" },
-    ],
-  },
-  {
-    label: "ACCOUNT",
-    items: [
-      { label: "Profile", href: "/dashboard/profile", icon: "/icons/dash/nav-profile.svg" },
-      { label: "Verification (Qore ID)", href: "/dashboard/verification", icon: "/icons/dash/nav-verification.svg" },
-      { label: "Settings", href: "/dashboard/settings", icon: "/icons/dash/nav-settings.svg" },
-    ],
-  },
-];
-
-const agencyGroups: NavGroup[] = [
-  {
-    label: "OVERVIEW",
-    items: [{ label: "Dashboard", href: "/dashboard", icon: "/icons/dash/nav-dashboard.svg" }],
-  },
-  {
-    label: "LISTINGS",
-    items: [
-      { label: "All Properties", href: "/dashboard/properties", icon: "/icons/dash/nav-properties.svg" },
-      { label: "Agents Management", href: "/dashboard/agents-management", icon: "/icons/dash/badge-user-tag.svg" },
-      { label: "Add New Property", href: "/dashboard/properties/new", icon: "/icons/dash/nav-add-property.svg" },
-    ],
-  },
-  {
-    label: "CLIENT MANAGEMENT",
-    items: [
-      { label: "Inquiries/Messages", href: "/dashboard/messages", icon: "/icons/dash/nav-messages.svg" },
-      { label: "Appointments", href: "/dashboard/appointments", icon: "/icons/dash/nav-calendar.svg" },
-    ],
-  },
-  {
-    label: "FINANCE",
-    items: [
-      { label: "Transactions", href: "/dashboard/transactions", icon: "/icons/dash/nav-transactions.svg" },
-      { label: "Subscription", href: "/dashboard/subscription", icon: "/icons/dash/nav-subscription.svg" },
-    ],
-  },
-  {
-    label: "ACCOUNT",
-    items: [
-      { label: "Profile", href: "/dashboard/profile", icon: "/icons/dash/nav-profile.svg" },
-      { label: "Verification (Qore ID)", href: "/dashboard/verification", icon: "/icons/dash/nav-verification.svg" },
-      { label: "Settings", href: "/dashboard/settings", icon: "/icons/dash/nav-settings.svg" },
-    ],
-  },
-];
-
-const GROUPS_BY_ROLE: Partial<Record<AccountRole, NavGroup[]>> = {
-  "Property Owner": ownerGroups,
-  "Property Seeker": seekerGroups,
-  "Real Estate Agent": agentGroups,
-  "Real Estate Agency or Developer": agencyGroups,
-};
-
-const BADGE_ICON_BY_ROLE: Partial<Record<AccountRole, string>> = {
-  "Property Owner": "/icons/dash/nav-profile-tick.svg",
-  "Property Seeker": "/icons/dash/nav-profile-tick.svg",
-  "Real Estate Agent": "/icons/dash/badge-user-tag.svg",
-  "Real Estate Agency or Developer": "/icons/dash/badge-user-tag.svg",
-};
 
 const TINT = "rgba(117,163,199,0.4)";
 
 export default function DashboardSidebar({
-  role,
   onClose,
 }: {
-  role: AccountRole;
-  /** kept for API compat; the drawer is revealed by the push layout, not a slide */
+  /** kept for layout API compat; the admin app has a single (super-admin) nav */
+  role?: string;
   mobileOpen?: boolean;
   onClose?: () => void;
 }) {
@@ -177,28 +80,22 @@ export default function DashboardSidebar({
   const dispatch = useAppDispatch();
   const refreshToken = useAppSelector(selectRefreshToken);
   const [logout] = useLogoutMutation();
-  const groups = GROUPS_BY_ROLE[role] ?? [];
 
   async function handleLogout() {
-    // Revoke the refresh token server-side (best effort), then clear ALL local
-    // auth — tokens + role + cached API state — so no stale JWT lingers.
     try {
       if (refreshToken) await logout({ refreshToken }).unwrap();
     } catch {
-      /* ignore network/again errors — local clear below is what matters */
+      /* ignore — local clear below is what matters */
     }
     dispatch(logOut());
     router.replace("/log-in");
   }
+
   return (
     <aside
       className="flex flex-col text-white shrink-0 fixed md:sticky top-0 left-0 z-10 md:z-auto w-[242px] md:w-[272px]"
-      style={{
-        background: "#305E82",
-        height: "100vh",
-      }}
+      style={{ background: "#305E82", height: "100vh" }}
     >
-
       <div style={{ paddingTop: "24px" }}>
         <Image
           src="/icons/dash/rbs-dash-logo.svg"
@@ -210,57 +107,30 @@ export default function DashboardSidebar({
         />
       </div>
 
-      
+      {/* SUPER ADMIN badge */}
       <div style={{ marginTop: "16px", paddingLeft: "24px" }}>
         <div
           className="inline-flex items-center"
-          style={{
-            background: TINT,
-            borderRadius: "25px",
-            padding: "5px 10px",
-            gap: "8px",
-            height: "30px",
-          }}
+          style={{ background: TINT, borderRadius: "25px", padding: "5px 10px", gap: "8px", height: "30px" }}
         >
-          <Image src={BADGE_ICON_BY_ROLE[role] ?? "/icons/dash/nav-profile-tick.svg"} alt="" width={20} height={20} />
-          <span
-            style={{
-              fontSize: "12px",
-              lineHeight: "20px",
-              fontWeight: 500,
-              color: "#FFFFFF",
-            }}
-          >
-            {roleBadgeLabel(role)}
+          <ShieldUser size={20} strokeWidth={1.6} color="#FFFFFF" />
+          <span style={{ fontSize: "12px", lineHeight: "20px", fontWeight: 500, color: "#FFFFFF" }}>
+            SUPER ADMIN
           </span>
         </div>
       </div>
 
-      
-      <nav
-        className="flex flex-col"
-        style={{ padding: "32px 16px 30px", gap: "16px", flex: 1, overflowY: "auto" }}
-      >
-        {groups.map((g) => (
+      <nav className="flex flex-col" style={{ padding: "32px 16px 30px", gap: "16px", flex: 1, overflowY: "auto" }}>
+        {adminGroups.map((g) => (
           <div key={g.label} className="flex flex-col" style={{ gap: "8px" }}>
-            
             <div style={{ padding: "0 16px" }}>
-              <span
-                style={{
-                  fontSize: "10px",
-                  lineHeight: "20px",
-                  fontWeight: 500,
-                  color: "#FFFFFF",
-                  letterSpacing: "2px",
-                }}
-              >
+              <span style={{ fontSize: "10px", lineHeight: "20px", fontWeight: 500, color: "#FFFFFF", letterSpacing: "2px" }}>
                 {g.label}
               </span>
             </div>
             {g.items.map((item) => {
-              // Active only on exact match — prevents "Dashboard" (/dashboard) from staying
-              // highlighted when you're on /dashboard/properties etc.
-              const active = pathname === item.href;
+              const active =
+                pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
               return (
                 <Link
                   key={item.href}
@@ -279,7 +149,7 @@ export default function DashboardSidebar({
                     color: "#FFFFFF",
                   }}
                 >
-                  <Image src={item.icon} alt="" width={20} height={20} />
+                  <item.Icon size={20} strokeWidth={1.6} color="#FFFFFF" />
                   <span style={{ flex: 1 }}>{item.label}</span>
                 </Link>
               );
@@ -288,30 +158,14 @@ export default function DashboardSidebar({
         ))}
       </nav>
 
-      
       <button
         type="button"
         onClick={handleLogout}
         className="flex items-center justify-between hover:opacity-90 w-full"
-        style={{
-          height: "64px",
-          padding: "12px 24px",
-          background: TINT,
-          border: "none",
-          cursor: "pointer",
-        }}
+        style={{ height: "64px", padding: "12px 24px", background: TINT, border: "none", cursor: "pointer" }}
       >
-        <span
-          style={{
-            fontSize: "14px",
-            lineHeight: "24px",
-            fontWeight: 500,
-            color: "#FFFFFF",
-          }}
-        >
-          Log out
-        </span>
-        <Image src="/icons/dash/nav-logout.svg" alt="" width={24} height={24} />
+        <span style={{ fontSize: "14px", lineHeight: "24px", fontWeight: 500, color: "#FFFFFF" }}>Log out</span>
+        <LogOut size={24} strokeWidth={1.6} color="#FFFFFF" />
       </button>
     </aside>
   );
