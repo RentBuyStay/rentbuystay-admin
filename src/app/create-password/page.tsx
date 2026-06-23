@@ -31,7 +31,7 @@ export default function CreatePasswordPage() {
 
   // Require an in-flight signup (carries the email) — otherwise back to sign-up.
   useEffect(() => {
-    if (!getOnboarding()?.email) router.replace("/sign-up");
+    if (!getOnboarding()?.email) router.replace("/log-in");
   }, [router]);
 
   const passedHints = HINTS.filter((h) => h.test(password));
@@ -43,7 +43,7 @@ export default function CreatePasswordPage() {
     if (!canSubmit) return;
     const email = getOnboarding()?.email;
     if (!email) {
-      router.replace("/sign-up");
+      router.replace("/log-in");
       return;
     }
     setError(null);

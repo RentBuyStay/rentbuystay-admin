@@ -42,7 +42,7 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     const o = getOnboarding();
     if (!o) {
-      router.replace("/sign-up");
+      router.replace("/log-in");
       return;
     }
     // Read once on mount (sessionStorage is unavailable during SSR; lazy init
@@ -100,7 +100,7 @@ export default function VerifyEmailPage() {
   return (
     <OnboardingShell>
       
-      <Link href="/sign-up" className="inline-flex items-center self-start hover:opacity-80" style={{ gap: "12px" }}>
+      <Link href="/log-in" className="inline-flex items-center self-start hover:opacity-80" style={{ gap: "12px" }}>
         <Image src="/icons/arrow-left.svg" alt="" width={20} height={20} />
         <span style={{ fontSize: "16px", lineHeight: "24px", fontWeight: 400, color: "#121212" }}>Back</span>
       </Link>

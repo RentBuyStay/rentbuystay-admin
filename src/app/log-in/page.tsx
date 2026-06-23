@@ -65,13 +65,6 @@ export default function LogInPage() {
 
   return (
     <OnboardingShell>
-      
-      <Link href="/" className="inline-flex items-center self-start hover:opacity-80" style={{ gap: "12px" }}>
-        <Image src="/icons/arrow-left.svg" alt="" width={20} height={20} />
-        <span style={{ fontSize: "16px", lineHeight: "24px", fontWeight: 400, color: "#121212" }}>Back</span>
-      </Link>
-
-      
       <Image
         src="/images/logo-icon-3d7b24.png"
         alt="RentBuyStay"
@@ -284,23 +277,6 @@ export default function LogInPage() {
         >
           {isLoading ? "Signing in…" : "Sign In"}
         </button>
-
-        
-        <p
-          className="text-center"
-          style={{
-            fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
-            fontSize: "16px",
-            lineHeight: "24px",
-            fontWeight: 400,
-            color: "#807E7E",
-          }}
-        >
-          Don&rsquo;t have an account yet?{" "}
-          <Link href="/sign-up" style={{ fontWeight: 500, color: "#305E82" }}>
-            Register here
-          </Link>
-        </p>
       </div>
     </OnboardingShell>
   );
