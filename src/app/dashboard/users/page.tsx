@@ -51,7 +51,7 @@ function Badge({ bg, color, children }: { bg: string; color: string; children: R
   return (
     <span
       className="inline-flex items-center rounded-full whitespace-nowrap"
-      style={{ background: bg, color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 10px" }}
+      style={{ background: bg, color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}
     >
       {children}
     </span>
@@ -184,16 +184,18 @@ export default function UsersPage() {
                   <td style={{ padding: "16px 24px", fontSize: 14, color: "#121212" }}>{r.listings}</td>
                   <td style={{ padding: "16px 24px" }}>
                     {r.status === "Active" ? (
-                      <Badge bg="#ECFDF3" color="#067647">Active</Badge>
+                      <Badge bg="rgba(0,157,53,0.08)" color="#009D35">Active</Badge>
                     ) : (
-                      <Badge bg="#FEF3F2" color="#B42318">Suspended</Badge>
+                      <Badge bg="rgba(227,0,69,0.08)" color="#E30045">Suspended</Badge>
                     )}
                   </td>
                   <td style={{ padding: "16px 24px" }}>
                     {r.verified ? (
-                      <Badge bg="#ECFDF3" color="#067647">Verified</Badge>
+                      <span className="inline-flex items-center gap-2 rounded-[16px] whitespace-nowrap" style={{ background: "rgba(0,157,53,0.08)", color: "#009D35", fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>
+                        <Image src="/icons/admin/shield-tick.svg" alt="" width={16} height={16} /> Verified
+                      </span>
                     ) : (
-                      <Badge bg="#FFFAEB" color="#B54708">Unverified</Badge>
+                      <Badge bg="rgba(227,0,69,0.08)" color="#E30045">Unverified</Badge>
                     )}
                   </td>
                   <td style={{ padding: "16px 24px", position: "relative" }}>
