@@ -74,8 +74,8 @@ const ACTIVITY = [
 export default function AdminDashboardPage() {
   return (
     <div className="flex flex-col gap-6">
-      {/* ── Alert banners ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* ── Alert banners (stacked, full-width) ── */}
+      <div className="flex flex-col gap-4">
         {BANNERS.map((b) => (
           <div key={b.title} className="flex items-center gap-4 rounded-[15px] p-4" style={{ background: b.bg, border: `1px solid ${b.border}` }}>
             <Image src={b.icon} alt="" width={40} height={40} className="shrink-0" />
