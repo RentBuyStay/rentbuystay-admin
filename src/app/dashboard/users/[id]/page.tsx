@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bell, UserX } from "lucide-react";
+import { ArrowLeft, Bell, UserX, Star } from "lucide-react";
 import SeekerPropertyCard, { type SeekerListing } from "@/components/SeekerPropertyCard";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%), from the Figma detail variants. */
@@ -49,6 +49,22 @@ const LISTINGS: SeekerListing[] = [
     price: "₦95,000,000", tag: "FOR SALE", sqft: "2,400 sqft", beds: 4, baths: 5,
     image: "/images/prop3.jpg", amenities: ["BQ", "Garden", "Smart Home", "CCTV"],
     seller: { name: USER.name, initials: initials(USER.name), verified: USER.verified },
+  },
+];
+
+/* Reviews left for this user (swap for admin GET /admin/users/{id}/reviews). */
+const REVIEWS = [
+  {
+    name: "Alexa Henry", avatar: "/images/seekers/aishat-dada.png", rating: 5, time: "2 days ago",
+    text: "Ibrahim is a lifesaver! After months of searching, he helped me find an amazing apartment in Yaba with 24/7 security and stable power. Moving to Lagos was daunting, but Ibrahim made the process smooth and stress-free. Highly recommend his services!",
+  },
+  {
+    name: "Chinedu Okafor", avatar: "/images/seekers/bayo-lawal.png", rating: 4, time: "5 hours ago",
+    text: "Working with this owner was a breeze. Found me a cozy studio near Lekki with great amenities and a friendly neighborhood. Communication was clear throughout and there were no hidden charges along the way.",
+  },
+  {
+    name: "Sade Ajayi", avatar: "/images/seekers/olaide-batifeori.png", rating: 5, time: "1 week ago",
+    text: "Their expertise helped me secure a beautiful family home in Ikeja. The entire process was transparent from inspection to handover, and they were always available to answer my questions.",
   },
 ];
 
@@ -165,8 +181,36 @@ export default function UserDetailPage() {
         )
       )}
 
-      {/* Reviews — same pattern the app's agent/agency detail uses */}
-      {tab === "Reviews" && <EmptyState>No reviews yet.</EmptyState>}
+      {/* Reviews — exact Figma review item (avatar 56 · name 16/24 · 5 stars 20px · time 14 · body 16/32) */}
+      {tab === "Reviews" && (
+        REVIEWS.length === 0 ? (
+          <EmptyState>No reviews yet.</EmptyState>
+        ) : (
+          <div className="flex flex-col" style={{ gap: 32 }}>
+            {REVIEWS.map((rv, i) => (
+              <div key={i} className="flex flex-col" style={{ gap: 16 }}>
+                <div className="flex" style={{ gap: 8 }}>
+                  <span className="relative shrink-0 overflow-hidden rounded-full" style={{ width: 56, height: 56 }}>
+                    <Image src={rv.avatar} alt={rv.name} fill sizes="56px" style={{ objectFit: "cover" }} />
+                  </span>
+                  <div className="flex flex-col" style={{ gap: 8 }}>
+                    <span style={{ fontSize: 16, fontWeight: 600, lineHeight: "24px", letterSpacing: "-0.01em", color: "#121212" }}>{rv.name}</span>
+                    <div className="flex items-center" style={{ gap: 8 }}>
+                      <span className="flex items-center" style={{ gap: 4 }}>
+                        {Array.from({ length: 5 }).map((_, s) => (
+                          <Star key={s} size={20} strokeWidth={0} fill={s < rv.rating ? "#FFAE00" : "#E3E8EE"} />
+                        ))}
+                      </span>
+                      <span style={{ fontSize: 14, lineHeight: "24px", letterSpacing: "-0.01em", color: "#807E7E" }}>{rv.time}</span>
+                    </div>
+                  </div>
+                </div>
+                <p style={{ fontSize: 16, fontWeight: 400, lineHeight: "32px", color: "#333333" }}>{rv.text}</p>
+              </div>
+            ))}
+          </div>
+        )
+      )}
     </div>
   );
 }
