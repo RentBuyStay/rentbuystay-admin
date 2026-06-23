@@ -3,7 +3,8 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Bell, UserX, Star } from "lucide-react";
+import { ArrowLeft, Bell, UserX } from "lucide-react";
+import SeekerPropertyCard, { type SeekerListing } from "@/components/SeekerPropertyCard";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%), from the Figma detail variants. */
 const ROLE_BADGE: Record<string, { bg: string; color: string }> = {
@@ -28,15 +29,27 @@ const USER = {
   bio: "Experienced property owner with 8+ years in Lagos real estate market. Specializing in residential and commercial properties in Lekki, VI, and Ikoyi.",
 };
 
-const LISTINGS = [
-  { id: "1", title: "3-Bedroom Flat, Lekki Phase 1", price: "₦2,800,000", tag: "For Rent", beds: 3, baths: 3 },
-  { id: "2", title: "3-Bedroom Flat, Victoria Island", price: "₦650,000", tag: "For Rent", beds: 3, baths: 3 },
-];
-
-const REVIEWS = [
-  { name: "Alexa Henry", rating: 5, time: "2 days ago", text: "A lifesaver! After months of searching, they helped me find an amazing apartment in Yaba with 24/7 security and stable power." },
-  { name: "Chinedu Okafor", rating: 4, time: "5 hours ago", text: "Working with them was a breeze. Found me a cozy studio near Lekki with great amenities and a friendly neighborhood." },
-  { name: "Sade Ajayi", rating: 5, time: "1 week ago", text: "Their expertise helped me secure a beautiful family home in Ikeja. The entire process was transparent." },
+/* This user's published listings (swap for admin GET /admin/users/{id}/listings).
+   Uses the same SeekerListing shape the rest of the app renders. */
+const LISTINGS: SeekerListing[] = [
+  {
+    id: "1", title: "3-Bedroom Flat, Lekki Phase 1", location: "Lekki Phase 1, Lagos",
+    price: "₦2,800,000", priceSuffix: "/year", tag: "FOR RENT", sqft: "1,200 sqft", beds: 3, baths: 3,
+    image: "/images/prop1.jpg", amenities: ["Furnished", "Parking", "24/7 Power", "Security"],
+    seller: { name: USER.name, initials: initials(USER.name), verified: USER.verified },
+  },
+  {
+    id: "2", title: "3-Bedroom Flat, Victoria Island", location: "Victoria Island, Lagos",
+    price: "₦650,000", priceSuffix: "/year", tag: "FOR RENT", sqft: "980 sqft", beds: 3, baths: 3,
+    image: "/images/prop2.jpg", amenities: ["Pool", "Gym", "Parking"],
+    seller: { name: USER.name, initials: initials(USER.name), verified: USER.verified },
+  },
+  {
+    id: "3", title: "4-Bedroom Duplex, Ikoyi", location: "Ikoyi, Lagos",
+    price: "₦95,000,000", tag: "FOR SALE", sqft: "2,400 sqft", beds: 4, baths: 5,
+    image: "/images/prop3.jpg", amenities: ["BQ", "Garden", "Smart Home", "CCTV"],
+    seller: { name: USER.name, initials: initials(USER.name), verified: USER.verified },
+  },
 ];
 
 const TABS = ["Profile Details", "Listings", "Reviews"] as const;
@@ -139,47 +152,33 @@ export default function UserDetailPage() {
         </div>
       )}
 
-      {/* Listings */}
+      {/* Listings — same card the rest of the app uses (SeekerPropertyCard) */}
       {tab === "Listings" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          {LISTINGS.map((l) => (
-            <div key={l.id} className="rounded-[16px] border border-[#ededed] overflow-hidden bg-white">
-              <div className="h-[180px] bg-[#EAF2FA] flex items-center justify-center text-[#305e82] text-[13px]">Property image</div>
-              <div className="p-4 flex flex-col gap-1">
-                <span className="text-[12px] font-medium" style={{ color: "#305e82" }}>{l.tag}</span>
-                <p className="text-[16px] font-semibold text-[#121212]">{l.price}</p>
-                <p className="text-[14px] text-[#121212]">{l.title}</p>
-                <p className="text-[13px] text-[#807e7e]">{l.beds} Beds · {l.baths} Baths</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        LISTINGS.length === 0 ? (
+          <EmptyState>This user doesn&rsquo;t have any published listings yet.</EmptyState>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gap: "24px 16px" }}>
+            {LISTINGS.map((l) => (
+              <SeekerPropertyCard key={l.id} listing={l} />
+            ))}
+          </div>
+        )
       )}
 
-      {/* Reviews */}
-      {tab === "Reviews" && (
-        <div className="flex flex-col">
-          {REVIEWS.map((rv, i) => (
-            <div key={i} className="flex gap-3 py-5" style={{ borderBottom: i < REVIEWS.length - 1 ? "1px solid #f4f4f4" : "none" }}>
-              <span className="flex items-center justify-center rounded-full shrink-0" style={{ width: 40, height: 40, background: "rgba(48,94,130,0.05)", color: "#305e82", fontSize: 13, fontWeight: 600 }}>
-                {initials(rv.name)}
-              </span>
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[14px] font-semibold text-[#121212]">{rv.name}</span>
-                  <span className="flex items-center gap-0.5">
-                    {Array.from({ length: 5 }).map((_, s) => (
-                      <Star key={s} size={14} fill={s < rv.rating ? "#FFAE00" : "none"} color={s < rv.rating ? "#FFAE00" : "#D0D5DD"} />
-                    ))}
-                  </span>
-                  <span className="text-[12px] text-[#807e7e]">{rv.time}</span>
-                </div>
-                <p className="text-[14px] text-[#121212]">{rv.text}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Reviews — same pattern the app's agent/agency detail uses */}
+      {tab === "Reviews" && <EmptyState>No reviews yet.</EmptyState>}
+    </div>
+  );
+}
+
+/* Matches the app's detail pages (agents/agency) empty state. */
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="bg-white flex items-center justify-center text-center"
+      style={{ border: "1px solid #F6F6F6", borderRadius: "20px", padding: "64px 24px", color: "#807E7E", fontSize: "14px" }}
+    >
+      {children}
     </div>
   );
 }
