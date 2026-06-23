@@ -20,13 +20,15 @@ const TITLES: { match: (path: string) => boolean; title: string }[] = [
 ];
 
 export default function DashboardTopbar({
-  userName = "Prince Akpolo",
-  userInitials = "PA",
+  userName = "Super Admin",
+  userInitials = "SA",
+  userEmail = "admin@rentbuystay.com",
   userAvatar,
   onMenuClick,
 }: {
   userName?: string;
   userInitials?: string;
+  userEmail?: string;
   userAvatar?: string | null;
   onMenuClick?: () => void;
 }) {
@@ -64,24 +66,10 @@ export default function DashboardTopbar({
         </h1>
       </div>
 
-      <div className="flex items-center" style={{ gap: "16px" }}>
+      <div className="flex items-center" style={{ gap: "24px" }}>
 
         <NotificationsBell />
 
-
-        <button
-          type="button"
-          aria-label="Help"
-          className="hover:opacity-80"
-          style={{ background: "none", border: "none", padding: 0, width: "24px", height: "24px" }}
-        >
-          <Image src="/icons/dash/tb-help.svg" alt="" width={24} height={24} />
-        </button>
-
-        {/* Divider */}
-        <span style={{ width: "1px", height: "32px", background: "#EDEDED" }} />
-
-        
         <Link
           href="/dashboard/profile"
           aria-label="View profile"
@@ -119,16 +107,9 @@ export default function DashboardTopbar({
               }}
             />
           </div>
-          <span
-            className="hidden md:inline"
-            style={{
-              fontSize: "14px",
-              lineHeight: "24px",
-              fontWeight: 500,
-              color: "#121212",
-            }}
-          >
-            {userName}
+          <span className="hidden md:flex flex-col">
+            <span style={{ fontSize: "14px", lineHeight: "20px", fontWeight: 600, color: "#121212" }}>{userName}</span>
+            <span style={{ fontSize: "12px", lineHeight: "18px", fontWeight: 400, color: "#807E7E" }}>{userEmail}</span>
           </span>
         </Link>
       </div>

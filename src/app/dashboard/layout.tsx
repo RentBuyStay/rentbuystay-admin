@@ -98,6 +98,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <DashboardTopbar
             userName={userName}
             userInitials={userInitials}
+            userEmail={me?.email}
             userAvatar={userAvatar}
             onMenuClick={() => setDrawerOpen(true)}
           />
