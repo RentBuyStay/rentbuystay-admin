@@ -39,11 +39,12 @@ const ROWS: UserRow[] = [
   { id: "10", name: "Karim Mansour", email: "karimmansour@email.com", role: "Owner", location: "Lagos", joined: "Feb 2026", listings: 3, status: "Active", verified: true },
 ];
 
+// Per-role badge colors from the Figma detail variants (text = solid, bg = same hue @8%).
 const ROLE_STYLE: Record<Role, { bg: string; color: string }> = {
-  Owner: { bg: "#ECFDF3", color: "#067647" },
-  Agent: { bg: "#EFF8FF", color: "#175CD3" },
-  Agency: { bg: "#F4F3FF", color: "#6941C6" },
-  Seeker: { bg: "#F2F4F7", color: "#344054" },
+  Owner: { bg: "rgba(220,142,29,0.08)", color: "#DC8E1D" },
+  Agent: { bg: "rgba(48,94,130,0.08)", color: "#305E82" },
+  Agency: { bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
+  Seeker: { bg: "rgba(20,174,92,0.08)", color: "#14AE5C" },
 };
 
 function Badge({ bg, color, children }: { bg: string; color: string; children: React.ReactNode }) {

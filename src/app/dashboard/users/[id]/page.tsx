@@ -1,8 +1,17 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, BadgeCheck, Bell, UserX, Star } from "lucide-react";
+import { ArrowLeft, Bell, UserX, Star } from "lucide-react";
+
+/* Per-role badge colors (text = solid, bg = same hue @8%), from the Figma detail variants. */
+const ROLE_BADGE: Record<string, { bg: string; color: string }> = {
+  Owner: { bg: "rgba(220,142,29,0.08)", color: "#DC8E1D" },
+  Agent: { bg: "rgba(48,94,130,0.08)", color: "#305E82" },
+  Agency: { bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
+  Seeker: { bg: "rgba(20,174,92,0.08)", color: "#14AE5C" },
+};
 
 /* Placeholder user (swap for admin GET /admin/users/{id}). */
 const USER = {
@@ -70,8 +79,8 @@ export default function UserDetailPage() {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <h1 style={{ fontSize: 24, fontWeight: 600, lineHeight: "32px", color: "#121212" }}>{USER.name}</h1>
-              {USER.verified && <BadgeCheck size={20} color="#17B26A" />}
-              <span className="rounded-[16px]" style={{ background: "rgba(220,142,29,0.08)", color: "#DC8E1D", fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{USER.role}</span>
+              {USER.verified && <Image src="/icons/admin/verify-badge.svg" alt="verified" width={20} height={20} />}
+              <span className="rounded-[16px]" style={{ background: ROLE_BADGE[USER.role]?.bg ?? "rgba(48,94,130,0.08)", color: ROLE_BADGE[USER.role]?.color ?? "#305E82", fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{USER.role}</span>
             </div>
             <span style={{ fontSize: 14, color: "#807E7E" }}>{USER.email}</span>
             <span style={{ fontSize: 12, fontWeight: 500, color: "#FFAE00" }}>Member since {USER.memberSince}</span>
