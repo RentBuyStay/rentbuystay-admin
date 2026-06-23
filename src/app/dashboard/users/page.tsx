@@ -68,11 +68,6 @@ function FilterPill({ label }: { label: string }) {
   );
 }
 
-function initials(name: string) {
-  const p = name.trim().split(/\s+/);
-  return ((p[0]?.[0] ?? "") + (p[1]?.[0] ?? "")).toUpperCase();
-}
-
 export default function UsersPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"All" | Role>("All");
@@ -147,7 +142,12 @@ export default function UsersPage() {
                     className="text-left"
                     style={{ padding: "12px 24px", fontSize: 12, fontWeight: 500, color: "#807E7E", whiteSpace: "nowrap" }}
                   >
-                    {h}
+                    {i === 0 ? (
+                      <span className="flex items-center gap-3">
+                        <input type="checkbox" className="w-4 h-4 rounded accent-[#305E82] shrink-0" />
+                        {h}
+                      </span>
+                    ) : h}
                   </th>
                 ))}
               </tr>
@@ -157,9 +157,7 @@ export default function UsersPage() {
                 <tr key={r.id} style={{ borderBottom: "1px solid #F6F6F6" }} className="hover:bg-[#fafafa]">
                   <td style={{ padding: "16px 24px" }}>
                     <div className="flex items-center gap-3">
-                      <span className="flex items-center justify-center rounded-full shrink-0" style={{ width: 40, height: 40, background: "#EAF2FA", color: "#305e82", fontSize: 13, fontWeight: 600 }}>
-                        {initials(r.name)}
-                      </span>
+                      <input type="checkbox" className="w-4 h-4 rounded accent-[#305E82] shrink-0" />
                       <div className="min-w-0">
                         <p className="text-[14px] font-medium text-[#121212] truncate">{r.name}</p>
                         <p className="text-[12px] text-[#807e7e] truncate">{r.email}</p>

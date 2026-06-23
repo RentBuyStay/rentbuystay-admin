@@ -37,11 +37,12 @@ function initials(name: string) {
   return ((p[0]?.[0] ?? "") + (p[1]?.[0] ?? "")).toUpperCase();
 }
 
+/* Field: 13px label / 16px-Medium value, column gap 8, fixed 300px (Figma EL-aeb7c54b). */
 function Field({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[12px] text-[#807e7e]">{label}</span>
-      <span className="text-[16px] text-[#121212]">{value}</span>
+    <div className="flex flex-col gap-2 w-[300px] max-w-full">
+      <span style={{ fontSize: 13, color: "#807E7E", letterSpacing: "-0.02em" }}>{label}</span>
+      <span style={{ fontSize: 16, fontWeight: 500, lineHeight: "32px", color: "#121212", letterSpacing: "-0.02em" }}>{value}</span>
     </div>
   );
 }
@@ -51,50 +52,57 @@ export default function UserDetailPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Profile Details");
 
   return (
-    <div className="flex flex-col gap-6">
-      <button onClick={() => router.back()} className="flex items-center gap-2 text-[16px] text-[#121212] hover:opacity-70 self-start">
+    <div className="flex flex-col gap-10">
+      {/* Back */}
+      <button onClick={() => router.back()} className="flex items-center gap-3 hover:opacity-70 self-start" style={{ fontSize: 16, color: "#121212" }}>
         <ArrowLeft size={20} /> Back
       </button>
 
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-5">
-          <span className="flex items-center justify-center rounded-full shrink-0" style={{ width: 96, height: 96, background: "#EAF2FA", color: "#305e82", fontSize: 30, fontWeight: 600 }}>
+      {/* Header: avatar + name block (left) · actions (right) */}
+      <div className="flex items-start justify-between gap-6 flex-wrap">
+        <div className="flex items-center gap-4">
+          <span
+            className="flex items-center justify-center rounded-full shrink-0"
+            style={{ width: 120, height: 120, background: "rgba(48,94,130,0.05)", color: "#305E82", fontSize: 42, fontWeight: 700 }}
+          >
             {initials(USER.name)}
           </span>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <h1 className="text-[24px] font-semibold text-[#121212]">{USER.name}</h1>
+              <h1 style={{ fontSize: 24, fontWeight: 600, lineHeight: "32px", color: "#121212" }}>{USER.name}</h1>
               {USER.verified && <BadgeCheck size={20} color="#17B26A" />}
-              <span className="rounded-full" style={{ background: "#FEF0C7", color: "#B54708", fontSize: 12, fontWeight: 500, padding: "2px 10px" }}>{USER.role}</span>
+              <span className="rounded-[16px]" style={{ background: "rgba(220,142,29,0.08)", color: "#DC8E1D", fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{USER.role}</span>
             </div>
-            <span className="text-[14px] text-[#807e7e]">{USER.email}</span>
-            <span className="text-[12px] font-medium" style={{ color: "#DC6803" }}>Member since {USER.memberSince}</span>
+            <span style={{ fontSize: 14, color: "#807E7E" }}>{USER.email}</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: "#FFAE00" }}>Member since {USER.memberSince}</span>
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <button className="flex items-center gap-2 text-[14px] font-medium hover:opacity-70" style={{ color: "#E30045" }}>
-            <UserX size={18} /> Suspend User
+          <button className="flex items-center gap-2 hover:opacity-70" style={{ height: 48, padding: "8px 24px", fontSize: 14, fontWeight: 500, color: "#E30045" }}>
+            <UserX size={20} /> Suspend User
           </button>
           <button
-            className="flex items-center gap-2 text-white rounded-[12px] h-12 px-6 text-[14px] font-medium hover:opacity-90"
-            style={{ background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
+            className="flex items-center gap-2 text-white hover:opacity-90"
+            style={{ height: 48, padding: "8px 24px", fontSize: 14, fontWeight: 500, borderRadius: 12, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
           >
-            <Bell size={18} /> Send Notification
+            <Bell size={20} /> Send Notification
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-8 border-b border-[#ededed]">
+      <div className="flex items-center gap-4 -mt-4">
         {TABS.map((t) => {
           const active = tab === t;
           return (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className="pb-3 text-[14px] transition-colors"
-              style={{ color: active ? "#305E82" : "#807E7E", fontWeight: active ? 600 : 400, borderBottom: active ? "2px solid #305E82" : "2px solid transparent" }}
+              style={{
+                fontSize: 12, fontWeight: 500, padding: "8px 12px",
+                color: active ? "#305E82" : "#807E7E",
+                borderBottom: active ? "1px solid #305E82" : "1px solid transparent",
+              }}
             >
               {t}
             </button>
@@ -104,16 +112,21 @@ export default function UserDetailPage() {
 
       {/* Profile Details */}
       {tab === "Profile Details" && (
-        <div className="flex flex-col gap-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-8">
+        <div className="flex flex-col gap-10">
+          <div className="flex flex-wrap justify-between gap-x-6 gap-y-10">
             <Field label="First Name" value={USER.firstName} />
             <Field label="Last Name" value={USER.lastName} />
             <Field label="Email Address" value={USER.email} />
+          </div>
+          <div className="flex flex-wrap justify-between gap-x-6 gap-y-10">
             <Field label="Phone Number" value={USER.phone} />
             <Field label="State" value={USER.state} />
             <Field label="City" value={USER.city} />
           </div>
-          <Field label="Bio" value={USER.bio} />
+          <div className="flex flex-col gap-2">
+            <span style={{ fontSize: 13, color: "#807E7E", letterSpacing: "-0.02em" }}>Bio</span>
+            <span style={{ fontSize: 16, fontWeight: 500, lineHeight: "32px", color: "#121212", letterSpacing: "-0.02em" }}>{USER.bio}</span>
+          </div>
         </div>
       )}
 
@@ -139,7 +152,7 @@ export default function UserDetailPage() {
         <div className="flex flex-col">
           {REVIEWS.map((rv, i) => (
             <div key={i} className="flex gap-3 py-5" style={{ borderBottom: i < REVIEWS.length - 1 ? "1px solid #f4f4f4" : "none" }}>
-              <span className="flex items-center justify-center rounded-full shrink-0" style={{ width: 40, height: 40, background: "#EAF2FA", color: "#305e82", fontSize: 13, fontWeight: 600 }}>
+              <span className="flex items-center justify-center rounded-full shrink-0" style={{ width: 40, height: 40, background: "rgba(48,94,130,0.05)", color: "#305e82", fontSize: 13, fontWeight: 600 }}>
                 {initials(rv.name)}
               </span>
               <div className="flex flex-col gap-1">
