@@ -80,7 +80,7 @@ export default function AdminDashboardPage() {
           <div key={b.title} className="flex items-center gap-4 rounded-[15px] p-4" style={{ background: b.bg, border: `1px solid ${b.border}` }}>
             <Image src={b.icon} alt="" width={40} height={40} className="shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-[16px] font-semibold text-[#121212]">{b.title}</p>
+              <p className="text-[16px] font-medium text-[#121212]">{b.title}</p>
               <p className="text-[12px] text-[#807e7e]">{b.sub}</p>
             </div>
             <Link href={b.href} className="shrink-0 rounded-[20px] px-4 py-1.5 text-[13px] font-medium whitespace-nowrap hover:opacity-90" style={{ background: b.badgeBg, color: b.color }}>
@@ -91,19 +91,19 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* ── Stat cards (2 rows × 3) ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6">
         {STATS.map((s) => (
           <div
             key={s.label}
-            className="rounded-[16px] p-5 flex flex-col gap-4"
+            className="rounded-[20px] px-6 py-4 flex flex-col gap-4"
             style={s.highlight ? { background: GRADIENT } : { background: "#fff", border: "1px solid #F6F6F6" }}
           >
             <div className="flex items-center gap-2">
               <s.Icon size={18} strokeWidth={1.7} color={s.highlight ? "#fff" : "#305E82"} />
-              <span className="text-[14px]" style={{ color: s.highlight ? "#fff" : "#807E7E" }}>{s.label}</span>
+              <span className="text-[12px] font-medium" style={{ color: s.highlight ? "#fff" : "#807E7E" }}>{s.label}</span>
             </div>
             <div className="flex flex-col gap-2">
-              <span className="text-[28px] font-semibold leading-none" style={{ color: s.highlight ? "#fff" : "#121212" }}>{s.value}</span>
+              <span className="text-[32px] font-semibold leading-none" style={{ color: s.highlight ? "#fff" : "#121212" }}>{s.value}</span>
               <span className="flex items-center gap-1 text-[12px]">
                 <ArrowUp size={14} color={s.highlight ? "#F6F6F6" : s.deltaColor} />
                 <span style={{ color: s.highlight ? "#F6F6F6" : s.deltaColor, fontWeight: 500 }}>{s.deltaNum} </span>
@@ -120,7 +120,7 @@ export default function AdminDashboardPage() {
         <div className="rounded-[16px] bg-white p-6 flex flex-col gap-6" style={{ border: "1px solid #F6F6F6" }}>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-[18px] font-semibold" style={{ color: "#16192C" }}>User Registrations</h3>
+              <h3 className="text-[16px] font-semibold" style={{ color: "#16192C" }}>User Registrations</h3>
               <span className="flex items-center gap-1 text-[14px] text-[#000]">Last 7 Days <ChevronDown size={16} className="text-[#807e7e]" /></span>
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-2">
@@ -150,7 +150,7 @@ export default function AdminDashboardPage() {
         {/* Revenue by Plan Type */}
         <div className="rounded-[16px] bg-white p-6 flex flex-col gap-6" style={{ border: "1px solid #F6F6F6" }}>
           <div className="flex flex-col gap-2">
-            <h3 className="text-[18px] font-semibold" style={{ color: "#16192C" }}>Revenue by Plan Type</h3>
+            <h3 className="text-[16px] font-semibold" style={{ color: "#16192C" }}>Revenue by Plan Type</h3>
             <p className="text-[12px] text-[#807e7e]">Subscription revenue breakdown</p>
           </div>
           <div className="flex items-center gap-10 px-5 flex-1">
@@ -181,7 +181,7 @@ export default function AdminDashboardPage() {
 
       {/* ── Recent Activity ── */}
       <div className="rounded-[16px] bg-white p-6 flex flex-col gap-6" style={{ border: "1px solid #F6F6F6" }}>
-        <h3 className="text-[18px] font-semibold" style={{ color: "#16192C" }}>Recent Activity</h3>
+        <h3 className="text-[16px] font-semibold" style={{ color: "#16192C" }}>Recent Activity</h3>
         <ul className="flex flex-col gap-4">
           {ACTIVITY.map((a) => (
             <li key={a.title} className="flex items-center gap-3">
