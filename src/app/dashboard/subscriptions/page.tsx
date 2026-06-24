@@ -2,6 +2,12 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
+import { PlanFormModal, SuccessModal } from "@/components/PlanModals";
+
+const SUCCESS_COPY = {
+  create: { title: "Subscription Plan Created", body: "Well-done! The new plan has been added to the platform. Eligible users can now discover and subscribe to it. You can edit or deactivate it at any time from Subscription Management." },
+  edit: { title: "Changes Saved", body: "Great! The new changes has been saved to the subscription plan. You can edit or deactivate it at any time from Subscription Management." },
+};
 
 type Plan = {
   id: string;
@@ -31,6 +37,8 @@ export default function SubscriptionManagementPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Subscription Plans");
   const [query, setQuery] = useState("");
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [planModal, setPlanModal] = useState<{ mode: "create" | "edit"; plan?: Plan } | null>(null);
+  const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
 
   const plans = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -70,6 +78,7 @@ export default function SubscriptionManagementPage() {
         </div>
         <button
           type="button"
+          onClick={() => setPlanModal({ mode: "create" })}
           className="flex items-center justify-center text-white hover:opacity-90 shrink-0"
           style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
         >
@@ -149,7 +158,7 @@ export default function SubscriptionManagementPage() {
                             className="absolute right-6 top-12 z-20 bg-white rounded-[16px] border border-[#F6F6F6] overflow-hidden flex flex-col"
                             style={{ width: 135, gap: 8, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}
                           >
-                            <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
+                            <button type="button" onClick={() => { setMenuFor(null); setPlanModal({ mode: "edit", plan: p }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
                               <Image src="/icons/admin/menu-edit.svg" alt="" width={16} height={16} /> Edit Plan
                             </button>
                             <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
@@ -187,6 +196,20 @@ export default function SubscriptionManagementPage() {
           </div>
         </div>
       )}
+
+      {planModal && (
+        <PlanFormModal
+          mode={planModal.mode}
+          initial={planModal.plan}
+          onClose={() => setPlanModal(null)}
+          onSaved={() => {
+            const copy = SUCCESS_COPY[planModal.mode];
+            setPlanModal(null);
+            setSuccess(copy);
+          }}
+        />
+      )}
+      {success && <SuccessModal title={success.title} body={success.body} onClose={() => setSuccess(null)} />}
     </div>
   );
 }
