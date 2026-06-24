@@ -2,29 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { BLOG_POSTS, STATUS_COLOR, type BlogStatus } from "@/lib/demoBlog";
 
 const TABS = ["All Posts", "Published", "Scheduled", "Drafts", "Unpublished"] as const;
 type Tab = (typeof TABS)[number];
-
-type BlogStatus = "Published" | "Scheduled" | "Draft" | "Unpublished";
-const STATUS_COLOR: Record<BlogStatus, string> = {
-  Published: "#009D35",
-  Scheduled: "#8A38F5",
-  Draft: "#DC8E1D",
-  Unpublished: "#E30045",
-};
-
-/* Blog posts (swap for admin GET /admin/blog-posts). */
-const POSTS: { title: string; added: string; status: BlogStatus; views: string }[] = [
-  { title: "Is Now the Right Time to Invest in Lagos ...", added: "15 May 2025", status: "Scheduled", views: "0" },
-  { title: "The Rise of Eco-Friendly Developments ...", added: "15 May 2025", status: "Published", views: "1,595" },
-  { title: "Navigating Lagos Real Estate Financing ...", added: "15 May 2025", status: "Draft", views: "0" },
-  { title: "Navigating Lagos Property Titles: What ...", added: "15 May 2025", status: "Published", views: "3,028" },
-  { title: "The Rise of Eco-Friendly Developments in ...", added: "15 May 2025", status: "Published", views: "503" },
-  { title: "Navigating Lagos Real Estate Financing ...", added: "15 May 2025", status: "Published", views: "2,182" },
-  { title: "Is Now the Right Time to Invest in Lagos ...", added: "15 May 2025", status: "Published", views: "2,182" },
-];
 
 const TAB_FILTER: Record<Tab, BlogStatus | null> = {
   "All Posts": null,
@@ -43,9 +26,10 @@ const th: React.CSSProperties = { height: 44, padding: "0 16px", borderBottom: "
 const cell: React.CSSProperties = { height: 72, padding: "0 16px", borderBottom: "1px solid #F6F6F6" };
 
 export default function Page() {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("All Posts");
   const filter = TAB_FILTER[tab];
-  const rows = filter ? POSTS.filter((p) => p.status === filter) : POSTS;
+  const rows = filter ? BLOG_POSTS.filter((p) => p.status === filter) : BLOG_POSTS;
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,12 +104,12 @@ export default function Page() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((p, i) => (
-              <tr key={i}>
+            {rows.map((p) => (
+              <tr key={p.id} onClick={() => router.push(`/dashboard/blog/${p.id}`)} className="cursor-pointer hover:bg-[#fafafa]">
                 <td style={{ ...cell, paddingLeft: 24 }}>
                   <div className="flex items-center" style={{ gap: 12 }}>
                     <Image src="/icons/admin/blog/blog-avatar.png" alt="" width={40} height={40} className="rounded-full shrink-0 object-cover" style={{ width: 40, height: 40 }} />
-                    <span className="truncate" style={{ fontSize: 14, fontWeight: 500, color: "#101828" }}>{p.title}</span>
+                    <span className="truncate" style={{ fontSize: 14, fontWeight: 500, color: "#101828" }}>{p.short}</span>
                   </div>
                 </td>
                 <td style={cell}><span style={{ fontSize: 14, fontWeight: 400, color: "#121212" }}>{p.added}</span></td>
@@ -135,8 +119,8 @@ export default function Page() {
                 <td style={cell}><span style={{ fontSize: 14, fontWeight: 400, color: "#121212" }}>{p.views}</span></td>
                 <td style={cell}>
                   <div className="flex items-center" style={{ gap: 24 }}>
-                    <button type="button" aria-label="Edit post" className="hover:opacity-70"><Image src="/icons/admin/blog/blog-edit.svg" alt="" width={20} height={20} /></button>
-                    <button type="button" aria-label="Delete post" className="hover:opacity-70"><Image src="/icons/admin/blog/blog-trash.svg" alt="" width={20} height={20} /></button>
+                    <button type="button" aria-label="Edit post" onClick={(e) => { e.stopPropagation(); router.push("/dashboard/blog/new"); }} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-edit.svg" alt="" width={20} height={20} /></button>
+                    <button type="button" aria-label="Delete post" onClick={(e) => e.stopPropagation()} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-trash.svg" alt="" width={20} height={20} /></button>
                   </div>
                 </td>
               </tr>
