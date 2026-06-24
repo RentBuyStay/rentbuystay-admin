@@ -2,19 +2,13 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import AdminPropertyCard, { type AdminProperty } from "@/components/AdminPropertyCard";
+import AdminPropertyCard from "@/components/AdminPropertyCard";
+import { ADMIN_PROPERTIES, toAdminProperty } from "@/lib/demoProperties";
 
-/* Properties for the admin grid (swap for admin GET /admin/properties). */
-const PROPERTIES: AdminProperty[] = [
-  { id: "1", image: "/images/prop1.jpg", listingType: "For Rent", price: "₦2,800,000", priceSuffix: "/yr", status: "Active", title: "3-Bedroom Flat, Lekki Phase 1", location: "Lekki Phase 1, Lagos", sqft: "3500 sqft", beds: 3, baths: 4, lister: { name: "Urban Nest Realty", initials: "UN", verified: true, role: "Agency" } },
-  { id: "2", image: "/images/prop2.jpg", listingType: "For Sale", price: "₦260,000,000", status: "Removed", title: "4-Bedroom Duplex, Ikoyi", location: "Ikoyi, Lagos", sqft: "5000 sqft", beds: 5, baths: 6, lister: { name: "Aura Homes", initials: "AH", verified: true, role: "Agency" } },
-  { id: "3", image: "/images/prop3.jpg", listingType: "For Rent", price: "₦1,500,000", priceSuffix: "/yr", status: "Active", title: "2-Bedroom Apartment, Yaba", location: "Yaba, Lagos", sqft: "1800 sqft", beds: 2, baths: 2, lister: { name: "Fadeke Salami", initials: "FS", verified: false, role: "Owner" } },
-  { id: "4", image: "/images/prop4.jpg", listingType: "For Sale", price: "₦85,000,000", status: "Active", title: "3-Bedroom Terrace, Lekki", location: "Lekki, Lagos", sqft: "2400 sqft", beds: 3, baths: 3, lister: { name: "Chioma Ifeanyi", initials: "CI", verified: true, role: "Agent" } },
-  { id: "5", image: "/images/prop5.jpg", listingType: "Shortlet", price: "₦450,000", priceSuffix: "/night", status: "Archived", title: "Studio Apartment, Victoria Island", location: "Victoria Island, Lagos", sqft: "650 sqft", beds: 1, baths: 1, lister: { name: "Damilare John", initials: "DJ", verified: false, role: "Owner" } },
-  { id: "6", image: "/images/prop1.jpg", listingType: "For Rent", price: "₦3,200,000", priceSuffix: "/yr", status: "Active", title: "4-Bedroom Semi-Detached, Ikeja", location: "Ikeja, Lagos", sqft: "3200 sqft", beds: 4, baths: 4, lister: { name: "Michael Adebayo", initials: "MA", verified: true, role: "Agent" } },
-];
+/* Cards derived from the shared property data (so the card and its detail match). */
+const PROPERTIES = ADMIN_PROPERTIES.map(toAdminProperty);
 
-const TABS: { key: "All" | AdminProperty["status"]; label: string; count: number }[] = [
+const TABS: { key: "All" | "Active" | "Archived" | "Removed"; label: string; count: number }[] = [
   { key: "All", label: "All", count: 2416 },
   { key: "Active", label: "Active", count: 2619 },
   { key: "Archived", label: "Archived", count: 273 },

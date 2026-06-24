@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import type { Role } from "@/lib/demoUsers";
 
 export type AdminPropertyStatus = "Active" | "Archived" | "Removed";
@@ -37,7 +38,7 @@ export default function AdminPropertyCard({ property: p }: { property: AdminProp
   const status = STATUS_BADGE[p.status];
   const role = ROLE_BADGE[p.lister.role];
   return (
-    <div className="flex flex-col bg-white overflow-hidden" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+    <Link href={`/dashboard/properties/${p.id}`} className="flex flex-col bg-white overflow-hidden hover:shadow-md transition-shadow" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
       {/* Image + listing-type pill */}
       <div className="relative" style={{ height: 218, background: "#EDEDED" }}>
         <Image src={p.image} alt={p.title} fill sizes="352px" style={{ objectFit: "cover" }} />
@@ -59,7 +60,7 @@ export default function AdminPropertyCard({ property: p }: { property: AdminProp
             </span>
             <span className="rounded-[16px]" style={{ background: status.bg, color: status.color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{p.status}</span>
           </div>
-          <button type="button" aria-label="Delete listing" className="hover:opacity-70 shrink-0">
+          <button type="button" aria-label="Delete listing" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="hover:opacity-70 shrink-0">
             <Image src="/icons/admin/prop-trash.svg" alt="" width={20} height={20} />
           </button>
         </div>
@@ -96,7 +97,7 @@ export default function AdminPropertyCard({ property: p }: { property: AdminProp
           <span className="rounded-[16px] shrink-0" style={{ background: role.bg, color: role.color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{p.lister.role}</span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
