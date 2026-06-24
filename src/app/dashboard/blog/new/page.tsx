@@ -2,21 +2,41 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { SuccessModal } from "@/components/PlanModals";
+import RichTextEditor from "@/components/RichTextEditor";
 
 const fieldBase = "w-full bg-[#F6F6F6] rounded-[12px] outline-none text-[14px] text-[#121212] placeholder:text-[#807E7E]";
 const labelStyle: React.CSSProperties = { fontSize: 14, fontWeight: 500, lineHeight: "24px", letterSpacing: "-0.02em", color: "#121212" };
 
-const SUCCESS = {
-  publish: { title: "Post Published Successfully", body: "Your blog post has been published and you can now keep track of this post (views and performance) on the Blog Management page." },
-  schedule: { title: "Post Scheduled Successfully", body: "Your blog post has been scheduled and will be published on Mon., June 25, 2026 08:00AM. You can now keep track of it on the Blog Management page." },
-};
+const PUBLISH_SUCCESS = { title: "Post Published Successfully", body: "Your blog post has been published and you can now keep track of this post (views and performance) on the Blog Management page." };
+
+function formatDate(iso: string) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  const wd = d.toLocaleDateString("en-US", { weekday: "short" });
+  const mo = d.toLocaleDateString("en-US", { month: "long" });
+  return `${wd}., ${mo} ${d.getDate()}, ${d.getFullYear()}`;
+}
 
 export default function Page() {
   const [scheduled, setScheduled] = useState(false);
+  const [date, setDate] = useState("2026-06-25");
+  const [time, setTime] = useState("");
+  const dateRef = useRef<HTMLInputElement>(null);
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
+
+  const submit = () => {
+    if (scheduled) {
+      setSuccess({
+        title: "Post Scheduled Successfully",
+        body: `Your blog post has been scheduled and will be published on ${formatDate(date)}${time ? ` ${time}` : ""}. You can now keep track of it on the Blog Management page.`,
+      });
+    } else {
+      setSuccess(PUBLISH_SUCCESS);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,7 +56,7 @@ export default function Page() {
           <button type="button" className="hover:opacity-70" style={{ fontSize: 14, fontWeight: 500, color: "#305E82" }}>Save to Draft</button>
           <button
             type="button"
-            onClick={() => setSuccess(scheduled ? SUCCESS.schedule : SUCCESS.publish)}
+            onClick={submit}
             className="flex items-center justify-center text-white hover:opacity-90"
             style={{ height: 48, padding: "0 24px", borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
           >
@@ -54,12 +74,7 @@ export default function Page() {
       {/* Body */}
       <div className="flex flex-col gap-2">
         <label style={labelStyle}>Body</label>
-        <div className="flex flex-col">
-          <div className="overflow-x-auto rounded-t-[12px]">
-            <Image src="/icons/admin/blog/blog-toolbar.svg" alt="" width={1088} height={56} style={{ width: 1088, maxWidth: "none", height: 56 }} />
-          </div>
-          <textarea className={`${fieldBase} h-[240px] p-4 resize-none rounded-t-none`} placeholder="Start writing here..." />
-        </div>
+        <RichTextEditor placeholder="Start writing here..." minHeight={258} />
       </div>
 
       {/* Cover Image/Thumbnail */}
@@ -98,17 +113,28 @@ export default function Page() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex flex-col gap-2">
             <label style={labelStyle}>Date</label>
-            <div className="flex items-center justify-between h-12 px-4 bg-[#F6F6F6] rounded-[12px]">
-              <input className="bg-transparent outline-none w-full text-[14px] text-[#121212] placeholder:text-[#807E7E]" defaultValue="Mon., June 25, 2026" />
-              <Image src="/icons/admin/blog/blog-calendar.svg" alt="" width={16} height={16} className="shrink-0" />
+            <div className="relative">
+              <input
+                ref={dateRef}
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                onClick={() => { try { dateRef.current?.showPicker?.(); } catch { /* falls back to native focus */ } }}
+                aria-label="Date"
+                className="absolute inset-0 w-full h-12 opacity-0 cursor-pointer"
+              />
+              <div className="flex items-center justify-between h-12 px-4 bg-[#F6F6F6] rounded-[12px]">
+                <span style={{ fontSize: 14, color: date ? "#121212" : "#807E7E" }}>{date ? formatDate(date) : "Select date"}</span>
+                <Image src="/icons/admin/blog/blog-calendar.svg" alt="" width={16} height={16} className="shrink-0" />
+              </div>
             </div>
           </div>
           <div className="flex flex-col gap-2">
             <label style={labelStyle}>Time</label>
             <div className="relative">
-              <select defaultValue="" className={`${fieldBase} h-12 px-4 pr-10 appearance-none cursor-pointer`} style={{ color: "#807E7E" }}>
+              <select value={time} onChange={(e) => setTime(e.target.value)} className={`${fieldBase} h-12 px-4 pr-10 appearance-none cursor-pointer`} style={{ color: time ? "#121212" : "#807E7E" }}>
                 <option value="" disabled>Select time</option>
-                {["08:00 AM", "12:00 PM", "03:00 PM", "06:00 PM"].map((t) => <option key={t} value={t} style={{ color: "#121212" }}>{t}</option>)}
+                {["08:00AM", "10:00AM", "12:00PM", "03:00PM", "06:00PM", "09:00PM"].map((t) => <option key={t} value={t} style={{ color: "#121212" }}>{t}</option>)}
               </select>
               <ChevronDown size={20} color="#121212" className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>

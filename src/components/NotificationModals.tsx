@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { X, ChevronDown } from "lucide-react";
+import RichTextEditor from "@/components/RichTextEditor";
 
 const labelStyle: React.CSSProperties = { fontSize: 14, fontWeight: 500, lineHeight: "24px", letterSpacing: "-0.02em", color: "#121212" };
 const fieldBase = "w-full bg-[#F6F6F6] rounded-[12px] outline-none text-[14px] text-[#121212] placeholder:text-[#807E7E]";
@@ -74,12 +74,7 @@ export function NotificationFormModal({
           </Field>
 
           <Field label="Message Body">
-            <div className="flex flex-col">
-              <div className="overflow-x-auto rounded-t-[12px]">
-                <Image src="/icons/admin/notif/editor-toolbar.svg" alt="" width={640} height={48} style={{ width: 640, maxWidth: "none", height: 48 }} />
-              </div>
-              <textarea className={`${fieldBase} h-[193px] p-4 resize-none rounded-t-none`} placeholder={"Hi [First Name],\n\nWe've just added ..."} />
-            </div>
+            <RichTextEditor placeholder={"Hi [First Name],\n\nWe've just added ..."} minHeight={193} />
           </Field>
 
           {/* Footer */}
