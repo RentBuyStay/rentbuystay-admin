@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Bell, UserX, Star, ChevronDown } from "lucide-react";
 import SeekerPropertyCard, { type SeekerListing } from "@/components/SeekerPropertyCard";
-import AgentCard, { type Agent } from "@/components/AgentCard";
+import { type Agent } from "@/components/AgentCard";
 import { getDemoUser } from "@/lib/demoUsers";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%), from the Figma detail variants. */
@@ -216,7 +217,7 @@ export default function UserDetailPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 24 }}>
             {agents.map((a) => (
-              <AgentCard key={a.id} agent={a} />
+              <AgencyAgentCard key={a.id} agent={a} />
             ))}
           </div>
         )
@@ -272,6 +273,55 @@ export default function UserDetailPage() {
           </div>
         )
       )}
+    </div>
+  );
+}
+
+/* Agency agent card — exact Figma (avatar 64 · name 18 · company 12 · location ·
+   full-width divider · rating/listings row · View Profile, no contact buttons). */
+function AgencyAgentCard({ agent }: { agent: Agent }) {
+  return (
+    <div className="bg-white flex flex-col" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+      <div className="flex" style={{ gap: 16, padding: "24px 24px 0" }}>
+        <span
+          className="relative shrink-0 overflow-hidden rounded-full flex items-center justify-center"
+          style={{ width: 64, height: 64, background: "rgba(48,94,130,0.05)", color: "#305E82", fontSize: 18, fontWeight: 600 }}
+        >
+          {agent.avatar ? (
+            <Image src={agent.avatar} alt={agent.name} fill sizes="64px" style={{ objectFit: "cover" }} />
+          ) : (
+            agent.initials
+          )}
+        </span>
+        <div className="flex flex-col min-w-0" style={{ gap: 8 }}>
+          <div className="flex items-center" style={{ gap: 8 }}>
+            <span style={{ fontSize: 18, fontWeight: 600, lineHeight: "24px", color: "#121212" }}>{agent.name}</span>
+            {agent.verified && <Image src="/icons/dash/verify.svg" alt="" width={20} height={20} />}
+          </div>
+          <span style={{ fontSize: 12, lineHeight: "20px", color: "#807E7E" }}>{agent.company}</span>
+          <div className="flex items-center" style={{ gap: 8 }}>
+            <Image src="/icons/dash/detail-location.svg" alt="" width={24} height={24} />
+            <span style={{ fontSize: 12, lineHeight: "24px", color: "#305E82" }}>{agent.location}</span>
+          </div>
+        </div>
+      </div>
+      <div style={{ height: 1, background: "#F6F6F6", marginTop: 24 }} />
+      <div className="flex items-center justify-between" style={{ padding: "16px 24px 24px" }}>
+        <div className="flex items-center" style={{ gap: 16 }}>
+          <div className="flex items-center" style={{ gap: 8 }}>
+            <Image src="/icons/dash/icon-star.svg" alt="" width={20} height={20} />
+            <span style={{ fontSize: 12, lineHeight: "24px", color: "#807E7E" }}>{agent.rating}</span>
+          </div>
+          <span style={{ width: 1, height: 14, background: "#F6F6F6" }} />
+          <div className="flex items-center" style={{ gap: 8 }}>
+            <Image src="/icons/dash/icon-buildings.svg" alt="" width={20} height={20} />
+            <span style={{ fontSize: 12, lineHeight: "24px", color: "#807E7E" }}>{agent.listings}</span>
+          </div>
+        </div>
+        <Link href={`/dashboard/agents/${agent.id}`} className="hover:underline shrink-0" style={{ fontSize: 14, fontWeight: 500, color: "#305E82" }}>
+          View Profile
+        </Link>
+      </div>
     </div>
   );
 }
