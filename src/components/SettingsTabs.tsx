@@ -148,11 +148,14 @@ export function SeoTab({ onSaved }: { onSaved: () => void }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         <div className="flex flex-col gap-2">
           <label style={seoLabel}>Google Analytics Tracking ID</label>
-          <input className={`${seoField} h-12 px-4`} placeholder="G- XXXXXXXXXX" />
+          <div className="flex items-center bg-[#F6F6F6] rounded-[12px] h-12 px-4 gap-1.5">
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#121212" }}>G-</span>
+            <input className="flex-1 min-w-0 bg-transparent outline-none text-[14px] text-[#121212] placeholder:text-[rgba(18,18,18,0.5)]" placeholder="XXXXXXXXXX" />
+          </div>
         </div>
         <div className="flex flex-col gap-2">
           <label style={seoLabel}>Facebook Pixel ID</label>
-          <input className={`${seoField} h-12 px-4`} placeholder="XXXXXXXXXXXXXXX" />
+          <input className="w-full bg-[#F6F6F6] rounded-[12px] h-12 px-4 outline-none text-[14px] text-[#121212] placeholder:text-[rgba(18,18,18,0.5)]" placeholder="XXXXXXXXXXXXXXX" />
         </div>
       </div>
 
