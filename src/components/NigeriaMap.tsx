@@ -45,9 +45,10 @@ export const NIGERIA_STATES: StatePath[] = [
   { name: "Taraba", d: "M576.2,624.1 L579.5,622.1 L585.4,622.2 L592.6,598.6 L599.2,600.7 L623.5,580.0 L626.0,588.7 L629.5,592.1 L652.5,592.1 L656.4,580.0 L661.0,576.0 L673.7,585.6 L680.2,585.4 L683.3,596.3 L688.4,600.6 L694.7,600.5 L699.1,605.5 L700.0,607.3 L698.3,615.9 L702.9,628.8 L721.5,629.0 L727.6,625.4 L729.6,616.4 L735.7,615.5 L739.7,610.7 L742.3,600.4 L739.4,596.9 L742.1,590.9 L746.3,586.5 L756.8,581.5 L765.2,574.6 L766.8,570.6 L759.5,560.7 L755.7,559.4 L759.8,556.7 L764.3,548.7 L757.5,540.6 L756.4,520.6 L745.9,518.4 L747.4,509.4 L742.4,505.1 L738.3,506.4 L736.0,512.9 L734.0,514.2 L721.6,495.7 L723.4,491.9 L738.7,476.5 L745.7,464.6 L744.3,463.2 L758.7,453.2 L759.3,449.6 L756.3,445.2 L759.0,443.1 L755.1,440.1 L757.3,437.1 L762.1,434.9 L763.5,424.1 L766.0,418.1 L762.5,412.1 L752.1,406.5 L750.5,393.4 L747.2,387.0 L743.1,387.3 L737.4,385.3 L737.0,378.4 L730.2,371.5 L729.0,366.4 L716.3,366.5 L711.7,364.7 L702.7,368.4 L699.5,366.2 L692.5,365.6 L690.6,360.8 L686.2,366.0 L674.2,375.0 L654.8,372.0 L658.0,375.7 L656.4,383.1 L658.1,385.2 L658.1,392.0 L662.7,402.1 L661.6,404.9 L662.9,408.1 L659.5,414.8 L648.4,415.9 L643.6,418.3 L630.4,429.0 L614.0,447.3 L598.8,460.9 L589.4,466.3 L578.0,464.9 L577.1,472.7 L566.6,471.4 L558.8,467.8 L556.6,468.5 L553.2,475.9 L560.6,482.4 L558.5,484.7 L560.9,492.1 L554.3,498.5 L541.2,505.1 L536.3,514.8 L558.5,510.4 L576.4,511.7 L579.9,514.2 L588.6,526.5 L596.8,533.3 L600.1,538.9 L599.9,546.8 L595.1,560.3 L595.9,565.0 L587.8,575.2 L580.1,590.7 L580.2,603.9 L576.2,624.1Z" },
   { name: "Ebonyi", d: "M467.4,608.9 L462.0,598.7 L461.2,600.5 L457.3,600.9 L453.5,606.2 L444.5,604.3 L441.5,605.4 L441.7,614.6 L439.4,616.4 L438.2,620.7 L430.8,617.2 L428.8,612.3 L417.1,612.4 L422.0,629.4 L422.1,633.7 L418.5,641.1 L420.5,647.1 L420.0,656.6 L414.8,662.3 L419.0,670.9 L417.1,672.7 L414.8,672.2 L402.8,666.3 L403.5,670.4 L401.4,674.7 L404.0,680.3 L406.7,679.5 L423.6,682.0 L426.5,687.8 L433.7,692.9 L436.3,686.6 L440.3,685.9 L437.2,680.7 L439.4,679.5 L441.9,674.6 L443.2,674.7 L441.3,672.5 L441.7,667.8 L446.2,666.4 L447.0,670.4 L451.2,669.6 L452.3,671.5 L460.7,665.3 L466.4,665.9 L468.0,657.2 L476.3,648.0 L477.7,644.2 L475.5,640.4 L476.5,635.4 L480.0,633.7 L480.9,631.0 L476.9,625.9 L477.8,622.8 L469.9,616.5 L469.7,612.7 L467.4,608.9Z" },
 ];
-type VB = { x: number; y: number; w: number; h: number };
-const BASE: VB = (() => { const [x, y, w, h] = NIGERIA_VIEWBOX.split(" ").map(Number); return { x, y, w, h }; })();
-const MIN_W = BASE.w / 9; // max zoom-in ≈ 9×
+const [BW, BH] = (() => { const p = NIGERIA_VIEWBOX.split(" ").map(Number); return [p[2], p[3]]; })();
+const MAX_K = 9; // max zoom-in ≈ 9×
+
+type T = { k: number; x: number; y: number };
 
 export default function NigeriaMap({
   fills,
@@ -64,25 +65,44 @@ export default function NigeriaMap({
   interactive?: boolean;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [vb, setVb] = useState<VB>(BASE);
-  const drag = useRef<{ cx: number; cy: number; vx: number; vy: number } | null>(null);
+  const [t, setT] = useState<T>({ k: 1, x: 0, y: 0 });
+  const drag = useRef<{ lx: number; ly: number; tx: number; ty: number } | null>(null);
   const [grabbing, setGrabbing] = useState(false);
 
-  const clamp = (v: VB): VB => ({
-    w: v.w,
-    h: v.h,
-    x: Math.min(Math.max(v.x, 0), BASE.w - v.w),
-    y: Math.min(Math.max(v.y, 0), BASE.h - v.h),
-  });
+  // Screen px -> viewBox coords, correct regardless of letterboxing / element size.
+  const toSvg = (clientX: number, clientY: number) => {
+    const svg = svgRef.current;
+    const ctm = svg?.getScreenCTM();
+    if (!svg || !ctm) return null;
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    return pt.matrixTransform(ctm.inverse());
+  };
 
-  const zoomAt = (px: number, py: number, factor: number) =>
-    setVb((cur) => {
-      const w = Math.min(Math.max(cur.w * factor, MIN_W), BASE.w);
-      const h = w * (BASE.h / BASE.w);
-      const sx = cur.x + px * cur.w;
-      const sy = cur.y + py * cur.h;
-      return clamp({ x: sx - px * w, y: sy - py * h, w, h });
+  // Keep the map covering the viewBox (no panning into empty space); k in [1, MAX_K].
+  const clampT = (nt: T): T => {
+    const k = Math.min(Math.max(nt.k, 1), MAX_K);
+    return {
+      k,
+      x: Math.min(0, Math.max(BW * (1 - k), nt.x)),
+      y: Math.min(0, Math.max(BH * (1 - k), nt.y)),
+    };
+  };
+
+  const zoomAtClient = (clientX: number, clientY: number, factor: number) =>
+    setT((cur) => {
+      const loc = toSvg(clientX, clientY);
+      if (!loc) return cur;
+      const k = Math.min(Math.max(cur.k * factor, 1), MAX_K);
+      const f = k / cur.k; // actual applied factor after clamping
+      return clampT({ k, x: loc.x - (loc.x - cur.x) * f, y: loc.y - (loc.y - cur.y) * f });
     });
+
+  const zoomCenter = (factor: number) => {
+    const r = svgRef.current?.getBoundingClientRect();
+    if (r) zoomAtClient(r.left + r.width / 2, r.top + r.height / 2, factor);
+  };
 
   // Wheel zoom toward the cursor (non-passive so we can stop the page scrolling).
   useEffect(() => {
@@ -91,8 +111,7 @@ export default function NigeriaMap({
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
-      const r = el.getBoundingClientRect();
-      zoomAt((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height, e.deltaY < 0 ? 0.85 : 1 / 0.85);
+      zoomAtClient(e.clientX, e.clientY, e.deltaY < 0 ? 1.2 : 1 / 1.2);
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -100,29 +119,32 @@ export default function NigeriaMap({
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!interactive) return;
-    (e.target as Element).setPointerCapture?.(e.pointerId);
-    drag.current = { cx: e.clientX, cy: e.clientY, vx: vb.x, vy: vb.y };
+    const loc = toSvg(e.clientX, e.clientY);
+    if (!loc) return;
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    drag.current = { lx: loc.x, ly: loc.y, tx: t.x, ty: t.y };
     setGrabbing(true);
   };
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!drag.current || !svgRef.current) return;
-    const r = svgRef.current.getBoundingClientRect();
-    const dx = ((e.clientX - drag.current.cx) / r.width) * vb.w;
-    const dy = ((e.clientY - drag.current.cy) / r.height) * vb.h;
-    setVb((cur) => clamp({ ...cur, x: drag.current!.vx - dx, y: drag.current!.vy - dy }));
+    if (!drag.current) return;
+    const loc = toSvg(e.clientX, e.clientY);
+    if (!loc) return;
+    const d = drag.current;
+    setT((cur) => clampT({ k: cur.k, x: d.tx + (loc.x - d.lx), y: d.ty + (loc.y - d.ly) }));
   };
   const endDrag = () => {
     drag.current = null;
     setGrabbing(false);
   };
 
-  const zoomedOut = vb.w >= BASE.w - 0.5;
+  const zoomedOut = t.k <= 1.001;
 
   return (
     <div className={`relative ${className ?? ""}`}>
       <svg
         ref={svgRef}
-        viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
+        viewBox={NIGERIA_VIEWBOX}
+        preserveAspectRatio="xMidYMid meet"
         className="w-full h-full touch-none select-none"
         style={{ cursor: interactive ? (grabbing ? "grabbing" : "grab") : "default" }}
         role="img"
@@ -130,24 +152,27 @@ export default function NigeriaMap({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
+        onPointerCancel={endDrag}
         onPointerLeave={endDrag}
       >
-        {NIGERIA_STATES.map((s) => (
-          <path key={s.name} d={s.d} fill={fills?.[s.name] ?? baseFill} stroke={stroke} strokeWidth={1} vectorEffect="non-scaling-stroke" strokeLinejoin="round">
-            <title>{s.name}</title>
-          </path>
-        ))}
+        <g transform={`translate(${t.x} ${t.y}) scale(${t.k})`}>
+          {NIGERIA_STATES.map((s) => (
+            <path key={s.name} d={s.d} fill={fills?.[s.name] ?? baseFill} stroke={stroke} strokeWidth={1} vectorEffect="non-scaling-stroke" strokeLinejoin="round">
+              <title>{s.name}</title>
+            </path>
+          ))}
+        </g>
       </svg>
 
       {interactive && (
         <div className="absolute top-3 right-3 flex flex-col gap-1.5">
-          <ZoomBtn label="Zoom in" onClick={() => zoomAt(0.5, 0.5, 0.8)}>
+          <ZoomBtn label="Zoom in" onClick={() => zoomCenter(1.6)}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3.5v9M3.5 8h9" stroke="#305E82" strokeWidth="1.6" strokeLinecap="round" /></svg>
           </ZoomBtn>
-          <ZoomBtn label="Zoom out" onClick={() => zoomAt(0.5, 0.5, 1 / 0.8)}>
+          <ZoomBtn label="Zoom out" onClick={() => zoomCenter(1 / 1.6)} disabled={zoomedOut}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 8h9" stroke="#305E82" strokeWidth="1.6" strokeLinecap="round" /></svg>
           </ZoomBtn>
-          <ZoomBtn label="Reset" onClick={() => setVb(BASE)} disabled={zoomedOut}>
+          <ZoomBtn label="Reset" onClick={() => setT({ k: 1, x: 0, y: 0 })} disabled={zoomedOut}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12.5 6.5A5 5 0 1 0 13 9" stroke="#305E82" strokeWidth="1.5" strokeLinecap="round" /><path d="M12.8 3.2v3.3H9.5" stroke="#305E82" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </ZoomBtn>
         </div>
