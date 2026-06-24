@@ -22,6 +22,8 @@ const ADMIN_STATUS: Record<string, { label: string; bg: string; color: string }>
   Active: { label: "Active", bg: "#ECFDF3", color: "#027A48" },
   Archived: { label: "Archived", bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
   Removed: { label: "Removed", bg: "rgba(227,0,69,0.05)", color: "#E30045" },
+  "Awaiting Approval": { label: "Awaiting Approval", bg: "#FFF7E9", color: "#EA651A" },
+  Rejected: { label: "Rejected", bg: "#FEF3F2", color: "#B42318" },
 };
 
 const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
@@ -54,7 +56,10 @@ export default function AdminPropertyDetail({ propertyId }: { propertyId: string
 
   const tagWord = listing.tag === "FOR SALE" ? "Sale" : listing.tag === "SHORTLET" ? "Shortlet" : "Rent";
   const displayTitle = `${property.title} for ${tagWord} in ${listing.location}`;
-  const status = property.adminStatus ? ADMIN_STATUS[property.adminStatus] : (STATUS_BADGE[property.status] ?? STATUS_BADGE.ACTIVE);
+  const status =
+    (property.adminStatus && ADMIN_STATUS[property.adminStatus]) ||
+    STATUS_BADGE[property.status] ||
+    STATUS_BADGE.ACTIVE;
   const images = property.photos?.length ? property.photos.map((p) => p.url) : [listing.image];
   const sqft = property.totalAreaSqm ? `${property.totalAreaSqm.toLocaleString()} sqft` : listing.sqft;
 
