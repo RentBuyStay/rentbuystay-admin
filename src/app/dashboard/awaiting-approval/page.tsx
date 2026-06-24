@@ -1,5 +1,86 @@
-import ComingSoon from "@/components/ComingSoon";
+"use client";
 
-export default function Page() {
-  return <ComingSoon title="Awaiting Approval" />;
+import Image from "next/image";
+import { useMemo, useState } from "react";
+import AdminPropertyCard from "@/components/AdminPropertyCard";
+import { AWAITING_APPROVAL_PROPERTIES, toAdminProperty } from "@/lib/demoProperties";
+
+const ALL = AWAITING_APPROVAL_PROPERTIES.map(toAdminProperty);
+
+const TABS: { key: "Awaiting Approval" | "Rejected"; count: number }[] = [
+  { key: "Awaiting Approval", count: 24 },
+  { key: "Rejected", count: 37 },
+];
+
+export default function AwaitingApprovalPage() {
+  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("Awaiting Approval");
+  const [query, setQuery] = useState("");
+
+  const properties = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return ALL.filter(
+      (p) =>
+        p.status === tab &&
+        (!q || p.title.toLowerCase().includes(q) || p.location.toLowerCase().includes(q) || p.lister.name.toLowerCase().includes(q)),
+    );
+  }, [tab, query]);
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Tabs + Location filter + Search */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-4 overflow-x-auto">
+          {TABS.map((t) => {
+            const active = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className="shrink-0"
+                style={{
+                  fontSize: 12, fontWeight: 500, lineHeight: "20px", padding: "8px 12px",
+                  color: active ? "#305E82" : "#807E7E",
+                  borderBottom: active ? "1px solid #305E82" : "1px solid transparent",
+                }}
+              >
+                {t.key} ({t.count})
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-4 flex-wrap">
+          <button
+            type="button"
+            className="flex items-center justify-between bg-[#F6F6F6] rounded-[12px] hover:bg-[#ededed]"
+            style={{ height: 48, padding: "8px 16px", gap: 16, minWidth: 109, color: "#807E7E", fontSize: 14 }}
+          >
+            Location
+            <Image src="/icons/admin/filter-arrow-down.svg" alt="" width={16} height={16} />
+          </button>
+          <div className="flex items-center gap-2 bg-[#F6F6F6] rounded-[12px] h-12 px-4 flex-1 min-w-[220px] lg:max-w-[394px]">
+            <Image src="/icons/admin/search-normal.svg" alt="" width={20} height={20} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Enter name, email or phone..."
+              className="flex-1 min-w-0 bg-transparent outline-none text-[12px] text-[#121212] placeholder:text-[rgba(128,126,126,0.75)]"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Grid */}
+      {properties.length === 0 ? (
+        <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
+          No {tab.toLowerCase()} properties.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6">
+          {properties.map((p) => (
+            <AdminPropertyCard key={p.id} property={p} hideTrash />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }

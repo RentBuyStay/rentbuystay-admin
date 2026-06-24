@@ -178,6 +178,19 @@ export const ADMIN_PROPERTIES: DemoProperty[] = [
   adminProp({ id: "pm6", ref: "RBS-L-1006", title: "4-Bedroom Semi-Detached, Ikeja", type: "RENT", price: 3200000, freq: "PER_YEAR", status: "ACTIVE", adminStatus: "Active", city: "Ikeja", lat: 6.6018, lng: 3.3515, beds: 4, baths: 4, sqft: 3200, image: "/images/prop1.jpg", listerName: "Michael Adebayo", listerRole: "Agent", listerVerified: true, amenityNames: AMENITIES, description: "A spacious 4-bedroom semi-detached home in Ikeja GRA with a generator, borehole and CCTV." }),
 ];
 
+/* Properties on the Awaiting Approval screen (pending review + rejected). */
+export const AWAITING_APPROVAL_PROPERTIES: DemoProperty[] = [
+  adminProp({ id: "aa1", ref: "RBS-L-2001", title: "3-Bedroom Flat, Lekki Phase 1", type: "RENT", price: 2800000, freq: "PER_YEAR", status: "AWAITING_APPROVAL", adminStatus: "Awaiting Approval", city: "Lekki Phase 1", lat: 6.4474, lng: 3.4736, beds: 3, baths: 4, sqft: 3500, image: "/images/prop1.jpg", listerName: "Yemi Balogun", listerRole: "Owner", listerVerified: true, amenityNames: AMENITIES, description: "A beautifully finished 3-bedroom flat in the heart of Lekki Phase 1 with 24/7 power and tight security." }),
+  adminProp({ id: "aa2", ref: "RBS-L-2002", title: "2-Bedroom Apartment, Victoria Island", type: "SHORTLET", price: 450000, freq: "PER_NIGHT", status: "AWAITING_APPROVAL", adminStatus: "Awaiting Approval", city: "Victoria Island", lat: 6.4281, lng: 3.4219, beds: 3, baths: 2, sqft: 1800, image: "/images/prop2.jpg", listerName: "Urban Nest Realty", listerRole: "Agency", listerVerified: true, amenityNames: AMENITIES.slice(0, 8), description: "A stylish serviced apartment on Victoria Island, ideal for short stays near the business district." }),
+  adminProp({ id: "aa3", ref: "RBS-L-2003", title: "Office Space, Ikeja GRA", type: "RENT", price: 3400000, freq: "PER_YEAR", status: "AWAITING_APPROVAL", adminStatus: "Awaiting Approval", city: "Ikeja GRA", lat: 6.5775, lng: 3.3619, beds: 2, baths: 1, sqft: 1200, image: "/images/prop3.jpg", listerName: "Fadeke Salami", listerRole: "Agent", listerVerified: true, amenityNames: AMENITIES.slice(0, 6), description: "A serviced office space in Ikeja GRA with backup power, parking and 24/7 security." }),
+  adminProp({ id: "aa4", ref: "RBS-L-2004", title: "4-Bedroom Duplex, Ikoyi", type: "BUY", price: 260000000, freq: "OUTRIGHT", status: "AWAITING_APPROVAL", adminStatus: "Awaiting Approval", city: "Ikoyi", lat: 6.4498, lng: 3.4346, beds: 5, baths: 6, sqft: 5000, image: "/images/prop4.jpg", listerName: "Wilson Falope", listerRole: "Agent", listerVerified: true, amenityNames: ["BQ", "Garden", "Smart Home", "CCTV", ...AMENITIES.slice(0, 6)], description: "An elegant duplex in Ikoyi featuring a private garden, smart-home automation and round-the-clock CCTV." }),
+  adminProp({ id: "aa5", ref: "RBS-L-2005", title: "2-Bedroom Flat, Jibowu, Yaba", type: "RENT", price: 1800000, freq: "PER_YEAR", status: "AWAITING_APPROVAL", adminStatus: "Awaiting Approval", city: "Yaba", lat: 6.5095, lng: 3.3711, beds: 3, baths: 3, sqft: 2000, image: "/images/prop5.jpg", listerName: "Chioma Ifeanyi", listerRole: "Agent", listerVerified: true, amenityNames: AMENITIES.slice(0, 7), description: "A bright 2-bedroom flat in Jibowu, Yaba, close to transport, markets and the university." }),
+  // Rejected
+  adminProp({ id: "ar1", ref: "RBS-L-2101", title: "Studio Apartment, Surulere", type: "RENT", price: 900000, freq: "PER_YEAR", status: "REJECTED", adminStatus: "Rejected", city: "Surulere", lat: 6.4999, lng: 3.3543, beds: 1, baths: 1, sqft: 600, image: "/images/prop2.jpg", listerName: "Kola Adeyemi", listerRole: "Owner", listerVerified: false, amenityNames: AMENITIES.slice(0, 5), description: "A compact studio in Surulere — submission rejected pending clearer documents." }),
+  adminProp({ id: "ar2", ref: "RBS-L-2102", title: "3-Bedroom Terrace, Lekki", type: "BUY", price: 90000000, freq: "OUTRIGHT", status: "REJECTED", adminStatus: "Rejected", city: "Lekki", lat: 6.4698, lng: 3.5852, beds: 3, baths: 3, sqft: 2400, image: "/images/prop3.jpg", listerName: "Bright Estates", listerRole: "Agency", listerVerified: true, amenityNames: AMENITIES.slice(0, 8), description: "A 3-bedroom terrace in Lekki — flagged as a possible duplicate of an existing listing." }),
+  adminProp({ id: "ar3", ref: "RBS-L-2103", title: "Mini Flat, Ojota", type: "RENT", price: 700000, freq: "PER_YEAR", status: "REJECTED", adminStatus: "Rejected", city: "Ojota", lat: 6.5797, lng: 3.3833, beds: 1, baths: 1, sqft: 550, image: "/images/prop4.jpg", listerName: "Sandra Obi", listerRole: "Agent", listerVerified: false, amenityNames: AMENITIES.slice(0, 4), description: "A mini flat in Ojota — rejected for low-quality photos." }),
+];
+
 /** Maps a demo property to the card shape used by the Property Management grid. */
 export function toAdminProperty(p: DemoProperty): AdminProperty {
   const l = toSeekerListing(p);
@@ -206,6 +219,7 @@ export function getDemoProperty(id: string): DemoProperty {
   return (
     DEMO_PROPERTIES.find((p) => p.id === id) ??
     ADMIN_PROPERTIES.find((p) => p.id === id) ??
+    AWAITING_APPROVAL_PROPERTIES.find((p) => p.id === id) ??
     { ...DEMO_PROPERTIES[0], id }
   );
 }

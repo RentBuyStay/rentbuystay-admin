@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Role } from "@/lib/demoUsers";
 
-export type AdminPropertyStatus = "Active" | "Archived" | "Removed";
+export type AdminPropertyStatus = "Active" | "Archived" | "Removed" | "Awaiting Approval" | "Rejected";
 
 export type AdminProperty = {
   id: string;
@@ -25,6 +25,8 @@ const STATUS_BADGE: Record<AdminPropertyStatus, { bg: string; color: string }> =
   Active: { bg: "#ECFDF3", color: "#027A48" },
   Archived: { bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
   Removed: { bg: "rgba(227,0,69,0.05)", color: "#E30045" },
+  "Awaiting Approval": { bg: "#FFF7E9", color: "#EA651A" },
+  Rejected: { bg: "#FEF3F2", color: "#B42318" },
 };
 
 const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
@@ -34,7 +36,7 @@ const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
   Seeker: { bg: "rgba(20,174,92,0.08)", color: "#14AE5C" },
 };
 
-export default function AdminPropertyCard({ property: p }: { property: AdminProperty }) {
+export default function AdminPropertyCard({ property: p, hideTrash }: { property: AdminProperty; hideTrash?: boolean }) {
   const status = STATUS_BADGE[p.status];
   const role = ROLE_BADGE[p.lister.role];
   return (
@@ -60,9 +62,11 @@ export default function AdminPropertyCard({ property: p }: { property: AdminProp
             </span>
             <span className="rounded-[16px]" style={{ background: status.bg, color: status.color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{p.status}</span>
           </div>
-          <button type="button" aria-label="Delete listing" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="hover:opacity-70 shrink-0">
-            <Image src="/icons/admin/prop-trash.svg" alt="" width={20} height={20} />
-          </button>
+          {!hideTrash && (
+            <button type="button" aria-label="Delete listing" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="hover:opacity-70 shrink-0">
+              <Image src="/icons/admin/prop-trash.svg" alt="" width={20} height={20} />
+            </button>
+          )}
         </div>
         <h3 style={{ fontSize: 14, fontWeight: 500, lineHeight: "24px", color: "#121212" }}>{p.title}</h3>
         <div className="flex items-center" style={{ gap: 8 }}>
