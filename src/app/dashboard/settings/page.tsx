@@ -1,10 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ADMINS, ROLE_COLOR, type Admin } from "@/lib/demoAdmins";
-import { AddAdminModal } from "@/components/AdminModals";
+import { ROLES, type Role } from "@/lib/demoRoles";
+import { AddAdminModal, EditRoleNameModal } from "@/components/AdminModals";
 import { ConfirmModal, SuccessModal } from "@/components/PlanModals";
 
 const TABS = ["Administrators", "Roles & Permissions", "Security", "Email Config", "Moderation Rules", "SEO Settings"] as const;
@@ -23,6 +25,8 @@ export default function Page() {
   const [tab, setTab] = useState<Tab>("Administrators");
   const [addOpen, setAddOpen] = useState(false);
   const [removing, setRemoving] = useState<Admin | null>(null);
+  const [editRole, setEditRole] = useState<Role | null>(null);
+  const [deleteRole, setDeleteRole] = useState<Role | null>(null);
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
 
   return (
@@ -39,14 +43,25 @@ export default function Page() {
             );
           })}
         </div>
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          className="flex items-center justify-center text-white hover:opacity-90 shrink-0"
-          style={{ height: 48, padding: "0 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
-        >
-          <Image src="/icons/admin/blog/blog-add.svg" alt="" width={20} height={20} /> New Admin
-        </button>
+        {tab === "Administrators" && (
+          <button
+            type="button"
+            onClick={() => setAddOpen(true)}
+            className="flex items-center justify-center text-white hover:opacity-90 shrink-0"
+            style={{ height: 48, padding: "0 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
+          >
+            <Image src="/icons/admin/blog/blog-add.svg" alt="" width={20} height={20} /> New Admin
+          </button>
+        )}
+        {tab === "Roles & Permissions" && (
+          <Link
+            href="/dashboard/settings/roles/new"
+            className="flex items-center justify-center text-white hover:opacity-90 shrink-0"
+            style={{ height: 48, padding: "0 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
+          >
+            <Image src="/icons/admin/blog/blog-add.svg" alt="" width={20} height={20} /> New Role
+          </Link>
+        )}
       </div>
 
       {tab === "Administrators" ? (
@@ -86,6 +101,39 @@ export default function Page() {
             </tbody>
           </table>
         </section>
+      ) : tab === "Roles & Permissions" ? (
+        <section className="bg-white overflow-x-auto" style={{ border: "1px solid #F6F6F6", borderRadius: 15 }}>
+          <table className="w-full" style={{ minWidth: 760, borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={{ ...th, paddingLeft: 24 }}>Role Name</th>
+                <th style={th}>No. of Users</th>
+                <th style={th}>Date Created</th>
+                <th style={th}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ROLES.map((r) => (
+                <tr key={r.id} onClick={() => router.push(`/dashboard/settings/roles/${r.id}`)} className="cursor-pointer hover:bg-[#fafafa]">
+                  <td style={{ ...cell, paddingLeft: 24 }}>
+                    <div className="flex items-center gap-2">
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "#121212" }}>{r.name}</span>
+                      <button type="button" aria-label="Edit role name" onClick={(e) => { e.stopPropagation(); setEditRole(r); }} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-edit.svg" alt="" width={20} height={20} /></button>
+                    </div>
+                  </td>
+                  <td style={cell}><span style={{ fontSize: 14, fontWeight: 400, color: "#121212" }}>{r.users}</span></td>
+                  <td style={cell}><span style={{ fontSize: 14, fontWeight: 400, color: "#121212" }}>{r.created}</span></td>
+                  <td style={cell}>
+                    <div className="flex items-center" style={{ gap: 24 }}>
+                      <button type="button" aria-label="Manage role" onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/settings/roles/${r.id}`); }} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-eye.svg" alt="" width={20} height={20} /></button>
+                      <button type="button" aria-label="Delete role" onClick={(e) => { e.stopPropagation(); setDeleteRole(r); }} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-trash.svg" alt="" width={20} height={20} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       ) : (
         <section className="bg-white flex flex-col items-center justify-center gap-2 text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 15, minHeight: 360, padding: 24 }}>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: "#121212" }}>{tab}</h3>
@@ -106,6 +154,22 @@ export default function Page() {
           confirmLabel="Remove Admin"
           onConfirm={() => { const name = removing.name; setRemoving(null); setSuccess({ title: "Admin Removed Successfully", body: `Done! ${name} has been removed from the system. Their access has been revoked immediately and all active sessions have been terminated. This change has been recorded in your admin activity log.` }); }}
           onClose={() => setRemoving(null)}
+        />
+      )}
+      {editRole && (
+        <EditRoleNameModal
+          currentName={editRole.name}
+          onClose={() => setEditRole(null)}
+          onSave={() => { setEditRole(null); setSuccess({ title: "Changes Saved", body: "Your changes have been saved successfully and are now live. Any updates you made will reflect immediately." }); }}
+        />
+      )}
+      {deleteRole && (
+        <ConfirmModal
+          title="Delete Role"
+          body="Are you sure you want to delete this role from the system? All users will lose their access, be logged out of the panel, and will no longer be able to perform any administrative actions on RentBuyStay except you reassign them a new role. This action cannot be undone."
+          confirmLabel="Delete Role"
+          onConfirm={() => { const name = deleteRole.name; setDeleteRole(null); setSuccess({ title: "Role Deleted Successfully", body: `Done! The ${name} role has been removed from the system. Anyone assigned to it has lost access, and this change has been recorded in your admin activity log.` }); }}
+          onClose={() => setDeleteRole(null)}
         />
       )}
       {success && <SuccessModal title={success.title} body={success.body} onClose={() => setSuccess(null)} />}

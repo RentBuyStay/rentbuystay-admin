@@ -87,6 +87,19 @@ export function AddAdminModal({ onClose, onSubmit }: { onClose: () => void; onSu
   );
 }
 
+export function EditRoleNameModal({ currentName, onClose, onSave }: { currentName: string; onClose: () => void; onSave: (name: string) => void }) {
+  const [name, setName] = useState(currentName);
+  return (
+    <Overlay maxWidth={636} onClose={onClose}>
+      <h2 className="pr-8" style={{ fontSize: 20, fontWeight: 600, lineHeight: "24px", color: "#121212" }}>Edit Role Name</h2>
+      <div className="flex flex-col gap-6 mt-8">
+        <Field label="Role"><input className={`${fieldBase} h-12 px-4`} value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter role name" /></Field>
+        <button type="button" onClick={() => onSave(name)} className="flex items-center justify-center text-white hover:opacity-90" style={gradientBtn}>Save Changes</button>
+      </div>
+    </Overlay>
+  );
+}
+
 export function ChangeRoleModal({ currentRole, onClose, onSave }: { currentRole: AdminRole; onClose: () => void; onSave: (role: string) => void }) {
   const [role, setRole] = useState<string>(currentRole);
   return (
