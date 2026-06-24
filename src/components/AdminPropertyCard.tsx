@@ -26,7 +26,7 @@ const STATUS_BADGE: Record<AdminPropertyStatus, { bg: string; color: string }> =
   Archived: { bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
   Removed: { bg: "rgba(227,0,69,0.05)", color: "#E30045" },
   "Awaiting Approval": { bg: "#FFF7E9", color: "#EA651A" },
-  Rejected: { bg: "#FEF3F2", color: "#B42318" },
+  Rejected: { bg: "#FFF7E9", color: "#EA651A" },
 };
 
 const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {

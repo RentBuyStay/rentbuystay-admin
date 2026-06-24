@@ -23,7 +23,7 @@ const ADMIN_STATUS: Record<string, { label: string; bg: string; color: string }>
   Archived: { label: "Archived", bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
   Removed: { label: "Removed", bg: "rgba(227,0,69,0.05)", color: "#E30045" },
   "Awaiting Approval": { label: "Awaiting Approval", bg: "#FFF7E9", color: "#EA651A" },
-  Rejected: { label: "Rejected", bg: "#FEF3F2", color: "#B42318" },
+  Rejected: { label: "Rejected", bg: "#FFF7E9", color: "#EA651A" },
 };
 
 const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
@@ -144,7 +144,7 @@ export default function AdminPropertyDetail({ propertyId }: { propertyId: string
 
         {/* Actions */}
         {isRejected ? (
-          <span className="inline-flex items-center self-start" style={{ padding: "4px 12px", borderRadius: 16, background: "rgba(234,101,26,0.05)", color: "#EA651A", fontSize: 16, fontWeight: 500, lineHeight: "18px" }}>
+          <span className="inline-flex items-center self-start" style={{ padding: "4px 12px", borderRadius: 16, background: "#FFF7E9", color: "#EA651A", fontSize: 16, fontWeight: 500, lineHeight: "18px" }}>
             Rejected
           </span>
         ) : approvalFlow ? (
