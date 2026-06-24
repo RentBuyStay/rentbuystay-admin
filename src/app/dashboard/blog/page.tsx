@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 
 const TABS = ["All Posts", "Published", "Scheduled", "Drafts", "Unpublished"] as const;
@@ -97,13 +98,13 @@ export default function Page() {
             );
           })}
         </div>
-        <button
-          type="button"
+        <Link
+          href="/dashboard/blog/new"
           className="flex items-center justify-center text-white hover:opacity-90 shrink-0"
           style={{ height: 48, padding: "0 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
         >
           <Image src="/icons/admin/blog/blog-add.svg" alt="" width={20} height={20} /> New Blog Post
-        </button>
+        </Link>
       </div>
 
       {/* Table */}
