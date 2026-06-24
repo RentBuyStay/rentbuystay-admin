@@ -195,11 +195,11 @@ export default function SubscriptionManagementPage() {
                           <>
                             <div className="fixed inset-0 z-10" onClick={() => setMenuFor(null)} aria-hidden="true" />
                             <div className="absolute right-6 top-12 z-20 bg-white rounded-[16px] border border-[#F6F6F6] overflow-hidden flex flex-col" style={{ width: 170, gap: 8, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}>
-                              <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
-                                <Image src="/icons/admin/menu-extend.svg" alt="" width={16} height={16} /> Extend Subscription
+                              <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa] whitespace-nowrap" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
+                                <Image src="/icons/admin/menu-extend.svg" alt="" width={16} height={16} className="shrink-0" /> Extend Subscription
                               </button>
-                              <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
-                                <Image src="/icons/admin/menu-cancel.svg" alt="" width={16} height={16} /> Cancel Subscription
+                              <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa] whitespace-nowrap" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
+                                <Image src="/icons/admin/menu-cancel.svg" alt="" width={16} height={16} className="shrink-0" /> Cancel Subscription
                               </button>
                             </div>
                           </>
