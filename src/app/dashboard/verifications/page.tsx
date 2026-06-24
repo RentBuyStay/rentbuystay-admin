@@ -49,7 +49,7 @@ const REJECTED: Verification[] = [
 const TABS: { key: "Pending" | "Approved" | "Rejected"; count: number }[] = [
   { key: "Pending", count: 16 },
   { key: "Approved", count: 1612 },
-  { key: "Rejected", count: 8 },
+  { key: "Rejected", count: 384 },
 ];
 
 export default function VerificationManagementPage() {
@@ -109,7 +109,7 @@ export default function VerificationManagementPage() {
       ) : (
         <div className="flex flex-col gap-4">
           {list.map((v) => (
-            <VerificationCard key={v.id} v={v} pending={tab === "Pending"} />
+            <VerificationCard key={v.id} v={v} pending={tab === "Pending"} verified={tab === "Approved"} />
           ))}
         </div>
       )}
@@ -155,7 +155,7 @@ function StatCard({
   );
 }
 
-function VerificationCard({ v, pending }: { v: Verification; pending?: boolean }) {
+function VerificationCard({ v, pending, verified }: { v: Verification; pending?: boolean; verified?: boolean }) {
   const badge = ROLE_BADGE[v.role];
   return (
     <div
@@ -167,6 +167,7 @@ function VerificationCard({ v, pending }: { v: Verification; pending?: boolean }
         <div className="flex flex-col" style={{ gap: 8 }}>
           <div className="flex items-center" style={{ gap: 8 }}>
             <span style={{ fontSize: 16, fontWeight: 600, lineHeight: "24px", color: "#121212" }}>{v.name}</span>
+            {verified && <Image src="/icons/dash/verify.svg" alt="verified" width={20} height={20} />}
             <span className="rounded-[16px]" style={{ background: badge.bg, color: badge.color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{v.role}</span>
           </div>
           {v.affiliatedWith ? (
