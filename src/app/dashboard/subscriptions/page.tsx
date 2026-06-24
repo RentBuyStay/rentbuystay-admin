@@ -2,11 +2,14 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { PlanFormModal, SuccessModal } from "@/components/PlanModals";
+import { PlanFormModal, SuccessModal, ExtendModal, ConfirmModal, CancelExtras, DeleteWarning } from "@/components/PlanModals";
 
 const SUCCESS_COPY = {
   create: { title: "Subscription Plan Created", body: "Well-done! The new plan has been added to the platform. Eligible users can now discover and subscribe to it. You can edit or deactivate it at any time from Subscription Management." },
   edit: { title: "Changes Saved", body: "Great! The new changes has been saved to the subscription plan. You can edit or deactivate it at any time from Subscription Management." },
+  extend: { title: "Subscription Extension Successful", body: "The subscription has been extended successfully. Their new expiry date has been updated and a confirmation email has been sent to the user." },
+  cancel: { title: "Subscription Cancelled", body: "The subscription has been successfully cancelled. The account has been moved to the free tier and all premium features have been disabled. A cancellation confirmation has been sent to their email." },
+  delete: { title: "Subscription Plan Deleted", body: "The subscription plan has been permanently removed from the system. It will no longer be available for new sign-ups or renewals. You can review impacted users from the Users section." },
 };
 
 type Plan = {
@@ -70,6 +73,7 @@ export default function SubscriptionManagementPage() {
   const [query, setQuery] = useState("");
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [planModal, setPlanModal] = useState<{ mode: "create" | "edit"; plan?: Plan } | null>(null);
+  const [action, setAction] = useState<{ type: "extend" | "cancel"; sub: Sub } | { type: "delete"; plan: Plan } | null>(null);
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
 
   const plans = useMemo(() => {
@@ -195,10 +199,10 @@ export default function SubscriptionManagementPage() {
                           <>
                             <div className="fixed inset-0 z-10" onClick={() => setMenuFor(null)} aria-hidden="true" />
                             <div className="absolute right-6 top-12 z-20 bg-white rounded-[16px] border border-[#F6F6F6] overflow-hidden flex flex-col" style={{ width: 170, gap: 8, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}>
-                              <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa] whitespace-nowrap" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
+                              <button type="button" onClick={() => { setMenuFor(null); setAction({ type: "extend", sub: s }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa] whitespace-nowrap" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
                                 <Image src="/icons/admin/menu-extend.svg" alt="" width={16} height={16} className="shrink-0" /> Extend Subscription
                               </button>
-                              <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa] whitespace-nowrap" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
+                              <button type="button" onClick={() => { setMenuFor(null); setAction({ type: "cancel", sub: s }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa] whitespace-nowrap" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
                                 <Image src="/icons/admin/menu-cancel.svg" alt="" width={16} height={16} className="shrink-0" /> Cancel Subscription
                               </button>
                             </div>
@@ -268,7 +272,7 @@ export default function SubscriptionManagementPage() {
                             <button type="button" onClick={() => { setMenuFor(null); setPlanModal({ mode: "edit", plan: p }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
                               <Image src="/icons/admin/menu-edit.svg" alt="" width={16} height={16} /> Edit Plan
                             </button>
-                            <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
+                            <button type="button" onClick={() => { setMenuFor(null); setAction({ type: "delete", plan: p }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
                               <Image src="/icons/admin/menu-delete.svg" alt="" width={16} height={16} /> Delete Plan
                             </button>
                           </div>
@@ -315,6 +319,36 @@ export default function SubscriptionManagementPage() {
             setSuccess(copy);
           }}
         />
+      )}
+      {action?.type === "extend" && (
+        <ExtendModal
+          subtitle={`${action.sub.name} · ${action.sub.plan} Plan · Renews ${action.sub.renews}`}
+          onClose={() => setAction(null)}
+          onConfirm={() => { setAction(null); setSuccess(SUCCESS_COPY.extend); }}
+        />
+      )}
+      {action?.type === "cancel" && (
+        <ConfirmModal
+          maxWidth={650}
+          title="Cancel Subscription"
+          body={`Are you sure you want to cancel ${action.sub.name}'s ${action.sub.plan} plan? This will downgrade the account to the free tier.`}
+          confirmLabel="Cancel Subscription"
+          onConfirm={() => { setAction(null); setSuccess(SUCCESS_COPY.cancel); }}
+          onClose={() => setAction(null)}
+        >
+          <CancelExtras />
+        </ConfirmModal>
+      )}
+      {action?.type === "delete" && (
+        <ConfirmModal
+          title="Delete Subscription Plan"
+          body={`You're about to permanently delete the ${action.plan.name} plan. This action cannot be undone.`}
+          confirmLabel="Delete Plan"
+          onConfirm={() => { setAction(null); setSuccess(SUCCESS_COPY.delete); }}
+          onClose={() => setAction(null)}
+        >
+          <DeleteWarning />
+        </ConfirmModal>
       )}
       {success && <SuccessModal title={success.title} body={success.body} onClose={() => setSuccess(null)} />}
     </div>
