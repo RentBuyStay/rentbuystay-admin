@@ -11,17 +11,17 @@ import type { Role } from "@/lib/demoUsers";
 
 const STATUS_BADGE: Record<PropertyStatus, { label: string; bg: string; color: string }> = {
   ACTIVE: { label: "Active", bg: "#ECFDF3", color: "#027A48" },
-  AWAITING_APPROVAL: { label: "Pending", bg: "#FFFAEB", color: "#B54708" },
-  ARCHIVED: { label: "Archived", bg: "#F2F4F7", color: "#475467" },
-  REJECTED: { label: "Removed", bg: "rgba(227,0,69,0.08)", color: "#E30045" },
+  AWAITING_APPROVAL: { label: "Pending", bg: "#FFF7E9", color: "#EA651A" },
+  ARCHIVED: { label: "Archived", bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
+  REJECTED: { label: "Removed", bg: "rgba(227,0,69,0.05)", color: "#E30045" },
   DRAFT: { label: "Draft", bg: "#F2F4F7", color: "#475467" },
   LIMIT_EXCEEDED: { label: "Limit exceeded", bg: "#FEF3F2", color: "#B42318" },
 };
 
 const ADMIN_STATUS: Record<string, { label: string; bg: string; color: string }> = {
   Active: { label: "Active", bg: "#ECFDF3", color: "#027A48" },
-  Archived: { label: "Archived", bg: "#F2F4F7", color: "#475467" },
-  Removed: { label: "Removed", bg: "rgba(227,0,69,0.08)", color: "#E30045" },
+  Archived: { label: "Archived", bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
+  Removed: { label: "Removed", bg: "rgba(227,0,69,0.05)", color: "#E30045" },
 };
 
 const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
