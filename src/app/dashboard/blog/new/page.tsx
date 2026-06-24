@@ -25,7 +25,19 @@ export default function Page() {
   const [date, setDate] = useState("2026-06-25");
   const [time, setTime] = useState("");
   const dateRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverName, setCoverName] = useState("");
+  const [dragging, setDragging] = useState(false);
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
+
+  const onFile = (f?: File) => {
+    if (!f || !f.type.startsWith("image/")) return;
+    setCoverName(f.name);
+    const r = new FileReader();
+    r.onload = () => setCoverUrl(r.result as string);
+    r.readAsDataURL(f);
+  };
 
   const submit = () => {
     if (scheduled) {
@@ -80,21 +92,43 @@ export default function Page() {
       {/* Cover Image/Thumbnail */}
       <div className="flex flex-col gap-2">
         <label style={labelStyle}>Cover Image/Thumbnail</label>
-        <button
-          type="button"
-          className="flex flex-col items-center justify-center gap-4 w-full hover:bg-[#fafafa] transition-colors"
-          style={{ minHeight: 270, borderRadius: 20, border: "1px dashed #1A73E1", padding: 24 }}
+        <input ref={fileRef} type="file" accept="image/png,image/jpeg" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => fileRef.current?.click()}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }}
+          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(e) => { e.preventDefault(); setDragging(false); onFile(e.dataTransfer.files?.[0]); }}
+          className="relative flex flex-col items-center justify-center gap-4 w-full cursor-pointer overflow-hidden"
+          style={{ minHeight: 270, borderRadius: 20, padding: 24, background: dragging ? "rgba(26,115,225,0.04)" : "transparent" }}
         >
-          <Image src="/icons/admin/blog/blog-gallery.svg" alt="" width={64} height={64} />
-          <div className="flex flex-col items-center gap-2">
-            <span style={{ fontSize: 20, fontWeight: 600, color: "#121212" }}>
-              Drag &amp; drop photos or <span style={{ color: "#1A73E1", textDecoration: "underline" }}>click to upload</span>
-            </span>
-            <span className="text-center max-w-[420px]" style={{ fontSize: 14, fontWeight: 400, lineHeight: "20px", color: "#807E7E" }}>
-              To ensure best quality, please upload PNG, JPG up to 5MB each with high resolution (1280 x 600).
-            </span>
-          </div>
-        </button>
+          {/* Exact Figma dashed border (#1A73E1 @ 0.8, 0.8px, dash 6/4) */}
+          <svg className="absolute pointer-events-none" style={{ left: 0.4, top: 0.4, width: "calc(100% - 0.8px)", height: "calc(100% - 0.8px)" }} preserveAspectRatio="none" aria-hidden="true">
+            <rect x="0" y="0" width="100%" height="100%" rx="19.6" ry="19.6" fill="none" stroke="#1A73E1" strokeOpacity="0.8" strokeWidth="0.8" strokeDasharray="6 4" />
+          </svg>
+
+          {coverUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={coverUrl} alt="Cover preview" className="absolute inset-0 w-full h-full object-cover" style={{ borderRadius: 20 }} />
+              <span className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-white truncate max-w-[80%]" style={{ background: "rgba(0,0,0,0.6)", fontSize: 12 }}>{coverName} · click to change</span>
+            </>
+          ) : (
+            <>
+              <Image src="/icons/admin/blog/blog-gallery.svg" alt="" width={64} height={64} />
+              <div className="flex flex-col items-center gap-2">
+                <span style={{ fontSize: 20, fontWeight: 600, color: "#121212" }}>
+                  Drag &amp; drop photos or <span style={{ color: "#305E82", textDecoration: "underline" }}>click to upload</span>
+                </span>
+                <span className="text-center max-w-[420px]" style={{ fontSize: 14, fontWeight: 400, lineHeight: "20px", color: "#807E7E" }}>
+                  To ensure best quality, please upload PNG, JPG up to 5MB each with high resolution (1280 x 600).
+                </span>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Schedule Post for Later */}
