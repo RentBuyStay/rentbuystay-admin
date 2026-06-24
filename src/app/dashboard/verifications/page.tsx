@@ -32,6 +32,20 @@ const PENDING: Verification[] = [
   { id: "v5", name: "Urban Nest Realty", email: "admin@urbannestrealty.com", role: "Agency", doc: "CAC + Director’s NIN", submitted: "2 days ago" },
 ];
 
+/* Approved / rejected verifications — same card, view-only action. */
+const APPROVED: Verification[] = [
+  { id: "a1", name: "Tunde Bakare", email: "tunde.b@gmail.com", role: "Agent", doc: "NIN + Selfie", submitted: "1 day ago" },
+  { id: "a2", name: "Grace Effiong", email: "grace.e@gmail.com", role: "Owner", doc: "Driver’s License", submitted: "2 days ago" },
+  { id: "a3", name: "Urban Nest Realty", email: "admin@urbannestrealty.com", role: "Agency", doc: "CAC + Director’s NIN", submitted: "3 days ago" },
+];
+
+const REJECTED: Verification[] = [
+  { id: "r1", name: "Michael Adegbite", email: "ademichael@gmail.com", role: "Agent", doc: "NIN + Selfie", submitted: "2 hours ago" },
+  { id: "r2", name: "Obinna Eze", email: "obinna.e@gmail.com", role: "Owner", doc: "Driver’s License", submitted: "5 hours ago" },
+  { id: "r3", name: "Oladunni Praise", email: "praiserealty@gmail.com", role: "Agent", doc: "International Passport", submitted: "1 day ago" },
+  { id: "r4", name: "Ifeoma Chukwu", email: "ifeoma.c@gmail.com", role: "Owner", doc: "International Passport", submitted: "2 days ago" },
+];
+
 const TABS: { key: "Pending" | "Approved" | "Rejected"; count: number }[] = [
   { key: "Pending", count: 16 },
   { key: "Approved", count: 1612 },
@@ -40,6 +54,7 @@ const TABS: { key: "Pending" | "Approved" | "Rejected"; count: number }[] = [
 
 export default function VerificationManagementPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("Pending");
+  const list = tab === "Pending" ? PENDING : tab === "Approved" ? APPROVED : REJECTED;
 
   return (
     <div className="flex flex-col gap-6">
@@ -89,14 +104,14 @@ export default function VerificationManagementPage() {
       </div>
 
       {/* List */}
-      {tab === "Pending" ? (
+      {list.length === 0 ? (
+        <EmptyState>No {tab.toLowerCase()} verifications.</EmptyState>
+      ) : (
         <div className="flex flex-col gap-4">
-          {PENDING.map((v) => (
-            <VerificationCard key={v.id} v={v} />
+          {list.map((v) => (
+            <VerificationCard key={v.id} v={v} pending={tab === "Pending"} />
           ))}
         </div>
-      ) : (
-        <EmptyState>{tab} verifications appear here.</EmptyState>
       )}
     </div>
   );
@@ -140,7 +155,7 @@ function StatCard({
   );
 }
 
-function VerificationCard({ v }: { v: Verification }) {
+function VerificationCard({ v, pending }: { v: Verification; pending?: boolean }) {
   const badge = ROLE_BADGE[v.role];
   return (
     <div
@@ -174,12 +189,16 @@ function VerificationCard({ v }: { v: Verification }) {
       </div>
 
       <div className="flex items-center" style={{ gap: 16 }}>
-        <button type="button" className="flex items-center justify-center hover:opacity-70" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
-          <Image src="/icons/admin/verify/reject.svg" alt="" width={20} height={20} /> Reject
-        </button>
-        <button type="button" className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(0deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2)), linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
-          <Image src="/icons/admin/verify/approve-check.svg" alt="" width={20} height={20} /> Approve
-        </button>
+        {pending && (
+          <>
+            <button type="button" className="flex items-center justify-center hover:opacity-70" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
+              <Image src="/icons/admin/verify/reject.svg" alt="" width={20} height={20} /> Reject
+            </button>
+            <button type="button" className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(0deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2)), linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
+              <Image src="/icons/admin/verify/approve-check.svg" alt="" width={20} height={20} /> Approve
+            </button>
+          </>
+        )}
         <button type="button" aria-label="View documents" className="flex items-center justify-center hover:opacity-70 shrink-0" style={{ width: 48, height: 48, borderRadius: 12 }}>
           <Image src="/icons/admin/verify/eye.svg" alt="" width={24} height={24} />
         </button>
