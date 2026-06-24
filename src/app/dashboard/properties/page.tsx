@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import AdminPropertyCard from "@/components/AdminPropertyCard";
 import { ADMIN_PROPERTIES, toAdminProperty } from "@/lib/demoProperties";
@@ -53,13 +54,13 @@ export default function PropertyManagementPage() {
             );
           })}
         </div>
-        <button
-          type="button"
+        <Link
+          href="/dashboard/properties/new"
           className="flex items-center justify-center text-white hover:opacity-90 shrink-0"
           style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
         >
           <Image src="/icons/admin/add-rounded.svg" alt="" width={20} height={20} /> Add New Property
-        </button>
+        </Link>
       </div>
 
       {/* Filter + Search */}

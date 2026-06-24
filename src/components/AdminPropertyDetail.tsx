@@ -122,7 +122,7 @@ export default function AdminPropertyDetail({ propertyId }: { propertyId: string
           <button type="button" className="flex items-center justify-center hover:opacity-70" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
             <Trash2 size={20} /> Remove Listing
           </button>
-          <button type="button" className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
+          <button type="button" onClick={() => router.push(`/dashboard/properties/${propertyId}/edit`)} className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
             <Pencil size={20} /> Edit Property
           </button>
         </div>
