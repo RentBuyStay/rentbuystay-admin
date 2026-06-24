@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, ShieldCheck, ShieldX, ArrowUp, UserX, Check, Eye } from "lucide-react";
+import Image from "next/image";
+import { ArrowUp } from "lucide-react";
 import type { Role } from "@/lib/demoUsers";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%). */
@@ -46,20 +47,20 @@ export default function VerificationManagementPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
           gradient
-          icon={<FileText size={16} color="#FFFFFF" strokeWidth={1.8} />}
+          icon={<Image src="/icons/admin/verify/stat-pending.svg" alt="" width={16} height={16} />}
           label="Pending Review"
           value="16"
           delta={<><ArrowUp size={16} color="#FFFFFF" /><span style={{ color: "#FFFFFF" }}>+32% </span><span style={{ color: "#FFFFFF" }}>this week</span></>}
         />
         <StatCard
-          icon={<ShieldCheck size={16} color="#027B2A" strokeWidth={1.8} />}
+          icon={<Image src="/icons/admin/verify/stat-approved.svg" alt="" width={16} height={16} />}
           label="Approved"
           labelColor="#027B2A"
           value="1612"
           delta={<><ArrowUp size={16} color="#027B2A" /><span style={{ color: "#027B2A" }}>+63 </span><span style={{ color: "#807E7E" }}>this week</span></>}
         />
         <StatCard
-          icon={<ShieldX size={16} color="#E30045" strokeWidth={1.8} />}
+          icon={<Image src="/icons/admin/verify/stat-rejected.svg" alt="" width={16} height={16} />}
           label="Rejected"
           labelColor="#E30045"
           value="8"
@@ -147,9 +148,7 @@ function VerificationCard({ v }: { v: Verification }) {
       style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: 24, background: "#FFFFFF" }}
     >
       <div className="flex items-start" style={{ gap: 16 }}>
-        <span className="shrink-0 flex items-center justify-center" style={{ width: 48, height: 48, background: "rgba(48,94,130,0.05)", borderRadius: 8 }}>
-          <FileText size={24} color="#305E82" strokeWidth={1.7} />
-        </span>
+        <Image src="/icons/admin/verify/doc.svg" alt="" width={48} height={48} className="shrink-0" />
         <div className="flex flex-col" style={{ gap: 8 }}>
           <div className="flex items-center" style={{ gap: 8 }}>
             <span style={{ fontSize: 16, fontWeight: 600, lineHeight: "24px", color: "#121212" }}>{v.name}</span>
@@ -176,13 +175,13 @@ function VerificationCard({ v }: { v: Verification }) {
 
       <div className="flex items-center" style={{ gap: 16 }}>
         <button type="button" className="flex items-center justify-center hover:opacity-70" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
-          <UserX size={20} /> Reject
+          <Image src="/icons/admin/verify/reject.svg" alt="" width={20} height={20} /> Reject
         </button>
-        <button type="button" className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
-          <Check size={20} /> Approve
+        <button type="button" className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(0deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2)), linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
+          <Image src="/icons/admin/verify/approve-check.svg" alt="" width={20} height={20} /> Approve
         </button>
-        <button type="button" aria-label="View documents" className="flex items-center justify-center hover:opacity-70 shrink-0" style={{ width: 48, height: 48, borderRadius: 12, border: "1px solid #F6F6F6" }}>
-          <Eye size={20} color="#305E82" />
+        <button type="button" aria-label="View documents" className="flex items-center justify-center hover:opacity-70 shrink-0" style={{ width: 48, height: 48, borderRadius: 12 }}>
+          <Image src="/icons/admin/verify/eye.svg" alt="" width={24} height={24} />
         </button>
       </div>
     </div>
