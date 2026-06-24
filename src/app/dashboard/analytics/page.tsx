@@ -48,10 +48,12 @@ const GEO_LEGEND = [
   { city: "Port-Harcourt", color: "#8A38F5" },
   { city: "Ibadan", color: "#578AF0" },
   { city: "Ogun", color: "#44CFE4" },
+  { city: "Kaduna", color: "#EE46BC" },
 ];
 const GEO_ROWS = [
   { city: "Lagos", users: "1,842", listings: "612", leads: "4,820", revenue: "₦14.2M", growth: "+28%" },
   { city: "Abuja", users: "384", listings: "142", leads: "2,107", revenue: "₦7.4M", growth: "+19%" },
+  { city: "Kaduna", users: "312", listings: "128", leads: "1,540", revenue: "₦6.2M", growth: "+21%" },
   { city: "Port-Harcourt", users: "209", listings: "119", leads: "980", revenue: "₦5.6M", growth: "+34%" },
   { city: "Ibadan", users: "124", listings: "83", leads: "320", revenue: "₦2.8M", growth: "+12%" },
   { city: "Ogun", users: "85", listings: "58", leads: "140", revenue: "₦1.7M", growth: "+8%" },
