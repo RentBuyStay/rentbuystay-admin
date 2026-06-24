@@ -8,6 +8,7 @@ import { ADMINS, ROLE_COLOR, type Admin } from "@/lib/demoAdmins";
 import { ROLES, type Role } from "@/lib/demoRoles";
 import { AddAdminModal, EditRoleNameModal } from "@/components/AdminModals";
 import { ConfirmModal, SuccessModal } from "@/components/PlanModals";
+import { SecurityTab, EmailTab, ModerationTab, SeoTab } from "@/components/SettingsTabs";
 
 const TABS = ["Administrators", "Roles & Permissions", "Security", "Email Config", "Moderation Rules", "SEO Settings"] as const;
 type Tab = (typeof TABS)[number];
@@ -134,11 +135,14 @@ export default function Page() {
             </tbody>
           </table>
         </section>
+      ) : tab === "Security" ? (
+        <SecurityTab />
+      ) : tab === "Email Config" ? (
+        <EmailTab />
+      ) : tab === "Moderation Rules" ? (
+        <ModerationTab />
       ) : (
-        <section className="bg-white flex flex-col items-center justify-center gap-2 text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 15, minHeight: 360, padding: 24 }}>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: "#121212" }}>{tab}</h3>
-          <p style={{ fontSize: 14, color: "#807E7E" }}>This section is coming soon.</p>
-        </section>
+        <SeoTab onSaved={() => setSuccess({ title: "Settings Saved", body: "Your platform settings have been updated successfully. The changes to your SEO configuration, meta details, and tracking integrations are now live and effective immediately." })} />
       )}
 
       {addOpen && (
