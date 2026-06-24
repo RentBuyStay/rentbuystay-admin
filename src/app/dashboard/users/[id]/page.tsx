@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Bell, UserX, Star, ChevronDown } from "lucide-react";
 import SeekerPropertyCard, { type SeekerListing } from "@/components/SeekerPropertyCard";
+import AgentCard, { type Agent } from "@/components/AgentCard";
 import { getDemoUser } from "@/lib/demoUsers";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%), from the Figma detail variants. */
@@ -32,6 +33,17 @@ const BASE_LISTINGS: Omit<SeekerListing, "seller">[] = [
     price: "₦95,000,000", tag: "FOR SALE", sqft: "2,400 sqft", beds: 4, baths: 5,
     image: "/images/prop3.jpg", amenities: ["BQ", "Garden", "Smart Home", "CCTV"],
   },
+];
+
+/* Agents under an agency — company is filled in from the viewed agency.
+   Uses the same AgentCard the app renders in the agency dashboard. */
+const BASE_AGENTS: Omit<Agent, "company">[] = [
+  { id: "a1", name: "Amara Nwosu", avatar: "/images/agents/amara-nwosu.png", initials: "AN", location: "Lagos", rating: "4.8", listings: "12 listings", verified: true, contactUserId: "a1" },
+  { id: "a2", name: "Emeka Okafor", avatar: "/images/agents/emeka-okafor.png", initials: "EO", location: "Lagos", rating: "4.6", listings: "9 listings", verified: true, contactUserId: "a2" },
+  { id: "a3", name: "Zainab Bello", avatar: "/images/agents/zainab-bello.png", initials: "ZB", location: "Abuja", rating: "4.9", listings: "15 listings", verified: true, contactUserId: "a3" },
+  { id: "a4", name: "Chinedu Umeh", avatar: "/images/agents/chinedu-umeh.png", initials: "CU", location: "Lagos", rating: "New", listings: "3 listings", verified: false, contactUserId: "a4" },
+  { id: "a5", name: "Fatima Yusuf", avatar: "/images/agents/fatima-yusuf.png", initials: "FY", location: "Ibadan", rating: "4.7", listings: "7 listings", verified: true, contactUserId: "a5" },
+  { id: "a6", name: "Tunde Balogun", avatar: "/images/agents/tunde-balogun.png", initials: "TB", location: "Lagos", rating: "4.5", listings: "5 listings", verified: false, contactUserId: "a6" },
 ];
 
 /* Reviews left for this user (swap for admin GET /admin/users/{id}/reviews). */
@@ -84,6 +96,7 @@ export default function UserDetailPage() {
     user.listings > 0
       ? BASE_LISTINGS.map((l) => ({ ...l, seller: { name: user.name, initials: initials(user.name), verified: user.verified } }))
       : [];
+  const agents: Agent[] = BASE_AGENTS.map((a) => ({ ...a, company: user.name }));
 
   return (
     <div className="flex flex-col gap-10">
@@ -196,8 +209,18 @@ export default function UserDetailPage() {
         )
       )}
 
-      {/* Agents (agency only) */}
-      {tab === "Agents" && <EmptyState>No agents listed for this agency yet.</EmptyState>}
+      {/* Agents (agency only) — same AgentCard the app uses in the agency dashboard */}
+      {tab === "Agents" && (
+        agents.length === 0 ? (
+          <EmptyState>No agents listed for this agency yet.</EmptyState>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: 24 }}>
+            {agents.map((a) => (
+              <AgentCard key={a.id} agent={a} />
+            ))}
+          </div>
+        )
+      )}
 
       {/* Listings — same card the rest of the app uses (SeekerPropertyCard) */}
       {tab === "Listings" && (
