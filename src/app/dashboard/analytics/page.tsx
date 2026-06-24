@@ -126,11 +126,11 @@ export default function Page() {
           <span style={{ fontSize: 11, fontWeight: 400, lineHeight: "20px", color: "#807E7E" }}>Top cities by listing activity</span>
         </div>
 
-        {/* Map — real per-state Nigeria boundaries, tinted from the data */}
-        <div className="mx-6 relative flex items-center justify-center overflow-hidden" style={{ background: "rgba(246,246,246,0.5)", borderRadius: 15, minHeight: 321, padding: "24px 0" }}>
-          <NigeriaMap fills={GEO_FILLS} className="h-[240px] sm:h-[300px] lg:h-[340px] w-auto" />
+        {/* Map — real per-state Nigeria boundaries, tinted from data, scroll-zoom + drag-pan */}
+        <div className="mx-6 relative overflow-hidden h-[320px] sm:h-[400px]" style={{ background: "rgba(246,246,246,0.5)", borderRadius: 15 }}>
+          <NigeriaMap fills={GEO_FILLS} className="absolute inset-0" />
           {/* Legend overlay (bottom-right, 2 rows) */}
-          <div className="absolute right-6 bottom-6 flex flex-col gap-3">
+          <div className="absolute right-6 bottom-6 flex flex-col gap-3 z-10">
             <div className="flex items-center gap-4">
               {GEO_LEGEND.slice(0, 3).map((l) => <LegendDot key={l.city} {...l} />)}
             </div>
