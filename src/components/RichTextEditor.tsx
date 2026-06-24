@@ -1,32 +1,65 @@
 "use client";
 
+import Image from "next/image";
 import { useRef, useState } from "react";
-import {
-  Undo2, Redo2, Bold, Italic, Underline, Strikethrough, Baseline, Link2,
-  Image as ImageIcon, List, ListOrdered, AlignLeft, AlignCenter, AlignRight,
-  AlignJustify, IndentDecrease, IndentIncrease, RemoveFormatting,
-} from "lucide-react";
 
-/** Lightweight, dependency-free rich-text editor (contentEditable + execCommand). */
-export default function RichTextEditor({ placeholder, minHeight = 240 }: { placeholder?: string; minHeight?: number }) {
+/* Real Figma toolbar icons (downloaded per-glyph). */
+const TOOL: Record<string, { icon: string; cmd: string; title: string }> = {
+  undo: { icon: "tb-undo", cmd: "undo", title: "Undo" },
+  redo: { icon: "tb-redo", cmd: "redo", title: "Redo" },
+  bold: { icon: "tb-bold", cmd: "bold", title: "Bold" },
+  italic: { icon: "tb-italic", cmd: "italic", title: "Italic" },
+  underline: { icon: "tb-underline", cmd: "underline", title: "Underline" },
+  strike: { icon: "tb-strike", cmd: "strikeThrough", title: "Strikethrough" },
+  color: { icon: "tb-color", cmd: "__color", title: "Text colour" },
+  link: { icon: "tb-link", cmd: "__link", title: "Insert link" },
+  image: { icon: "tb-image", cmd: "__image", title: "Insert image" },
+  list: { icon: "tb-list", cmd: "insertUnorderedList", title: "Bullet list" },
+  alignLeft: { icon: "tb-align-left", cmd: "justifyLeft", title: "Align left" },
+  alignCenter: { icon: "tb-align-center", cmd: "justifyCenter", title: "Align centre" },
+  alignRight: { icon: "tb-align-right", cmd: "justifyRight", title: "Align right" },
+  justify: { icon: "tb-justify", cmd: "justifyFull", title: "Justify" },
+  spacing: { icon: "tb-spacing", cmd: "__spacing", title: "Line spacing" },
+  outdent: { icon: "tb-outdent", cmd: "outdent", title: "Decrease indent" },
+  indent: { icon: "tb-indent", cmd: "indent", title: "Increase indent" },
+  clear: { icon: "tb-clear", cmd: "removeFormat", title: "Clear formatting" },
+};
+
+const SPACINGS = ["24px", "30px", "36px"];
+
+export default function RichTextEditor({ placeholder, minHeight = 240, align = false }: { placeholder?: string; minHeight?: number; align?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const colorRef = useRef<HTMLInputElement>(null);
   const savedRange = useRef<Range | null>(null);
   const [empty, setEmpty] = useState(true);
+  const [lh, setLh] = useState(0);
+
+  const groups: string[][] = [
+    ["undo", "redo"],
+    ["bold", "italic", "underline", "strike", "color"],
+    ["link", "image"],
+    align
+      ? ["list", "alignLeft", "alignCenter", "alignRight", "justify", "spacing", "outdent", "indent", "clear"]
+      : ["list", "spacing", "outdent", "indent", "clear"],
+  ];
 
   const refresh = () => {
     const el = ref.current;
     setEmpty(!el || (!el.textContent?.trim() && !el.querySelector("img,li")));
   };
-  const exec = (cmd: string, val?: string) => {
+  const run = (cmd: string) => {
     ref.current?.focus();
-    document.execCommand(cmd, false, val);
+    if (cmd === "__color") {
+      const s = window.getSelection();
+      if (s && s.rangeCount) savedRange.current = s.getRangeAt(0);
+      colorRef.current?.click();
+      return;
+    }
+    if (cmd === "__link") { const u = window.prompt("Enter URL"); if (u) document.execCommand("createLink", false, u); refresh(); return; }
+    if (cmd === "__image") { const u = window.prompt("Image URL"); if (u) document.execCommand("insertImage", false, u); refresh(); return; }
+    if (cmd === "__spacing") { setLh((v) => (v + 1) % SPACINGS.length); return; }
+    document.execCommand(cmd, false);
     refresh();
-  };
-  const openColor = () => {
-    const s = window.getSelection();
-    if (s && s.rangeCount) savedRange.current = s.getRangeAt(0);
-    colorRef.current?.click();
   };
   const applyColor = (color: string) => {
     ref.current?.focus();
@@ -41,31 +74,30 @@ export default function RichTextEditor({ placeholder, minHeight = 240 }: { place
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Toolbar */}
-      <div className="flex items-center gap-1 overflow-x-auto bg-[#F6F6F6] rounded-[12px] px-3" style={{ height: 48 }}>
-        <Btn title="Undo" onClick={() => exec("undo")}><Undo2 size={16} /></Btn>
-        <Btn title="Redo" onClick={() => exec("redo")}><Redo2 size={16} /></Btn>
-        <Sep />
-        <Btn title="Bold" onClick={() => exec("bold")}><Bold size={16} /></Btn>
-        <Btn title="Italic" onClick={() => exec("italic")}><Italic size={16} /></Btn>
-        <Btn title="Underline" onClick={() => exec("underline")}><Underline size={16} /></Btn>
-        <Btn title="Strikethrough" onClick={() => exec("strikeThrough")}><Strikethrough size={16} /></Btn>
-        <Btn title="Text colour" onClick={openColor}><Baseline size={16} /></Btn>
-        <Sep />
-        <Btn title="Insert link" onClick={() => { const u = window.prompt("Enter URL"); if (u) exec("createLink", u); }}><Link2 size={16} /></Btn>
-        <Btn title="Insert image" onClick={() => { const u = window.prompt("Image URL"); if (u) exec("insertImage", u); }}><ImageIcon size={16} /></Btn>
-        <Sep />
-        <Btn title="Bullet list" onClick={() => exec("insertUnorderedList")}><List size={16} /></Btn>
-        <Btn title="Numbered list" onClick={() => exec("insertOrderedList")}><ListOrdered size={16} /></Btn>
-        <Sep />
-        <Btn title="Align left" onClick={() => exec("justifyLeft")}><AlignLeft size={16} /></Btn>
-        <Btn title="Align centre" onClick={() => exec("justifyCenter")}><AlignCenter size={16} /></Btn>
-        <Btn title="Align right" onClick={() => exec("justifyRight")}><AlignRight size={16} /></Btn>
-        <Btn title="Justify" onClick={() => exec("justifyFull")}><AlignJustify size={16} /></Btn>
-        <Sep />
-        <Btn title="Decrease indent" onClick={() => exec("outdent")}><IndentDecrease size={16} /></Btn>
-        <Btn title="Increase indent" onClick={() => exec("indent")}><IndentIncrease size={16} /></Btn>
-        <Btn title="Clear formatting" onClick={() => exec("removeFormat")}><RemoveFormatting size={16} /></Btn>
+      {/* Toolbar — real Figma icons, centered */}
+      <div className="flex overflow-x-auto bg-[#F6F6F6] rounded-[12px] px-4" style={{ height: 48 }}>
+        <div className="flex items-center gap-6 mx-auto w-max">
+          {groups.map((g, gi) => (
+            <div key={gi} className="flex items-center gap-3">
+              {g.map((key) => {
+                const t = TOOL[key];
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    title={t.title}
+                    aria-label={t.title}
+                    onMouseDown={(e) => { e.preventDefault(); run(t.cmd); }}
+                    className="flex items-center justify-center shrink-0 hover:opacity-60"
+                    style={{ width: 20, height: 20 }}
+                  >
+                    <Image src={`/icons/admin/editor/${t.icon}.svg`} alt="" width={20} height={20} />
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
         <input ref={colorRef} type="color" className="sr-only" onChange={(e) => applyColor(e.target.value)} />
       </div>
 
@@ -82,8 +114,8 @@ export default function RichTextEditor({ placeholder, minHeight = 240 }: { place
           role="textbox"
           aria-multiline="true"
           aria-label={placeholder}
-          className="rte bg-[#F6F6F6] rounded-[12px] p-4 text-[14px] leading-[24px] text-[#121212] outline-none overflow-y-auto break-words"
-          style={{ minHeight }}
+          className="rte bg-[#F6F6F6] rounded-[12px] p-4 text-[14px] text-[#121212] outline-none overflow-y-auto break-words"
+          style={{ minHeight, lineHeight: SPACINGS[lh] }}
         />
       </div>
 
@@ -95,23 +127,4 @@ export default function RichTextEditor({ placeholder, minHeight = 240 }: { place
       `}</style>
     </div>
   );
-}
-
-function Btn({ title, onClick, children }: { title: string; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      title={title}
-      aria-label={title}
-      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
-      className="flex items-center justify-center shrink-0 rounded-md hover:bg-[#E9E9E9] text-[#121212]"
-      style={{ width: 28, height: 28 }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Sep() {
-  return <span className="shrink-0" style={{ width: 1, height: 20, background: "#E0E0E0", margin: "0 4px" }} />;
 }

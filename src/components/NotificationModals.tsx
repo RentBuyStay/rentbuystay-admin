@@ -74,7 +74,7 @@ export function NotificationFormModal({
           </Field>
 
           <Field label="Message Body">
-            <RichTextEditor placeholder={"Hi [First Name],\n\nWe've just added ..."} minHeight={193} />
+            <RichTextEditor placeholder={"Hi [First Name],\n\nWe've just added ..."} minHeight={193} align />
           </Field>
 
           {/* Footer */}
