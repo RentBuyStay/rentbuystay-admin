@@ -58,8 +58,8 @@ export default function Page() {
           <div className="flex flex-col" style={{ gap: 8 }}>
             <span style={{ fontSize: 32, fontWeight: 600, lineHeight: "40px", color: "#121212" }}>4,183</span>
             <div className="flex flex-col" style={{ gap: 8 }}>
-              <span style={{ fontSize: 12, color: "#807E7E" }}>On-page: 3,753</span>
-              <span style={{ fontSize: 12, color: "#807E7E" }}>Off-page (Backlinks): 638</span>
+              <span style={{ fontSize: 12, color: "#807E7E" }}>On-page: <span style={{ fontSize: 12, color: "#121212" }}>3,753 </span></span>
+              <span style={{ fontSize: 12, color: "#807E7E" }}>Off-page (Backlinks):<span style={{ fontSize: 12, color: "#121212" }}> 638</span> </span>
             </div>
           </div>
         </div>
@@ -119,7 +119,7 @@ export default function Page() {
                 <td style={cell}><span style={{ fontSize: 14, fontWeight: 400, color: "#121212" }}>{p.views}</span></td>
                 <td style={cell}>
                   <div className="flex items-center" style={{ gap: 24 }}>
-                    <button type="button" aria-label="Edit post" onClick={(e) => { e.stopPropagation(); router.push("/dashboard/blog/new"); }} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-edit.svg" alt="" width={20} height={20} /></button>
+                    <button type="button" aria-label="Edit post" onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/blog/${p.id}/edit`); }} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-edit.svg" alt="" width={20} height={20} /></button>
                     <button type="button" aria-label="Delete post" onClick={(e) => e.stopPropagation()} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-trash.svg" alt="" width={20} height={20} /></button>
                   </div>
                 </td>

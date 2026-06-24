@@ -27,11 +27,11 @@ const TOOL: Record<string, { icon: string; cmd: string; title: string }> = {
 
 const SPACINGS = ["24px", "30px", "36px"];
 
-export default function RichTextEditor({ placeholder, minHeight = 240, align = false }: { placeholder?: string; minHeight?: number; align?: boolean }) {
+export default function RichTextEditor({ placeholder, minHeight = 240, align = false, defaultHtml }: { placeholder?: string; minHeight?: number; align?: boolean; defaultHtml?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const colorRef = useRef<HTMLInputElement>(null);
   const savedRange = useRef<Range | null>(null);
-  const [empty, setEmpty] = useState(true);
+  const [empty, setEmpty] = useState(!defaultHtml?.trim());
   const [lh, setLh] = useState(0);
 
   const groups: string[][] = [
@@ -116,6 +116,7 @@ export default function RichTextEditor({ placeholder, minHeight = 240, align = f
           aria-label={placeholder}
           className="rte bg-[#F6F6F6] rounded-[12px] p-4 text-[14px] text-[#121212] outline-none overflow-y-auto break-words"
           style={{ minHeight, lineHeight: SPACINGS[lh] }}
+          dangerouslySetInnerHTML={defaultHtml ? { __html: defaultHtml } : undefined}
         />
       </div>
 

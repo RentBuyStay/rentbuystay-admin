@@ -39,7 +39,7 @@ export default function Page() {
             <span style={{ fontSize: 14, fontWeight: 500, color: "#E30045" }}>Unpublish Post</span>
           </button>
           <Link
-            href="/dashboard/blog/new"
+            href={`/dashboard/blog/${post.id}/edit`}
             className="flex items-center justify-center gap-2 text-white hover:opacity-90"
             style={{ height: 48, padding: "0 24px", borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
           >
