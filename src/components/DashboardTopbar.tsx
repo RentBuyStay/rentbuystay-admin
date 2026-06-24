@@ -15,6 +15,7 @@ const TITLES: { match: (path: string) => boolean; title: string }[] = [
   { match: (p) => p.startsWith("/dashboard/analytics"), title: "Analytics" },
   { match: (p) => p.startsWith("/dashboard/notifications"), title: "Notification/Email" },
   { match: (p) => p.startsWith("/dashboard/blog"), title: "Blog Management" },
+  { match: (p) => /^\/dashboard\/settings\/[^/]+$/.test(p), title: "Administrators" },
   { match: (p) => p.startsWith("/dashboard/settings"), title: "Platform Settings" },
   { match: (p) => p.startsWith("/dashboard"), title: "Dashboard" },
 ];
