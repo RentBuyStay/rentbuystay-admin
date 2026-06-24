@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Trash2, Pencil } from "lucide-react";
+import { ChevronDown, Trash2, Pencil, X } from "lucide-react";
 import { getDemoProperty } from "@/lib/demoProperties";
 import { toSeekerListing, formatPrice } from "@/lib/property";
 import type { PropertyStatus } from "@/services/types";
@@ -40,6 +40,20 @@ function fmtDate(iso?: string): string {
   return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function relativeTime(iso?: string): string {
+  if (!iso) return "recently";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "recently";
+  const days = Math.floor((Date.now() - t) / 86400000);
+  if (days <= 0) return "today";
+  if (days === 1) return "1 day ago";
+  if (days < 7) return `${days} days ago`;
+  if (days < 30) { const w = Math.floor(days / 7); return `${w} week${w > 1 ? "s" : ""} ago`; }
+  if (days < 365) { const m = Math.floor(days / 30); return `${m} month${m > 1 ? "s" : ""} ago`; }
+  const y = Math.floor(days / 365);
+  return `${y} year${y > 1 ? "s" : ""} ago`;
+}
+
 function initialsOf(name: string) {
   const p = name.trim().split(/\s+/);
   return ((p[0]?.[0] ?? "") + (p[1]?.[0] ?? "")).toUpperCase() || "P";
@@ -68,6 +82,8 @@ export default function AdminPropertyDetail({ propertyId }: { propertyId: string
   const listerName = property.listerName ?? property.assignedAgentName ?? property.ownerName ?? listing.seller.name;
   const listerVerified = property.listerVerified ?? true;
   const roleBadge = ROLE_BADGE[listerRole];
+  const approvalFlow = property.adminStatus === "Awaiting Approval" || property.adminStatus === "Rejected";
+  const isRejected = property.adminStatus === "Rejected";
 
   return (
     <div className="flex flex-col" style={{ gap: 24 }}>
@@ -100,37 +116,56 @@ export default function AdminPropertyDetail({ propertyId }: { propertyId: string
                 <Image src="/icons/dash/detail-location.svg" alt="" width={24} height={24} className="shrink-0" />
                 <span style={{ fontSize: 14, lineHeight: "24px", color: "#807E7E", whiteSpace: "nowrap" }}>{listing.location}</span>
               </div>
-              {/* Listed */}
-              <span style={{ fontSize: 14, lineHeight: "24px", letterSpacing: "-0.02em", color: "#807E7E" }}>Listed on {fmtDate(property.listedAt)}</span>
+              {/* Listed / Submitted */}
+              <span style={{ fontSize: 14, lineHeight: "24px", letterSpacing: "-0.02em", color: "#807E7E" }}>
+                {approvalFlow ? `Submitted ${relativeTime(property.listedAt)}` : `Listed on ${fmtDate(property.listedAt)}`}
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center flex-wrap" style={{ gap: 24 }}>
-            {/* Views */}
-            <div className="flex items-center" style={{ gap: 8 }}>
-              <Image src="/icons/dash/metric-eye.svg" alt="" width={24} height={24} />
-              <span style={{ fontSize: 14, lineHeight: "24px", letterSpacing: "-0.02em", color: "#807E7E" }}>{(property.viewCount ?? 0).toLocaleString()} views</span>
+          {!approvalFlow && (
+            <div className="flex items-center flex-wrap" style={{ gap: 24 }}>
+              {/* Views */}
+              <div className="flex items-center" style={{ gap: 8 }}>
+                <Image src="/icons/dash/metric-eye.svg" alt="" width={24} height={24} />
+                <span style={{ fontSize: 14, lineHeight: "24px", letterSpacing: "-0.02em", color: "#807E7E" }}>{(property.viewCount ?? 0).toLocaleString()} views</span>
+              </div>
+              {/* Move to: status */}
+              <div className="flex items-center" style={{ gap: 8 }}>
+                <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "24px", color: "#305E82" }}>Move to:</span>
+                <button type="button" className="flex items-center hover:opacity-80" style={{ gap: 8, padding: "4px 12px", borderRadius: 20, background: status.bg }}>
+                  <span style={{ fontSize: 12, fontWeight: 500, lineHeight: "18px", color: status.color }}>{status.label}</span>
+                  <ChevronDown size={16} color={status.color} />
+                </button>
+              </div>
             </div>
-            {/* Move to: status */}
-            <div className="flex items-center" style={{ gap: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "24px", color: "#305E82" }}>Move to:</span>
-              <button type="button" className="flex items-center hover:opacity-80" style={{ gap: 8, padding: "4px 12px", borderRadius: 20, background: status.bg }}>
-                <span style={{ fontSize: 12, fontWeight: 500, lineHeight: "18px", color: status.color }}>{status.label}</span>
-                <ChevronDown size={16} color={status.color} />
-              </button>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Actions */}
-        <div className="flex items-center" style={{ gap: 16 }}>
-          <button type="button" className="flex items-center justify-center hover:opacity-70" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
-            <Trash2 size={20} /> Remove Listing
-          </button>
-          <button type="button" onClick={() => router.push(`/dashboard/properties/${propertyId}/edit`)} className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
-            <Pencil size={20} /> Edit Property
-          </button>
-        </div>
+        {isRejected ? (
+          <span className="inline-flex items-center self-start" style={{ padding: "4px 12px", borderRadius: 16, background: "rgba(234,101,26,0.05)", color: "#EA651A", fontSize: 16, fontWeight: 500, lineHeight: "18px" }}>
+            Rejected
+          </span>
+        ) : approvalFlow ? (
+          <div className="flex items-center" style={{ gap: 16 }}>
+            <button type="button" className="flex items-center justify-center hover:opacity-70" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
+              <X size={20} /> Reject
+            </button>
+            <button type="button" className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(0deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2)), linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
+              <Image src="/icons/admin/verify/approve-check.svg" alt="" width={20} height={20} /> Approve
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center" style={{ gap: 16 }}>
+            <button type="button" className="flex items-center justify-center hover:opacity-70" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
+              <Trash2 size={20} /> Remove Listing
+            </button>
+            <button type="button" onClick={() => router.push(`/dashboard/properties/${propertyId}/edit`)} className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
+              <Pencil size={20} /> Edit Property
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
