@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import NigeriaMap from "@/components/NigeriaMap";
 
 const TABS = ["Platform Overview", "User Analytics", "Listing Analytics", "Geographic"] as const;
 
@@ -43,13 +44,16 @@ const CHART2 = {
 
 /* Geographic distribution (swap for admin GET /admin/analytics/geo). */
 const GEO_LEGEND = [
-  { city: "Lagos", color: "#FF8800" },
-  { city: "Abuja", color: "#37B26E" },
-  { city: "Port-Harcourt", color: "#8A38F5" },
-  { city: "Ibadan", color: "#578AF0" },
-  { city: "Ogun", color: "#44CFE4" },
-  { city: "Kaduna", color: "#EE46BC" },
+  { city: "Lagos", state: "Lagos", color: "#FF8800" },
+  { city: "Abuja", state: "FCT", color: "#37B26E" },
+  { city: "Port-Harcourt", state: "Rivers", color: "#8A38F5" },
+  { city: "Ibadan", state: "Oyo", color: "#578AF0" },
+  { city: "Ogun", state: "Ogun", color: "#44CFE4" },
+  { city: "Kaduna", state: "Kaduna", color: "#EE46BC" },
 ];
+
+/* Tint the map state that each city belongs to (built from the legend). */
+const GEO_FILLS: Record<string, string> = Object.fromEntries(GEO_LEGEND.map((l) => [l.state, l.color]));
 const GEO_ROWS = [
   { city: "Lagos", users: "1,842", listings: "612", leads: "4,820", revenue: "₦14.2M", growth: "+28%" },
   { city: "Abuja", users: "384", listings: "142", leads: "2,107", revenue: "₦7.4M", growth: "+19%" },
@@ -122,16 +126,9 @@ export default function Page() {
           <span style={{ fontSize: 11, fontWeight: 400, lineHeight: "20px", color: "#807E7E" }}>Top cities by listing activity</span>
         </div>
 
-        {/* Map (full-size SVG clipped by the container, per Figma offset) */}
-        <div className="mx-6 relative overflow-hidden" style={{ background: "rgba(246,246,246,0.2)", borderRadius: 15, height: 321 }}>
-          <Image
-            src="/icons/admin/analytics/nigeria-map.svg"
-            alt="Geographic distribution map"
-            width={711}
-            height={577}
-            className="absolute"
-            style={{ left: 165, top: -243, width: 711, height: 577, maxWidth: "none" }}
-          />
+        {/* Map — real per-state Nigeria boundaries, tinted from the data */}
+        <div className="mx-6 relative flex items-center justify-center overflow-hidden" style={{ background: "rgba(246,246,246,0.5)", borderRadius: 15, minHeight: 321, padding: "24px 0" }}>
+          <NigeriaMap fills={GEO_FILLS} className="h-[240px] sm:h-[300px] lg:h-[340px] w-auto" />
           {/* Legend overlay (bottom-right, 2 rows) */}
           <div className="absolute right-6 bottom-6 flex flex-col gap-3">
             <div className="flex items-center gap-4">
