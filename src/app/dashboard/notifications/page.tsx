@@ -1,6 +1,21 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
+import { NotificationFormModal } from "@/components/NotificationModals";
+import { SuccessModal } from "@/components/PlanModals";
+
+const SUCCESS_COPY = {
+  send: { title: "Notification Sent", body: "Done! Your message has been successfully broadcast to the selected audience. Sit back — delivery is in progress. Check the Sent History tab to monitor open rates and engagement." },
+  new: { title: "Template Created", body: "Your new notification template has been saved and is ready to use anytime you send a notification or email." },
+  edit: { title: "Changes Saved", body: "Your notification template has been updated successfully. The changes will apply the next time you use this template." },
+};
+
+const FORM_COPY = {
+  send: { title: "Send Notification", subtitle: "Broadcast to targeted user segments", submitLabel: "Send Notification", showSaveAsTemplate: true },
+  new: { title: "New Template", subtitle: "Create a new notification template", submitLabel: "Save Template", showSaveAsTemplate: false },
+  edit: { title: "Edit Template", subtitle: "Make changes to the notification template", submitLabel: "Save Changes", showSaveAsTemplate: false },
+};
 
 /* Email templates (swap for admin GET /admin/notification-templates). */
 const TEMPLATES = [
@@ -28,18 +43,22 @@ const th: React.CSSProperties = { height: 44, padding: "0 16px", borderBottom: "
 const cell: React.CSSProperties = { height: 72, padding: "0 16px", borderBottom: "1px solid #F6F6F6" };
 
 export default function Page() {
+  const [modal, setModal] = useState<"send" | "new" | "edit" | null>(null);
+  const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Email Templates header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h2 style={{ fontSize: 20, fontWeight: 600, lineHeight: "32px", color: "#121212" }}>Email Templates</h2>
         <div className="flex items-center gap-4">
-          <button type="button" className="flex items-center gap-2 shrink-0" style={{ height: 48, padding: "0 24px", borderRadius: 12 }}>
+          <button type="button" onClick={() => setModal("new")} className="flex items-center gap-2 shrink-0" style={{ height: 48, padding: "0 24px", borderRadius: 12 }}>
             <Image src="/icons/admin/notif/notif-edit.svg" alt="" width={20} height={20} />
             <span style={{ fontSize: 14, fontWeight: 500, color: "#305E82" }}>New Template</span>
           </button>
           <button
             type="button"
+            onClick={() => setModal("send")}
             className="flex items-center justify-center text-white hover:opacity-90 shrink-0"
             style={{ height: 48, padding: "0 24px", borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
           >
@@ -62,10 +81,10 @@ export default function Page() {
               </div>
             </div>
             <div className="flex items-center shrink-0" style={{ gap: 8 }}>
-              <button type="button" aria-label="Edit template" className="flex items-center justify-center hover:bg-[#fafafa]" style={{ width: 48, height: 48, borderRadius: 12 }}>
+              <button type="button" onClick={() => setModal("edit")} aria-label="Edit template" className="flex items-center justify-center hover:bg-[#fafafa]" style={{ width: 48, height: 48, borderRadius: 12 }}>
                 <Image src="/icons/admin/notif/notif-edit.svg" alt="" width={20} height={20} />
               </button>
-              <button type="button" aria-label="Send template" className="flex items-center justify-center hover:bg-[#fafafa]" style={{ width: 48, height: 48, borderRadius: 12 }}>
+              <button type="button" onClick={() => setModal("send")} aria-label="Send template" className="flex items-center justify-center hover:bg-[#fafafa]" style={{ width: 48, height: 48, borderRadius: 12 }}>
                 <Image src="/icons/admin/notif/notif-send.svg" alt="" width={24} height={24} />
               </button>
             </div>
@@ -103,6 +122,19 @@ export default function Page() {
           </table>
         </div>
       </section>
+
+      {modal && (
+        <NotificationFormModal
+          title={FORM_COPY[modal].title}
+          subtitle={FORM_COPY[modal].subtitle}
+          submitLabel={FORM_COPY[modal].submitLabel}
+          showSaveAsTemplate={FORM_COPY[modal].showSaveAsTemplate}
+          onClose={() => setModal(null)}
+          onSubmit={() => { const m = modal; setModal(null); setSuccess(SUCCESS_COPY[m]); }}
+          onSaveAsTemplate={() => { setModal(null); setSuccess(SUCCESS_COPY.new); }}
+        />
+      )}
+      {success && <SuccessModal title={success.title} body={success.body} onClose={() => setSuccess(null)} />}
     </div>
   );
 }
