@@ -218,12 +218,31 @@ export const DEMO_VERIFICATIONS: VerificationSubject[] = [
   verif({ id: "v12", name: "Ifeoma Chukwu", email: "ifeoma.c@gmail.com", role: "Owner", doc: "International Passport", submitted: "2 days ago", vstatus: "Rejected" }),
 ];
 
-/** Returns the matching user (agency agent / verification subject too), or a copy of the first keyed to `id`. */
+/** Suspended users (Suspended Users screen). All carry status "Suspended". */
+export const SUSPENDED_USERS: DemoUser[] = [
+  person({ id: "s1", name: "Chiamaka Femi", email: "chiamakafemi@gmail.com", role: "Seeker", location: "Lagos", joined: "Apr 2026", listings: 0, status: "Suspended", verified: true }, "Eti-Osa"),
+  person({ id: "s2", name: "Jasper Lin", email: "jasper.lin@outlook.com", role: "Agent", location: "Lagos", joined: "Apr 2026", listings: 7, status: "Suspended", verified: true }, "Ikeja"),
+  person({ id: "s3", name: "Amina Yusuf", email: "amina.yusuf@yahoo.com", role: "Agent", location: "Ibadan", joined: "Mar 2026", listings: 12, status: "Suspended", verified: true }, "Bodija"),
+  person({ id: "s4", name: "Luca Moretti", email: "luca.moretti@mail.it", role: "Agent", location: "Lagos", joined: "Mar 2026", listings: 4, status: "Suspended", verified: true }, "Lekki"),
+  person({ id: "s5", name: "Sofia García", email: "sofia.garcia@gmail.com", role: "Owner", location: "Ogun", joined: "Mar 2026", listings: 2, status: "Suspended", verified: true }, "Abeokuta"),
+  {
+    id: "s6", name: "Ben Thompson", email: "b.thompson@company.com", role: "Agency",
+    location: "Port-Harcourt", joined: "Mar 2026", listings: 28, status: "Suspended", verified: false,
+    phone: "+234 801 234 5678", whatsapp: "", website: "www.benthompsonrealty.com",
+    state: "Rivers", city: "Port-Harcourt", officeAddress: "5 Aba Road, Port-Harcourt",
+    yearEstablished: "2019",
+    bio: "A real estate agency offering residential and commercial properties across Rivers State.",
+  },
+  person({ id: "s7", name: "Mira Patel", email: "mira.patel@domain.org", role: "Seeker", location: "Lagos", joined: "Mar 2026", listings: 0, status: "Suspended", verified: true }, "Yaba"),
+];
+
+/** Returns the matching user (agency agent / verification / suspended too), or a copy of the first keyed to `id`. */
 export function getDemoUser(id: string): DemoUser {
   return (
     DEMO_USERS.find((u) => u.id === id) ??
     DEMO_AGENCY_AGENTS.find((u) => u.id === id) ??
     DEMO_VERIFICATIONS.find((u) => u.id === id) ??
+    SUSPENDED_USERS.find((u) => u.id === id) ??
     { ...DEMO_USERS[0], id }
   );
 }
