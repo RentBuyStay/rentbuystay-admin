@@ -33,6 +33,10 @@ export type DemoUser = {
   companyRegNo?: string;
   esvarbonLicence?: string;
   yearEstablished?: string;
+  // Agent extras
+  avatarUrl?: string;
+  affiliatedWith?: string;
+  rating?: string;
 };
 
 const BIO_BY_ROLE: Record<Role, string> = {
@@ -93,7 +97,58 @@ export const DEMO_USERS: DemoUser[] = [
   person({ id: "10", name: "Karim Mansour", email: "karimmansour@email.com", role: "Owner", location: "Lagos", joined: "Feb 2026", listings: 3, status: "Active", verified: true }, "Surulere"),
 ];
 
-/** Returns the matching user, or a copy of the first keyed to `id`. */
+/** Builds an agent affiliated with an agency. */
+function agentUser(o: {
+  id: string;
+  name: string;
+  avatar: string;
+  location: string;
+  city: string;
+  joined: string;
+  listings: number;
+  rating: string;
+  verified: boolean;
+  status?: UserStatus;
+}): DemoUser {
+  const parts = o.name.trim().split(/\s+/);
+  return {
+    id: o.id,
+    name: o.name,
+    email: `${(parts[0] ?? "").toLowerCase()}.${(parts[1] ?? "").toLowerCase()}@email.com`,
+    role: "Agent",
+    location: o.location,
+    joined: o.joined,
+    listings: o.listings,
+    status: o.status ?? "Active",
+    verified: o.verified,
+    avatarUrl: o.avatar,
+    affiliatedWith: "Urban Nest Realty",
+    rating: o.rating,
+    firstName: parts[0] ?? "",
+    lastName: parts.slice(1).join(" "),
+    phone: "+234 801 234 5678",
+    whatsapp: "",
+    state: o.location,
+    city: o.city,
+    bio: "Senior real estate professional with 9+ years of experience in Lagos residential and commercial property. Specialising in Lekki, Victoria Island, Ikoyi, and Ikeja. ESVARBON licensed.",
+  };
+}
+
+/** Agents that belong to the Urban Nest Realty agency (shown in its Agents tab). */
+export const DEMO_AGENCY_AGENTS: DemoUser[] = [
+  agentUser({ id: "a1", name: "Amara Nwosu", avatar: "/images/agents/amara-nwosu.png", location: "Lagos", city: "Eti-Osa", joined: "Feb 2026", listings: 12, rating: "4.8", verified: true }),
+  agentUser({ id: "a2", name: "Emeka Okafor", avatar: "/images/agents/emeka-okafor.png", location: "Lagos", city: "Ikeja", joined: "Feb 2026", listings: 9, rating: "4.6", verified: true }),
+  agentUser({ id: "a3", name: "Zainab Bello", avatar: "/images/agents/zainab-bello.png", location: "Abuja", city: "Maitama", joined: "Jan 2026", listings: 15, rating: "4.9", verified: true }),
+  agentUser({ id: "a4", name: "Chinedu Umeh", avatar: "/images/agents/chinedu-umeh.png", location: "Lagos", city: "Surulere", joined: "Mar 2026", listings: 3, rating: "New", verified: false }),
+  agentUser({ id: "a5", name: "Fatima Yusuf", avatar: "/images/agents/fatima-yusuf.png", location: "Ibadan", city: "Bodija", joined: "Feb 2026", listings: 7, rating: "4.7", verified: true }),
+  agentUser({ id: "a6", name: "Tunde Balogun", avatar: "/images/agents/tunde-balogun.png", location: "Lagos", city: "Yaba", joined: "Jan 2026", listings: 5, rating: "4.5", verified: false }),
+];
+
+/** Returns the matching user (or agency agent), or a copy of the first keyed to `id`. */
 export function getDemoUser(id: string): DemoUser {
-  return DEMO_USERS.find((u) => u.id === id) ?? { ...DEMO_USERS[0], id };
+  return (
+    DEMO_USERS.find((u) => u.id === id) ??
+    DEMO_AGENCY_AGENTS.find((u) => u.id === id) ??
+    { ...DEMO_USERS[0], id }
+  );
 }

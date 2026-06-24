@@ -7,7 +7,7 @@ import { useRouter, useParams } from "next/navigation";
 import { Bell, UserX, Star, ChevronDown } from "lucide-react";
 import SeekerPropertyCard, { type SeekerListing } from "@/components/SeekerPropertyCard";
 import { type Agent } from "@/components/AgentCard";
-import { getDemoUser } from "@/lib/demoUsers";
+import { getDemoUser, DEMO_AGENCY_AGENTS } from "@/lib/demoUsers";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%), from the Figma detail variants. */
 const ROLE_BADGE: Record<string, { bg: string; color: string }> = {
@@ -34,17 +34,6 @@ const BASE_LISTINGS: Omit<SeekerListing, "seller">[] = [
     price: "₦95,000,000", tag: "FOR SALE", sqft: "2,400 sqft", beds: 4, baths: 5,
     image: "/images/prop3.jpg", amenities: ["BQ", "Garden", "Smart Home", "CCTV"],
   },
-];
-
-/* Agents under an agency — company is filled in from the viewed agency.
-   Uses the same AgentCard the app renders in the agency dashboard. */
-const BASE_AGENTS: Omit<Agent, "company">[] = [
-  { id: "a1", name: "Amara Nwosu", avatar: "/images/agents/amara-nwosu.png", initials: "AN", location: "Lagos", rating: "4.8", listings: "12 listings", verified: true, contactUserId: "a1" },
-  { id: "a2", name: "Emeka Okafor", avatar: "/images/agents/emeka-okafor.png", initials: "EO", location: "Lagos", rating: "4.6", listings: "9 listings", verified: true, contactUserId: "a2" },
-  { id: "a3", name: "Zainab Bello", avatar: "/images/agents/zainab-bello.png", initials: "ZB", location: "Abuja", rating: "4.9", listings: "15 listings", verified: true, contactUserId: "a3" },
-  { id: "a4", name: "Chinedu Umeh", avatar: "/images/agents/chinedu-umeh.png", initials: "CU", location: "Lagos", rating: "New", listings: "3 listings", verified: false, contactUserId: "a4" },
-  { id: "a5", name: "Fatima Yusuf", avatar: "/images/agents/fatima-yusuf.png", initials: "FY", location: "Ibadan", rating: "4.7", listings: "7 listings", verified: true, contactUserId: "a5" },
-  { id: "a6", name: "Tunde Balogun", avatar: "/images/agents/tunde-balogun.png", initials: "TB", location: "Lagos", rating: "4.5", listings: "5 listings", verified: false, contactUserId: "a6" },
 ];
 
 /* Reviews left for this user (swap for admin GET /admin/users/{id}/reviews). */
@@ -86,18 +75,33 @@ export default function UserDetailPage() {
   const userId = String(params?.id ?? "");
   const user = getDemoUser(userId);
   const isAgency = user.role === "Agency";
+  const isAgent = user.role === "Agent";
 
   const tabs = isAgency
     ? ["Profile Details", "Agents", "Listings", "Reviews"]
+    : isAgent
+    ? ["Profile Details", "Assigned Listings", "Reviews"]
     : ["Profile Details", "Listings", "Reviews"];
   const [tab, setTab] = useState("Profile Details");
 
   const badge = ROLE_BADGE[user.role] ?? ROLE_BADGE.Owner;
+  const avatarImg = user.logoUrl || user.avatarUrl;
   const listings: SeekerListing[] =
     user.listings > 0
       ? BASE_LISTINGS.map((l) => ({ ...l, seller: { name: user.name, initials: initials(user.name), verified: user.verified } }))
       : [];
-  const agents: Agent[] = BASE_AGENTS.map((a) => ({ ...a, company: user.name }));
+  const agents: Agent[] = DEMO_AGENCY_AGENTS.map((a) => ({
+    id: a.id,
+    name: a.name,
+    avatar: a.avatarUrl ?? "",
+    initials: initials(a.name),
+    company: a.affiliatedWith ?? user.name,
+    location: a.location,
+    rating: a.rating ?? "New",
+    listings: `${a.listings} listings`,
+    verified: a.verified,
+    contactUserId: a.id,
+  }));
 
   return (
     <div className="flex flex-col gap-10">
@@ -113,8 +117,8 @@ export default function UserDetailPage() {
             className="relative flex items-center justify-center rounded-full shrink-0 overflow-hidden"
             style={{ width: 120, height: 120, background: "rgba(48,94,130,0.05)" }}
           >
-            {user.logoUrl ? (
-              <Image src={user.logoUrl} alt={user.name} fill sizes="120px" style={{ objectFit: "cover" }} />
+            {avatarImg ? (
+              <Image src={avatarImg} alt={user.name} fill sizes="120px" style={{ objectFit: "cover" }} />
             ) : (
               <span style={{ color: "#305E82", fontSize: 42, fontWeight: 700 }}>{initials(user.name)}</span>
             )}
@@ -126,6 +130,11 @@ export default function UserDetailPage() {
               <span className="rounded-[16px]" style={{ background: badge.bg, color: badge.color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{user.role}</span>
             </div>
             <span style={{ fontSize: 14, color: "#807E7E" }}>{user.email}</span>
+            {isAgent && user.affiliatedWith && (
+              <span style={{ fontSize: 12, lineHeight: "24px", color: "#807E7E" }}>
+                Affiliated with <span style={{ fontSize: 14, fontWeight: 600, color: "#305E82" }}>{user.affiliatedWith}</span>
+              </span>
+            )}
             <span style={{ fontSize: 12, fontWeight: 500, color: "#FFAE00" }}>Member since {user.joined}</span>
           </div>
         </div>
@@ -190,6 +199,26 @@ export default function UserDetailPage() {
               <span style={{ fontSize: 16, fontWeight: 500, lineHeight: "32px", color: "#121212", letterSpacing: "-0.02em" }}>{user.bio}</span>
             </div>
           </div>
+        ) : isAgent ? (
+          <div className="flex flex-col gap-10">
+            <div className="flex flex-wrap justify-between gap-x-6 gap-y-10">
+              <Field label="First Name" value={user.firstName || NS} />
+              <Field label="Last Name" value={user.lastName || NS} />
+              <Field label="Email Address" value={user.email} />
+            </div>
+            <div className="flex flex-wrap justify-between gap-x-6 gap-y-10">
+              <Field label="Phone Number" value={user.phone || NS} />
+              <Field label="Whatsapp Number" value={user.whatsapp || NS} />
+              <Field label="State" value={user.state || NS} />
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-10">
+              <Field label="City" value={user.city || NS} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span style={{ fontSize: 13, color: "#807E7E", letterSpacing: "-0.02em" }}>Bio</span>
+              <span style={{ fontSize: 16, fontWeight: 500, lineHeight: "32px", color: "#121212", letterSpacing: "-0.02em" }}>{user.bio}</span>
+            </div>
+          </div>
         ) : (
           <div className="flex flex-col gap-10">
             <div className="flex flex-wrap justify-between gap-x-6 gap-y-10">
@@ -224,7 +253,7 @@ export default function UserDetailPage() {
       )}
 
       {/* Listings — same card the rest of the app uses (SeekerPropertyCard) */}
-      {tab === "Listings" && (
+      {(tab === "Listings" || tab === "Assigned Listings") && (
         listings.length === 0 ? (
           <EmptyState>This user doesn&rsquo;t have any published listings yet.</EmptyState>
         ) : (
@@ -318,7 +347,7 @@ function AgencyAgentCard({ agent }: { agent: Agent }) {
             <span style={{ fontSize: 12, lineHeight: "24px", color: "#807E7E" }}>{agent.listings}</span>
           </div>
         </div>
-        <Link href={`/dashboard/agents/${agent.id}`} className="hover:underline shrink-0" style={{ fontSize: 14, fontWeight: 500, color: "#305E82" }}>
+        <Link href={`/dashboard/users/${agent.id}`} className="hover:underline shrink-0" style={{ fontSize: 14, fontWeight: 500, color: "#305E82" }}>
           View Profile
         </Link>
       </div>
