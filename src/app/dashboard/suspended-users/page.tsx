@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SUSPENDED_USERS, type Role } from "@/lib/demoUsers";
 
 const ROLE_STYLE: Record<Role, { bg: string; color: string }> = {
@@ -23,6 +24,7 @@ function Badge({ bg, color, children }: { bg: string; color: string; children: R
 }
 
 export default function SuspendedUsersPage() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [menuFor, setMenuFor] = useState<string | null>(null);
 
@@ -70,7 +72,7 @@ export default function SuspendedUsersPage() {
                   >
                     {i === 0 ? (
                       <span className="flex items-center gap-3">
-                        <input type="checkbox" className="w-4 h-4 rounded accent-[#305E82] shrink-0" />
+                        <input type="checkbox" onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded accent-[#305E82] shrink-0" />
                         {h}
                       </span>
                     ) : h}
@@ -80,10 +82,10 @@ export default function SuspendedUsersPage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} style={{ borderBottom: "1px solid #F6F6F6" }} className="hover:bg-[#fafafa]">
+                <tr key={r.id} onClick={() => router.push(`/dashboard/users/${r.id}`)} style={{ borderBottom: "1px solid #F6F6F6", cursor: "pointer" }} className="hover:bg-[#fafafa]">
                   <td style={{ padding: "16px 24px" }}>
                     <div className="flex items-center gap-3">
-                      <input type="checkbox" className="w-4 h-4 rounded accent-[#305E82] shrink-0" />
+                      <input type="checkbox" onClick={(e) => e.stopPropagation()} className="w-4 h-4 rounded accent-[#305E82] shrink-0" />
                       <div className="min-w-0">
                         <p className="text-[14px] font-medium text-[#121212] truncate">{r.name}</p>
                         <p className="text-[12px] text-[#807e7e] truncate">{r.email}</p>
@@ -119,8 +121,9 @@ export default function SuspendedUsersPage() {
                     </button>
                     {menuFor === r.id && (
                       <>
-                        <div className="fixed inset-0 z-10" onClick={() => setMenuFor(null)} aria-hidden="true" />
+                        <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setMenuFor(null); }} aria-hidden="true" />
                         <div
+                          onClick={(e) => e.stopPropagation()}
                           className="absolute right-6 top-12 z-20 bg-white rounded-[12px] border border-[#F6F6F6] overflow-hidden flex flex-col"
                           style={{ width: 160, gap: 8, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}
                         >
