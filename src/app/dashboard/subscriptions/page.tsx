@@ -31,6 +31,38 @@ const PLANS: Plan[] = [
   { id: "p9", name: "Agency - Enterprise", amount: "₦120,000", duration: "Monthly", listings: "100", featured: "10" },
 ];
 
+type SubStatus = "Active" | "Extended" | "Expired";
+const SUB_STATUS: Record<SubStatus, { bg: string; color: string }> = {
+  Active: { bg: "rgba(0,157,53,0.08)", color: "#009D35" },
+  Extended: { bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
+  Expired: { bg: "rgba(227,0,69,0.08)", color: "#E30045" },
+};
+
+type Sub = {
+  id: string;
+  name: string;
+  email: string;
+  plan: string;
+  amount: string;
+  paymentDate: string;
+  renews: string;
+  status: SubStatus;
+};
+
+/* User subscriptions (swap for admin GET /admin/subscriptions). */
+const USER_SUBS: Sub[] = [
+  { id: "s1", name: "Chiamaka Femi", email: "chiamakafemi@gmail.com", plan: "Owner’s Circle", amount: "₦20,000", paymentDate: "15 Mar 2025", renews: "17 Mar 2026", status: "Active" },
+  { id: "s2", name: "Urban Nest Realty", email: "urbannestrealty@gmail.com", plan: "Agency Premium", amount: "₦65,000", paymentDate: "17 Feb 2026", renews: "28 Feb 2026", status: "Active" },
+  { id: "s3", name: "Amina Yusuf", email: "amina.yusuf@yahoo.com", plan: "Agent Pro", amount: "₦25,000", paymentDate: "28 Jan 2026", renews: "13 Feb 2026", status: "Extended" },
+  { id: "s4", name: "Luca Moretti", email: "luca.moretti@mail.it", plan: "Agent Pro", amount: "₦30,000", paymentDate: "13 Jan 2026", renews: "13 Feb 2026", status: "Active" },
+  { id: "s5", name: "Aura Homes", email: "contact@aurahomes.com", plan: "Agency Lite", amount: "₦40,000", paymentDate: "10 Jan 2026", renews: "10 Feb 2026", status: "Expired" },
+  { id: "s6", name: "Ben Thompson", email: "b.thompson@company.com", plan: "Agency Premium", amount: "₦50,000", paymentDate: "05 Jan 2026", renews: "05 Feb 2026", status: "Active" },
+  { id: "s7", name: "Mira Patel", email: "mira.patel@domain.org", plan: "Owner’s Circle", amount: "₦35,000", paymentDate: "02 Jan 2026", renews: "02 Feb 2026", status: "Active" },
+  { id: "s8", name: "Omar Al-Farsi", email: "omar.alfarsi@email.net", plan: "Owner’s Circle", amount: "₦45,000", paymentDate: "28 Dec 2025", renews: "28 Jan 2026", status: "Active" },
+  { id: "s9", name: "Lina Haddad", email: "lina.haddad@email.net", plan: "Agent Pro", amount: "₦55,000", paymentDate: "20 Dec 2025", renews: "20 Jan 2026", status: "Expired" },
+  { id: "s10", name: "Karim Mansour", email: "karim.mansour@email.net", plan: "Owner’s Circle", amount: "₦60,000", paymentDate: "15 Dec 2025", renews: "15 Jan 2026", status: "Active" },
+];
+
 const TABS = ["Subscription Plans", "User Subscriptions"] as const;
 
 export default function SubscriptionManagementPage() {
@@ -76,28 +108,24 @@ export default function SubscriptionManagementPage() {
             );
           })}
         </div>
-        <button
-          type="button"
-          onClick={() => setPlanModal({ mode: "create" })}
-          className="flex items-center justify-center text-white hover:opacity-90 shrink-0"
-          style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
-        >
-          <Image src="/icons/admin/add-rounded.svg" alt="" width={20} height={20} /> Create Plan
-        </button>
+        {tab === "Subscription Plans" && (
+          <button
+            type="button"
+            onClick={() => setPlanModal({ mode: "create" })}
+            className="flex items-center justify-center text-white hover:opacity-90 shrink-0"
+            style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
+          >
+            <Image src="/icons/admin/add-rounded.svg" alt="" width={20} height={20} /> Create Plan
+          </button>
+        )}
       </div>
 
       {/* Filter + Search */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4 flex-wrap">
           <span style={{ fontSize: 16, fontWeight: 500, lineHeight: "24px", letterSpacing: "-0.02em", color: "#121212" }}>Filter:</span>
-          <button
-            type="button"
-            className="flex items-center justify-between bg-[#F6F6F6] rounded-[12px] hover:bg-[#ededed]"
-            style={{ height: 48, padding: "8px 16px", gap: 16, minWidth: 133, color: "#807E7E", fontSize: 14 }}
-          >
-            User type
-            <Image src="/icons/admin/filter-arrow-down.svg" alt="" width={16} height={16} />
-          </button>
+          {tab === "User Subscriptions" && <FilterPill label="Plan" minWidth={109} />}
+          <FilterPill label="User type" minWidth={133} />
         </div>
         <div className="flex items-center gap-2 bg-[#F6F6F6] rounded-[12px] h-12 px-4 flex-1 min-w-[220px] lg:max-w-[394px]">
           <Image src="/icons/admin/search-normal.svg" alt="" width={20} height={20} />
@@ -112,8 +140,87 @@ export default function SubscriptionManagementPage() {
 
       {/* Content */}
       {tab === "User Subscriptions" ? (
-        <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
-          User subscriptions appear here.
+        <div className="rounded-[20px] border border-[#F6F6F6] overflow-hidden bg-white">
+          <div className="overflow-x-auto">
+            <table className="w-full" style={{ borderCollapse: "collapse", minWidth: 1000 }}>
+              <colgroup>
+                <col style={{ width: 272 }} />
+                <col style={{ width: 181 }} />
+                <col style={{ width: 116 }} />
+                <col style={{ width: 150 }} />
+                <col style={{ width: 151 }} />
+                <col style={{ width: 134 }} />
+                <col style={{ width: 84 }} />
+              </colgroup>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #F6F6F6" }}>
+                  {["User", "Plan", "Amount", "Payment Date", "Renews", "Status", ""].map((h, i) => (
+                    <th key={i} className="text-left" style={{ padding: "12px 24px", fontSize: 12, fontWeight: 500, color: "#807E7E", whiteSpace: "nowrap" }}>
+                      {i === 0 ? (
+                        <span className="flex items-center gap-3">
+                          <input type="checkbox" className="w-4 h-4 rounded accent-[#305E82] shrink-0" />
+                          {h}
+                        </span>
+                      ) : h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {USER_SUBS.map((s) => {
+                  const st = SUB_STATUS[s.status];
+                  return (
+                    <tr key={s.id} style={{ borderBottom: "1px solid #F6F6F6" }} className="hover:bg-[#fafafa]">
+                      <td style={{ padding: "16px 24px" }}>
+                        <div className="flex items-center gap-3">
+                          <input type="checkbox" className="w-4 h-4 rounded accent-[#305E82] shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-[14px] font-medium text-[#121212] truncate">{s.name}</p>
+                            <p className="text-[12px] text-[#807e7e] truncate">{s.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: "16px 24px", fontSize: 14, color: "#121212", whiteSpace: "nowrap" }}>{s.plan}</td>
+                      <td style={{ padding: "16px 24px", fontSize: 14, color: "#121212", whiteSpace: "nowrap" }}>{s.amount}</td>
+                      <td style={{ padding: "16px 24px", fontSize: 14, color: "#121212", whiteSpace: "nowrap" }}>{s.paymentDate}</td>
+                      <td style={{ padding: "16px 24px", fontSize: 14, color: "#121212", whiteSpace: "nowrap" }}>{s.renews}</td>
+                      <td style={{ padding: "16px 24px" }}>
+                        <span className="inline-flex items-center rounded-[16px] whitespace-nowrap" style={{ background: st.bg, color: st.color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{s.status}</span>
+                      </td>
+                      <td style={{ padding: "16px 24px", position: "relative" }}>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === s.id ? null : s.id); }} aria-label="Actions" className="inline-flex items-center justify-center hover:opacity-70">
+                          <Image src="/icons/admin/suspended-action.svg" alt="" width={28} height={28} />
+                        </button>
+                        {menuFor === s.id && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setMenuFor(null)} aria-hidden="true" />
+                            <div className="absolute right-6 top-12 z-20 bg-white rounded-[16px] border border-[#F6F6F6] overflow-hidden flex flex-col" style={{ width: 170, gap: 8, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}>
+                              <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
+                                <Image src="/icons/admin/menu-extend.svg" alt="" width={16} height={16} /> Extend Subscription
+                              </button>
+                              <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
+                                <Image src="/icons/admin/menu-cancel.svg" alt="" width={16} height={16} /> Cancel Subscription
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between px-6 py-4 border-t border-[#ededed]">
+            <button className="flex items-center gap-2 text-[14px] font-medium text-[#344054] border border-[#D0D5DD] rounded-[8px] px-3.5 py-2 hover:bg-[#fafafa]">← Previous</button>
+            <div className="hidden sm:flex items-center gap-1">
+              {[1, 2, 3, "…", 8, 9, 10].map((n, i) => (
+                <button key={i} className="rounded-[8px] text-[14px] font-medium" style={{ width: 40, height: 40, background: n === 1 ? "rgba(48,94,130,0.1)" : "transparent", color: n === 1 ? "#305E82" : "#667085" }}>{n}</button>
+              ))}
+            </div>
+            <button className="flex items-center gap-2 text-[14px] font-medium text-[#344054] border border-[#D0D5DD] rounded-[8px] px-3.5 py-2 hover:bg-[#fafafa]">Next →</button>
+          </div>
         </div>
       ) : (
         <div className="rounded-[20px] border border-[#F6F6F6] overflow-hidden bg-white">
@@ -211,6 +318,19 @@ export default function SubscriptionManagementPage() {
       )}
       {success && <SuccessModal title={success.title} body={success.body} onClose={() => setSuccess(null)} />}
     </div>
+  );
+}
+
+function FilterPill({ label, minWidth }: { label: string; minWidth: number }) {
+  return (
+    <button
+      type="button"
+      className="flex items-center justify-between bg-[#F6F6F6] rounded-[12px] hover:bg-[#ededed]"
+      style={{ height: 48, padding: "8px 16px", gap: 16, minWidth, color: "#807E7E", fontSize: 14 }}
+    >
+      {label}
+      <Image src="/icons/admin/filter-arrow-down.svg" alt="" width={16} height={16} />
+    </button>
   );
 }
 
