@@ -127,8 +127,8 @@ export default function Page() {
         </div>
 
         {/* Map — real per-state Nigeria boundaries, tinted from data, scroll-zoom + drag-pan */}
-        <div className="mx-6 relative overflow-hidden h-[320px] sm:h-[400px]" style={{ background: "rgba(246,246,246,0.5)", borderRadius: 15 }}>
-          <NigeriaMap fills={GEO_FILLS} className="absolute inset-0" />
+        <div className="mx-6 relative overflow-hidden h-80 sm:h-96" style={{ background: "rgba(246,246,246,0.5)", borderRadius: 15 }}>
+          <NigeriaMap fills={GEO_FILLS} />
           {/* Legend overlay (bottom-right, 2 rows) */}
           <div className="absolute right-6 bottom-6 flex flex-col gap-3 z-10">
             <div className="flex items-center gap-4">

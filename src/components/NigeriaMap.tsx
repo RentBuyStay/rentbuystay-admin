@@ -140,12 +140,12 @@ export default function NigeriaMap({
   const zoomedOut = t.k <= 1.001;
 
   return (
-    <div className={`relative ${className ?? ""}`}>
+    <div className={className} style={{ position: "relative", width: "100%", height: "100%" }}>
       <svg
         ref={svgRef}
         viewBox={NIGERIA_VIEWBOX}
         preserveAspectRatio="xMidYMid meet"
-        className="w-full h-full touch-none select-none"
+        className="block w-full h-full touch-none select-none"
         style={{ cursor: interactive ? (grabbing ? "grabbing" : "grab") : "default" }}
         role="img"
         aria-label="Map of Nigeria by state"
