@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { ArrowUp } from "lucide-react";
-import type { Role } from "@/lib/demoUsers";
+import { DEMO_VERIFICATIONS, type Role, type VerificationSubject } from "@/lib/demoUsers";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%). */
 const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
@@ -13,39 +14,6 @@ const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
   Seeker: { bg: "rgba(20,174,92,0.08)", color: "#14AE5C" },
 };
 
-type Verification = {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  doc: string;
-  submitted: string;
-  affiliatedWith?: string;
-};
-
-/* Pending verifications (swap for admin GET /admin/verifications?status=pending). */
-const PENDING: Verification[] = [
-  { id: "v1", name: "Michael Adegbite", email: "ademichael@gmail.com", role: "Agent", doc: "NIN + Selfie", submitted: "2 hours ago" },
-  { id: "v2", name: "Obinna Eze", email: "obinna.e@gmail.com", role: "Owner", doc: "Driver’s License", submitted: "5 hours ago" },
-  { id: "v3", name: "Kemi Adesanya", email: "kemiadesanya@gmail.com", role: "Agent", doc: "International Passport", submitted: "8 hours ago", affiliatedWith: "Urban Nest Realty" },
-  { id: "v4", name: "Oladunni Praise", email: "praiserealty@gmail.com", role: "Agent", doc: "International Passport", submitted: "1 day ago" },
-  { id: "v5", name: "Urban Nest Realty", email: "admin@urbannestrealty.com", role: "Agency", doc: "CAC + Director’s NIN", submitted: "2 days ago" },
-];
-
-/* Approved / rejected verifications — same card, view-only action. */
-const APPROVED: Verification[] = [
-  { id: "a1", name: "Tunde Bakare", email: "tunde.b@gmail.com", role: "Agent", doc: "NIN + Selfie", submitted: "1 day ago" },
-  { id: "a2", name: "Grace Effiong", email: "grace.e@gmail.com", role: "Owner", doc: "Driver’s License", submitted: "2 days ago" },
-  { id: "a3", name: "Urban Nest Realty", email: "admin@urbannestrealty.com", role: "Agency", doc: "CAC + Director’s NIN", submitted: "3 days ago" },
-];
-
-const REJECTED: Verification[] = [
-  { id: "r1", name: "Michael Adegbite", email: "ademichael@gmail.com", role: "Agent", doc: "NIN + Selfie", submitted: "2 hours ago" },
-  { id: "r2", name: "Obinna Eze", email: "obinna.e@gmail.com", role: "Owner", doc: "Driver’s License", submitted: "5 hours ago" },
-  { id: "r3", name: "Oladunni Praise", email: "praiserealty@gmail.com", role: "Agent", doc: "International Passport", submitted: "1 day ago" },
-  { id: "r4", name: "Ifeoma Chukwu", email: "ifeoma.c@gmail.com", role: "Owner", doc: "International Passport", submitted: "2 days ago" },
-];
-
 const TABS: { key: "Pending" | "Approved" | "Rejected"; count: number }[] = [
   { key: "Pending", count: 16 },
   { key: "Approved", count: 1612 },
@@ -54,7 +22,7 @@ const TABS: { key: "Pending" | "Approved" | "Rejected"; count: number }[] = [
 
 export default function VerificationManagementPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("Pending");
-  const list = tab === "Pending" ? PENDING : tab === "Approved" ? APPROVED : REJECTED;
+  const list = DEMO_VERIFICATIONS.filter((v) => v.vstatus === tab);
 
   return (
     <div className="flex flex-col gap-6">
@@ -155,7 +123,7 @@ function StatCard({
   );
 }
 
-function VerificationCard({ v, pending, verified }: { v: Verification; pending?: boolean; verified?: boolean }) {
+function VerificationCard({ v, pending, verified }: { v: VerificationSubject; pending?: boolean; verified?: boolean }) {
   const badge = ROLE_BADGE[v.role];
   return (
     <div
@@ -200,9 +168,9 @@ function VerificationCard({ v, pending, verified }: { v: Verification; pending?:
             </button>
           </>
         )}
-        <button type="button" aria-label="View documents" className="flex items-center justify-center hover:opacity-70 shrink-0" style={{ width: 48, height: 48, borderRadius: 12 }}>
+        <Link href={`/dashboard/users/${v.id}`} aria-label={`View ${v.name}'s profile`} className="flex items-center justify-center hover:opacity-70 shrink-0" style={{ width: 48, height: 48, borderRadius: 12 }}>
           <Image src="/icons/admin/verify/eye.svg" alt="" width={24} height={24} />
-        </button>
+        </Link>
       </div>
     </div>
   );

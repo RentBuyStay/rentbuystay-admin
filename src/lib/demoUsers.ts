@@ -144,11 +144,86 @@ export const DEMO_AGENCY_AGENTS: DemoUser[] = [
   agentUser({ id: "a6", name: "Tunde Balogun", avatar: "/images/agents/tunde-balogun.png", location: "Lagos", city: "Yaba", joined: "Jan 2026", listings: 5, rating: "4.5", verified: false }),
 ];
 
-/** Returns the matching user (or agency agent), or a copy of the first keyed to `id`. */
+/* ── Verification subjects (Verification Management) ────────────────────────
+   Each is a full DemoUser so clicking the eye opens the same role-aware detail
+   the User Management list uses, plus the verification-specific fields. */
+export type VerificationStatus = "Pending" | "Approved" | "Rejected";
+export type VerificationSubject = DemoUser & {
+  doc: string;
+  submitted: string;
+  vstatus: VerificationStatus;
+};
+
+function verif(o: {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  doc: string;
+  submitted: string;
+  vstatus: VerificationStatus;
+  location?: string;
+  city?: string;
+  affiliatedWith?: string;
+  logoUrl?: string;
+}): VerificationSubject {
+  const parts = o.name.trim().split(/\s+/);
+  const base: DemoUser = {
+    id: o.id,
+    name: o.name,
+    email: o.email,
+    role: o.role,
+    location: o.location ?? "Lagos",
+    joined: "Jan 2026",
+    listings: 0,
+    status: "Active",
+    verified: o.vstatus === "Approved",
+    firstName: parts[0] ?? "",
+    lastName: parts.slice(1).join(" "),
+    phone: "+234 801 234 5678",
+    whatsapp: "",
+    state: o.location ?? "Lagos",
+    city: o.city ?? "Eti-Osa",
+    bio: BIO_BY_ROLE[o.role] || "",
+  };
+  if (o.role === "Agent") {
+    base.affiliatedWith = o.affiliatedWith;
+    base.avatarUrl = o.logoUrl;
+  }
+  if (o.role === "Agency") {
+    base.logoUrl = o.logoUrl;
+    base.website = `www.${o.name.toLowerCase().replace(/\s+/g, "")}.com`;
+    base.officeAddress = "14 Adeola Odeku Street, Victoria Island";
+    base.yearEstablished = "2018";
+    base.bio = "A real estate agency offering residential and commercial properties across Nigeria.";
+  }
+  return { ...base, doc: o.doc, submitted: o.submitted, vstatus: o.vstatus };
+}
+
+export const DEMO_VERIFICATIONS: VerificationSubject[] = [
+  // Pending
+  verif({ id: "v1", name: "Michael Adegbite", email: "ademichael@gmail.com", role: "Agent", doc: "NIN + Selfie", submitted: "2 hours ago", vstatus: "Pending" }),
+  verif({ id: "v2", name: "Obinna Eze", email: "obinna.e@gmail.com", role: "Owner", doc: "Driver’s License", submitted: "5 hours ago", vstatus: "Pending" }),
+  verif({ id: "v3", name: "Kemi Adesanya", email: "kemiadesanya@gmail.com", role: "Agent", doc: "International Passport", submitted: "8 hours ago", vstatus: "Pending", affiliatedWith: "Urban Nest Realty" }),
+  verif({ id: "v4", name: "Oladunni Praise", email: "praiserealty@gmail.com", role: "Agent", doc: "International Passport", submitted: "1 day ago", vstatus: "Pending" }),
+  verif({ id: "v5", name: "Urban Nest Realty", email: "admin@urbannestrealty.com", role: "Agency", doc: "CAC + Director’s NIN", submitted: "2 days ago", vstatus: "Pending", logoUrl: "/images/agencies/urban-nest-realty.png" }),
+  // Approved
+  verif({ id: "v6", name: "Tunde Bakare", email: "tunde.b@gmail.com", role: "Agent", doc: "NIN + Selfie", submitted: "1 day ago", vstatus: "Approved" }),
+  verif({ id: "v7", name: "Grace Effiong", email: "grace.e@gmail.com", role: "Owner", doc: "Driver’s License", submitted: "2 days ago", vstatus: "Approved" }),
+  verif({ id: "v8", name: "Sydney Realtors", email: "admin@sydneyrealtors.com", role: "Agency", doc: "CAC + Director’s NIN", submitted: "3 days ago", vstatus: "Approved", logoUrl: "/images/agencies/sydney-realtors.png" }),
+  // Rejected
+  verif({ id: "v9", name: "Michael Adegbite", email: "ademichael@gmail.com", role: "Agent", doc: "NIN + Selfie", submitted: "2 hours ago", vstatus: "Rejected" }),
+  verif({ id: "v10", name: "Obinna Eze", email: "obinna.e@gmail.com", role: "Owner", doc: "Driver’s License", submitted: "5 hours ago", vstatus: "Rejected" }),
+  verif({ id: "v11", name: "Oladunni Praise", email: "praiserealty@gmail.com", role: "Agent", doc: "International Passport", submitted: "1 day ago", vstatus: "Rejected" }),
+  verif({ id: "v12", name: "Ifeoma Chukwu", email: "ifeoma.c@gmail.com", role: "Owner", doc: "International Passport", submitted: "2 days ago", vstatus: "Rejected" }),
+];
+
+/** Returns the matching user (agency agent / verification subject too), or a copy of the first keyed to `id`. */
 export function getDemoUser(id: string): DemoUser {
   return (
     DEMO_USERS.find((u) => u.id === id) ??
     DEMO_AGENCY_AGENTS.find((u) => u.id === id) ??
+    DEMO_VERIFICATIONS.find((u) => u.id === id) ??
     { ...DEMO_USERS[0], id }
   );
 }
