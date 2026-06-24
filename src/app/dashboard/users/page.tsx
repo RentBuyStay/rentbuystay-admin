@@ -4,19 +4,9 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { MoreVertical } from "lucide-react";
+import { DEMO_USERS, type DemoUser, type Role } from "@/lib/demoUsers";
 
-type Role = "Seeker" | "Owner" | "Agent" | "Agency";
-type UserRow = {
-  id: string;
-  name: string;
-  email: string;
-  role: Role;
-  location: string;
-  joined: string;
-  listings: number;
-  status: "Active" | "Suspended";
-  verified: boolean;
-};
+type UserRow = DemoUser;
 
 const TABS: { key: "All" | Role; label: string; count: number }[] = [
   { key: "All", label: "All", count: 2416 },
@@ -26,18 +16,8 @@ const TABS: { key: "All" | Role; label: string; count: number }[] = [
   { key: "Agency", label: "Agencies", count: 136 },
 ];
 
-const ROWS: UserRow[] = [
-  { id: "1", name: "Chiamaka Femi", email: "chiamakafemi@email.com", role: "Owner", location: "Lagos", joined: "Apr 2026", listings: 0, status: "Active", verified: true },
-  { id: "2", name: "Jasper Lin", email: "jasperlin@email.com", role: "Agent", location: "Lagos", joined: "Apr 2026", listings: 7, status: "Active", verified: true },
-  { id: "3", name: "Amina Yusuf", email: "aminayusuf@email.com", role: "Agent", location: "Ibadan", joined: "Mar 2026", listings: 12, status: "Active", verified: true },
-  { id: "4", name: "Lara Moretti", email: "laramoretti@email.com", role: "Agent", location: "Lagos", joined: "Mar 2026", listings: 4, status: "Active", verified: true },
-  { id: "5", name: "Sofia Garcia", email: "sofiagarcia@email.com", role: "Owner", location: "Ogun", joined: "Mar 2026", listings: 2, status: "Suspended", verified: false },
-  { id: "6", name: "Ben Thompson", email: "benthompson@email.com", role: "Agency", location: "Port-Harcourt", joined: "Mar 2026", listings: 28, status: "Active", verified: false },
-  { id: "7", name: "Mira Patel", email: "mirapatel@email.com", role: "Seeker", location: "Lagos", joined: "Mar 2026", listings: 0, status: "Active", verified: true },
-  { id: "8", name: "Omar Al-Faro", email: "omaralfaro@email.com", role: "Seeker", location: "Ogun", joined: "Mar 2026", listings: 0, status: "Active", verified: false },
-  { id: "9", name: "Lina Haddad", email: "linahaddad@email.com", role: "Agent", location: "Abuja", joined: "Feb 2026", listings: 11, status: "Suspended", verified: true },
-  { id: "10", name: "Karim Mansour", email: "karimmansour@email.com", role: "Owner", location: "Lagos", joined: "Feb 2026", listings: 3, status: "Active", verified: true },
-];
+// Shared with the user-detail page so list and detail stay in sync.
+const ROWS: UserRow[] = DEMO_USERS;
 
 // Per-role badge colors from the Figma detail variants (text = solid, bg = same hue @8%).
 const ROLE_STYLE: Record<Role, { bg: string; color: string }> = {

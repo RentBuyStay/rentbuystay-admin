@@ -3,8 +3,9 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Bell, UserX, Star, ChevronDown } from "lucide-react";
+import { Bell, UserX, Star, ChevronDown } from "lucide-react";
 import SeekerPropertyCard, { type SeekerListing } from "@/components/SeekerPropertyCard";
+import { getDemoUser } from "@/lib/demoUsers";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%), from the Figma detail variants. */
 const ROLE_BADGE: Record<string, { bg: string; color: string }> = {
@@ -14,41 +15,22 @@ const ROLE_BADGE: Record<string, { bg: string; color: string }> = {
   Seeker: { bg: "rgba(20,174,92,0.08)", color: "#14AE5C" },
 };
 
-/* Placeholder user (swap for admin GET /admin/users/{id}). */
-const USER = {
-  name: "Olaitan Badejo",
-  email: "olaitanbadejo@email.com",
-  role: "Owner",
-  verified: true,
-  memberSince: "Jan 2026",
-  firstName: "Olaitan",
-  lastName: "Badejo",
-  phone: "+234 801 234 5678",
-  state: "Lagos",
-  city: "Eti-Osa",
-  bio: "Experienced property owner with 8+ years in Lagos real estate market. Specializing in residential and commercial properties in Lekki, VI, and Ikoyi.",
-};
-
-/* This user's published listings (swap for admin GET /admin/users/{id}/listings).
-   Uses the same SeekerListing shape the rest of the app renders. */
-const LISTINGS: SeekerListing[] = [
+/* Listing template — seller is filled in from the viewed user. */
+const BASE_LISTINGS: Omit<SeekerListing, "seller">[] = [
   {
     id: "1", title: "3-Bedroom Flat, Lekki Phase 1", location: "Lekki Phase 1, Lagos",
     price: "₦2,800,000", priceSuffix: "/year", tag: "FOR RENT", sqft: "1,200 sqft", beds: 3, baths: 3,
     image: "/images/prop1.jpg", amenities: ["Furnished", "Parking", "24/7 Power", "Security"],
-    seller: { name: USER.name, initials: initials(USER.name), verified: USER.verified },
   },
   {
     id: "2", title: "3-Bedroom Flat, Victoria Island", location: "Victoria Island, Lagos",
     price: "₦650,000", priceSuffix: "/year", tag: "FOR RENT", sqft: "980 sqft", beds: 3, baths: 3,
     image: "/images/prop2.jpg", amenities: ["Pool", "Gym", "Parking"],
-    seller: { name: USER.name, initials: initials(USER.name), verified: USER.verified },
   },
   {
     id: "3", title: "4-Bedroom Duplex, Ikoyi", location: "Ikoyi, Lagos",
     price: "₦95,000,000", tag: "FOR SALE", sqft: "2,400 sqft", beds: 4, baths: 5,
     image: "/images/prop3.jpg", amenities: ["BQ", "Garden", "Smart Home", "CCTV"],
-    seller: { name: USER.name, initials: initials(USER.name), verified: USER.verified },
   },
 ];
 
@@ -68,8 +50,6 @@ const REVIEWS = [
   },
 ];
 
-const TABS = ["Profile Details", "Listings", "Reviews"] as const;
-
 function initials(name: string) {
   const p = name.trim().split(/\s+/);
   return ((p[0]?.[0] ?? "") + (p[1]?.[0] ?? "")).toUpperCase();
@@ -85,36 +65,54 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
+const NS = "Not Specified";
+
 export default function UserDetailPage() {
   const router = useRouter();
   const params = useParams();
   const userId = String(params?.id ?? "");
-  const [tab, setTab] = useState<(typeof TABS)[number]>("Profile Details");
+  const user = getDemoUser(userId);
+  const isAgency = user.role === "Agency";
+
+  const tabs = isAgency
+    ? ["Profile Details", "Agents", "Listings", "Reviews"]
+    : ["Profile Details", "Listings", "Reviews"];
+  const [tab, setTab] = useState("Profile Details");
+
+  const badge = ROLE_BADGE[user.role] ?? ROLE_BADGE.Owner;
+  const listings: SeekerListing[] =
+    user.listings > 0
+      ? BASE_LISTINGS.map((l) => ({ ...l, seller: { name: user.name, initials: initials(user.name), verified: user.verified } }))
+      : [];
 
   return (
     <div className="flex flex-col gap-10">
       {/* Back */}
       <button onClick={() => router.back()} className="flex items-center gap-3 hover:opacity-70 self-start" style={{ fontSize: 16, color: "#121212" }}>
-        <ArrowLeft size={20} /> Back
+        <Image src="/icons/dash/detail-back.svg" alt="" width={20} height={20} /> Back
       </button>
 
       {/* Header: avatar + name block (left) · actions (right) */}
       <div className="flex items-start justify-between gap-6 flex-wrap">
         <div className="flex items-center gap-4">
           <span
-            className="flex items-center justify-center rounded-full shrink-0"
-            style={{ width: 120, height: 120, background: "rgba(48,94,130,0.05)", color: "#305E82", fontSize: 42, fontWeight: 700 }}
+            className="relative flex items-center justify-center rounded-full shrink-0 overflow-hidden"
+            style={{ width: 120, height: 120, background: "rgba(48,94,130,0.05)" }}
           >
-            {initials(USER.name)}
+            {user.logoUrl ? (
+              <Image src={user.logoUrl} alt={user.name} fill sizes="120px" style={{ objectFit: "cover" }} />
+            ) : (
+              <span style={{ color: "#305E82", fontSize: 42, fontWeight: 700 }}>{initials(user.name)}</span>
+            )}
           </span>
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <h1 style={{ fontSize: 24, fontWeight: 600, lineHeight: "32px", color: "#121212" }}>{USER.name}</h1>
-              {USER.verified && <Image src="/icons/admin/verify-badge.svg" alt="verified" width={20} height={20} />}
-              <span className="rounded-[16px]" style={{ background: ROLE_BADGE[USER.role]?.bg ?? "rgba(48,94,130,0.08)", color: ROLE_BADGE[USER.role]?.color ?? "#305E82", fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{USER.role}</span>
+              <h1 style={{ fontSize: 24, fontWeight: 600, lineHeight: "32px", color: "#121212" }}>{user.name}</h1>
+              {user.verified && <Image src="/icons/admin/verify-badge.svg" alt="verified" width={20} height={20} />}
+              <span className="rounded-[16px]" style={{ background: badge.bg, color: badge.color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{user.role}</span>
             </div>
-            <span style={{ fontSize: 14, color: "#807E7E" }}>{USER.email}</span>
-            <span style={{ fontSize: 12, fontWeight: 500, color: "#FFAE00" }}>Member since {USER.memberSince}</span>
+            <span style={{ fontSize: 14, color: "#807E7E" }}>{user.email}</span>
+            <span style={{ fontSize: 12, fontWeight: 500, color: "#FFAE00" }}>Member since {user.joined}</span>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -132,7 +130,7 @@ export default function UserDetailPage() {
 
       {/* Tabs */}
       <div className="flex items-center gap-4 -mt-4">
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const active = tab === t;
           return (
             <button
@@ -152,31 +150,62 @@ export default function UserDetailPage() {
 
       {/* Profile Details */}
       {tab === "Profile Details" && (
-        <div className="flex flex-col gap-10">
-          <div className="flex flex-wrap justify-between gap-x-6 gap-y-10">
-            <Field label="First Name" value={USER.firstName} />
-            <Field label="Last Name" value={USER.lastName} />
-            <Field label="Email Address" value={USER.email} />
+        isAgency ? (
+          <div className="flex flex-col gap-10">
+            <div className="flex flex-wrap justify-between gap-x-6 gap-y-10">
+              <Field label="Company Name" value={user.name} />
+              <Field label="Email Address" value={user.email} />
+              <Field label="Phone Number" value={user.phone || NS} />
+            </div>
+            <div className="flex flex-wrap justify-between gap-x-6 gap-y-10">
+              <Field label="Whatsapp Number" value={user.whatsapp || NS} />
+              <Field label="Website" value={user.website || NS} />
+              <Field label="State" value={user.state || NS} />
+            </div>
+            <div className="flex flex-wrap justify-between gap-x-6 gap-y-10">
+              <Field label="City" value={user.city || NS} />
+              <Field label="Office Address" value={user.officeAddress || NS} />
+              <Field label="Company Reg No" value={user.companyRegNo || NS} />
+            </div>
+            <div className="flex flex-wrap gap-x-[94px] gap-y-10">
+              <Field label="ESVARBON Licence Number" value={user.esvarbonLicence || NS} />
+              <Field label="Year Established" value={user.yearEstablished || NS} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span style={{ fontSize: 13, color: "#807E7E", letterSpacing: "-0.02em" }}>Bio</span>
+              <span style={{ fontSize: 16, fontWeight: 500, lineHeight: "32px", color: "#121212", letterSpacing: "-0.02em" }}>{user.bio}</span>
+            </div>
           </div>
-          <div className="flex flex-wrap justify-between gap-x-6 gap-y-10">
-            <Field label="Phone Number" value={USER.phone} />
-            <Field label="State" value={USER.state} />
-            <Field label="City" value={USER.city} />
+        ) : (
+          <div className="flex flex-col gap-10">
+            <div className="flex flex-wrap justify-between gap-x-6 gap-y-10">
+              <Field label="First Name" value={user.firstName || NS} />
+              <Field label="Last Name" value={user.lastName || NS} />
+              <Field label="Email Address" value={user.email} />
+            </div>
+            <div className="flex flex-wrap justify-between gap-x-6 gap-y-10">
+              <Field label="Phone Number" value={user.phone || NS} />
+              <Field label="State" value={user.state || NS} />
+              <Field label="City" value={user.city || NS} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <span style={{ fontSize: 13, color: "#807E7E", letterSpacing: "-0.02em" }}>Bio</span>
+              <span style={{ fontSize: 16, fontWeight: 500, lineHeight: "32px", color: "#121212", letterSpacing: "-0.02em" }}>{user.bio}</span>
+            </div>
           </div>
-          <div className="flex flex-col gap-2">
-            <span style={{ fontSize: 13, color: "#807E7E", letterSpacing: "-0.02em" }}>Bio</span>
-            <span style={{ fontSize: 16, fontWeight: 500, lineHeight: "32px", color: "#121212", letterSpacing: "-0.02em" }}>{USER.bio}</span>
-          </div>
-        </div>
+        )
       )}
+
+      {/* Agents (agency only) */}
+      {tab === "Agents" && <EmptyState>No agents listed for this agency yet.</EmptyState>}
 
       {/* Listings — same card the rest of the app uses (SeekerPropertyCard) */}
       {tab === "Listings" && (
-        LISTINGS.length === 0 ? (
+        listings.length === 0 ? (
           <EmptyState>This user doesn&rsquo;t have any published listings yet.</EmptyState>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gap: "24px 16px" }}>
-            {LISTINGS.map((l) => (
+            {listings.map((l) => (
               <SeekerPropertyCard key={l.id} listing={l} hrefBase={`/dashboard/users/${userId}/listings`} />
             ))}
           </div>
