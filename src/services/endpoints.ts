@@ -101,6 +101,12 @@ export const endpoints = {
 
   // Admin (SUPER_ADMIN dashboard)
   adminStats: "/admin/stats",
+  adminUsers: "/admin/users",
+  adminUserSuspend: (id: string) => `/admin/users/${id}/suspend`,
+  adminUserUnsuspend: (id: string) => `/admin/users/${id}/unsuspend`,
+  adminUserInvite: "/admin/users/invite",
+  adminUserCreate: "/admin/users/user",
+  adminCreateAdmin: "/admin/users/admin",
 
   // Add more resource paths here as you integrate them.
 } as const;

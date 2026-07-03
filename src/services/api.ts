@@ -154,6 +154,7 @@ export const api = createApi({
     "SavedProperties",
     "AgencyStaff",
     "Invitations",
+    "AdminUsers",
   ],
   endpoints: () => ({}),
 });
