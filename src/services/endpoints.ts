@@ -108,6 +108,7 @@ export const endpoints = {
   adminUserCreate: "/admin/users/user",
   adminCreateAdmin: "/admin/users/admin",
   professionals: "/professionals",
+  adminUserKyc: (id: string) => `/admin/kyc/users/${id}`,
 
   // Add more resource paths here as you integrate them.
 } as const;

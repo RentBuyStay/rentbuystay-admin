@@ -93,6 +93,23 @@ export type ProfessionalListItem = {
   createdAt?: string;
 };
 
+/** GET /admin/kyc/users/{userId} — authoritative KYC state for any user. */
+export type KycVerificationEntry = {
+  id: string;
+  verificationType?: string;
+  provider?: string;
+  documentType?: string;
+  status: "PENDING" | "IN_PROGRESS" | "VERIFIED" | "REJECTED" | "EXPIRED" | "FAILED";
+  verifiedAt?: string | null;
+  rejectedAt?: string | null;
+  rejectionReason?: string | null;
+};
+
+export type KycStatus = {
+  identity?: KycVerificationEntry | null;
+  business?: KycVerificationEntry | null;
+};
+
 export const adminApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStats, void>({
@@ -130,6 +147,10 @@ export const adminApi = api.injectEndpoints({
       }),
       transformResponse: (res: ApiEnvelope<PageResponse<ProfessionalListItem>>) => res.data,
     }),
+    getUserKycStatus: builder.query<KycStatus, string>({
+      query: (userId) => ({ url: endpoints.adminUserKyc(userId), method: "GET" }),
+      transformResponse: (res: ApiEnvelope<KycStatus>) => res.data,
+    }),
   }),
   overrideExisting: false,
 });
@@ -140,4 +161,5 @@ export const {
   useSuspendUserMutation,
   useUnsuspendUserMutation,
   useGetProfessionalsQuery,
+  useGetUserKycStatusQuery,
 } = adminApi;

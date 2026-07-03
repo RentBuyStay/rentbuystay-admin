@@ -9,6 +9,7 @@ import {
   useGetAdminUsersQuery,
   useGetPlatformStatsQuery,
   useGetProfessionalsQuery,
+  useGetUserKycStatusQuery,
   useSuspendUserMutation,
   useUnsuspendUserMutation,
   type AdminUser,
@@ -107,6 +108,25 @@ function FilterPill({ label }: { label: string }) {
       {label}
       <Image src="/icons/admin/filter-arrow-down.svg" alt="" width={16} height={16} />
     </button>
+  );
+}
+
+/**
+ * Verification badge backed by the authoritative KYC endpoint. Identity OR
+ * business VERIFIED → Verified; while loading (or on error) it falls back to
+ * the directory-derived flag so the cell never flickers wrong-then-right.
+ */
+function VerificationCell({ userId, fallback }: { userId: string; fallback: boolean }) {
+  const { data: kyc } = useGetUserKycStatusQuery(userId);
+  const verified = kyc
+    ? kyc.identity?.status === "VERIFIED" || kyc.business?.status === "VERIFIED"
+    : fallback;
+  return verified ? (
+    <span className="inline-flex items-center gap-2 rounded-[16px] whitespace-nowrap" style={{ background: "rgba(0,157,53,0.08)", color: "#009D35", fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>
+      <Image src="/icons/admin/shield-tick.svg" alt="" width={16} height={16} /> Verified
+    </span>
+  ) : (
+    <Badge bg="rgba(227,0,69,0.08)" color="#E30045">Unverified</Badge>
   );
 }
 
@@ -282,13 +302,7 @@ export default function UsersPage() {
                     )}
                   </td>
                   <td style={{ padding: "16px 24px" }}>
-                    {r.verified ? (
-                      <span className="inline-flex items-center gap-2 rounded-[16px] whitespace-nowrap" style={{ background: "rgba(0,157,53,0.08)", color: "#009D35", fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>
-                        <Image src="/icons/admin/shield-tick.svg" alt="" width={16} height={16} /> Verified
-                      </span>
-                    ) : (
-                      <Badge bg="rgba(227,0,69,0.08)" color="#E30045">Unverified</Badge>
-                    )}
+                    <VerificationCell userId={r.id} fallback={r.verified} />
                   </td>
                   <td style={{ padding: "16px 24px", position: "relative" }}>
                     <button
