@@ -70,7 +70,10 @@ function toRow(
       : joined.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }),
     listings: agent?.listingCount !== undefined ? String(agent.listingCount) : "—",
     status: u.status === "SUSPENDED" ? "Suspended" : "Active",
-    verified: agent?.identityVerified ?? pro?.verified ?? !!u.emailVerifiedAt,
+    // Identity (KYC) verification only — email verification is NOT what this
+    // column claims. /admin/users doesn't expose a KYC flag yet, so users
+    // without directory data show Unverified (see backend issue #7).
+    verified: agent?.identityVerified ?? pro?.verified ?? false,
   };
 }
 
