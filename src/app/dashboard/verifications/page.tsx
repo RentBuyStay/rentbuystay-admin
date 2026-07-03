@@ -1,10 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUp } from "lucide-react";
-import { DEMO_VERIFICATIONS, type Role, type VerificationSubject } from "@/lib/demoUsers";
+import { type Role } from "@/lib/demoUsers";
+import {
+  useDecideKycMutation,
+  useGetAwaitingBusinessKycQuery,
+  useGetAwaitingIdentityKycQuery,
+  useGetPlatformStatsQuery,
+  useGetProfessionalsQuery,
+  type BusinessKycEntry,
+  type KycVerificationEntry,
+} from "@/services/adminApi";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%). */
 const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
@@ -14,15 +23,86 @@ const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
   Seeker: { bg: "rgba(20,174,92,0.08)", color: "#14AE5C" },
 };
 
-const TABS: { key: "Pending" | "Approved" | "Rejected"; count: number }[] = [
-  { key: "Pending", count: 16 },
-  { key: "Approved", count: 1612 },
-  { key: "Rejected", count: 384 },
-];
+/** One row of the review queue, merged from the identity + business queues. */
+type QueueItem = {
+  kind: "identity" | "business";
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  doc: string;
+  submitted: string;
+  subjectUserId?: string;
+  affiliatedWith?: string;
+};
+
+const docLabel = (v: KycVerificationEntry): string =>
+  (v.documentType || v.verificationType || "Document").replaceAll("_", " ");
+
+const submittedLabel = (iso?: string): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+};
 
 export default function VerificationManagementPage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("Pending");
-  const list = DEMO_VERIFICATIONS.filter((v) => v.vstatus === tab);
+  const [tab, setTab] = useState<"Pending" | "Approved" | "Rejected">("Pending");
+
+  const { data: stats } = useGetPlatformStatsQuery();
+  const { data: identityPage } = useGetAwaitingIdentityKycQuery({});
+  const { data: businessPage } = useGetAwaitingBusinessKycQuery({});
+  const { data: prosPage } = useGetProfessionalsQuery({ size: 200 });
+  const [decideKyc, { isLoading: deciding }] = useDecideKycMutation();
+
+  const pending = (stats?.identityKyc?.pending ?? 0) + (stats?.businessKyc?.pending ?? 0);
+  const approved = (stats?.identityKyc?.verified ?? 0) + (stats?.businessKyc?.verified ?? 0);
+  const rejected = (stats?.identityKyc?.rejected ?? 0) + (stats?.businessKyc?.rejected ?? 0);
+
+  const TABS: { key: "Pending" | "Approved" | "Rejected"; count: number }[] = [
+    { key: "Pending", count: pending },
+    { key: "Approved", count: approved },
+    { key: "Rejected", count: rejected },
+  ];
+
+  // Business rows name their subject (user/org id) — enrich via the directory.
+  // Identity rows carry no user reference at all (backend gap, issue #8).
+  const list: QueueItem[] = useMemo(() => {
+    const pros = new Map((prosPage?.content ?? []).map((p) => [p.id, p]));
+    const identity: QueueItem[] = (identityPage?.content ?? []).map((v) => ({
+      kind: "identity",
+      id: v.id,
+      name: "—",
+      email: "—",
+      role: "Seeker",
+      doc: docLabel(v),
+      submitted: submittedLabel(v.createdAt),
+    }));
+    const business: QueueItem[] = (businessPage?.content ?? []).map((v: BusinessKycEntry) => {
+      const pro = v.subjectId ? pros.get(v.subjectId) : undefined;
+      return {
+        kind: "business",
+        id: v.id,
+        name: pro?.name || pro?.organizationName || "—",
+        email: pro?.email || "—",
+        role: v.subjectKind === "ORGANIZATION" ? "Agency" : "Agent",
+        doc: docLabel(v),
+        submitted: submittedLabel(v.createdAt),
+        subjectUserId: v.subjectKind === "USER" ? v.subjectId : undefined,
+      };
+    });
+    return [...identity, ...business];
+  }, [identityPage, businessPage, prosPage]);
+
+  const handleDecision = async (item: QueueItem, approve: boolean) => {
+    if (deciding) return;
+    try {
+      await decideKyc({ kind: item.kind, id: item.id, approve }).unwrap();
+    } catch {
+      // queue re-fetches via tag invalidation; item stays if the call failed
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -32,21 +112,21 @@ export default function VerificationManagementPage() {
           gradient
           icon={<Image src="/icons/admin/verify/stat-pending.svg" alt="" width={16} height={16} />}
           label="Pending Review"
-          value="16"
+          value={String(pending)}
           delta={<><ArrowUp size={16} color="#FFFFFF" /><span style={{ color: "#FFFFFF" }}>+32% </span><span style={{ color: "#FFFFFF" }}>this week</span></>}
         />
         <StatCard
           icon={<Image src="/icons/admin/verify/stat-approved.svg" alt="" width={16} height={16} />}
           label="Approved"
           labelColor="#027B2A"
-          value="1612"
+          value={String(approved)}
           delta={<><ArrowUp size={16} color="#027B2A" /><span style={{ color: "#027B2A" }}>+63 </span><span style={{ color: "#807E7E" }}>this week</span></>}
         />
         <StatCard
           icon={<Image src="/icons/admin/verify/stat-rejected.svg" alt="" width={16} height={16} />}
           label="Rejected"
           labelColor="#E30045"
-          value="8"
+          value={String(rejected)}
           delta={<span style={{ color: "#807E7E" }}>Suspicious Documents</span>}
         />
       </div>
@@ -71,13 +151,20 @@ export default function VerificationManagementPage() {
         })}
       </div>
 
-      {/* List */}
-      {list.length === 0 ? (
+      {/* List — the backend only exposes the awaiting queue; approved/rejected
+          have real counts (tabs/cards) but no list endpoint yet. */}
+      {tab !== "Pending" || list.length === 0 ? (
         <EmptyState>No {tab.toLowerCase()} verifications.</EmptyState>
       ) : (
         <div className="flex flex-col gap-4">
           {list.map((v) => (
-            <VerificationCard key={v.id} v={v} pending={tab === "Pending"} verified={tab === "Approved"} />
+            <VerificationCard
+              key={`${v.kind}-${v.id}`}
+              v={v}
+              pending
+              onApprove={() => handleDecision(v, true)}
+              onReject={() => handleDecision(v, false)}
+            />
           ))}
         </div>
       )}
@@ -123,7 +210,19 @@ function StatCard({
   );
 }
 
-function VerificationCard({ v, pending, verified }: { v: VerificationSubject; pending?: boolean; verified?: boolean }) {
+function VerificationCard({
+  v,
+  pending,
+  verified,
+  onApprove,
+  onReject,
+}: {
+  v: QueueItem;
+  pending?: boolean;
+  verified?: boolean;
+  onApprove?: () => void;
+  onReject?: () => void;
+}) {
   const badge = ROLE_BADGE[v.role];
   return (
     <div
@@ -160,15 +259,15 @@ function VerificationCard({ v, pending, verified }: { v: VerificationSubject; pe
       <div className="flex items-center" style={{ gap: 16 }}>
         {pending && (
           <>
-            <button type="button" className="flex items-center justify-center hover:opacity-70" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
+            <button type="button" onClick={onReject} className="flex items-center justify-center hover:opacity-70" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
               <Image src="/icons/admin/verify/reject.svg" alt="" width={20} height={20} /> Reject
             </button>
-            <button type="button" className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(0deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2)), linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
+            <button type="button" onClick={onApprove} className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(0deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2)), linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
               <Image src="/icons/admin/verify/approve-check.svg" alt="" width={20} height={20} /> Approve
             </button>
           </>
         )}
-        <Link href={`/dashboard/users/${v.id}`} aria-label={`View ${v.name}'s profile`} className="flex items-center justify-center hover:opacity-70 shrink-0" style={{ width: 48, height: 48, borderRadius: 12 }}>
+        <Link href={v.subjectUserId ? `/dashboard/users/${v.subjectUserId}` : "/dashboard/users"} aria-label={`View ${v.name}'s profile`} className="flex items-center justify-center hover:opacity-70 shrink-0" style={{ width: 48, height: 48, borderRadius: 12 }}>
           <Image src="/icons/admin/verify/eye.svg" alt="" width={24} height={24} />
         </Link>
       </div>

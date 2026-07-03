@@ -103,11 +103,20 @@ export type KycVerificationEntry = {
   verifiedAt?: string | null;
   rejectedAt?: string | null;
   rejectionReason?: string | null;
+  attempts?: number;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type KycStatus = {
   identity?: KycVerificationEntry | null;
   business?: KycVerificationEntry | null;
+};
+
+/** Item from GET /admin/kyc/business/awaiting — unlike identity, it names its subject. */
+export type BusinessKycEntry = KycVerificationEntry & {
+  subjectKind?: "USER" | "ORGANIZATION";
+  subjectId?: string;
 };
 
 export const adminApi = api.injectEndpoints({
@@ -151,6 +160,39 @@ export const adminApi = api.injectEndpoints({
       query: (userId) => ({ url: endpoints.adminUserKyc(userId), method: "GET" }),
       transformResponse: (res: ApiEnvelope<KycStatus>) => res.data,
     }),
+    getAwaitingIdentityKyc: builder.query<PageResponse<KycVerificationEntry>, { page?: number; size?: number }>({
+      query: ({ page = 0, size = 50 } = {}) => ({
+        url: endpoints.adminKycIdentityAwaiting,
+        method: "GET",
+        params: { page, size },
+      }),
+      transformResponse: (res: ApiEnvelope<PageResponse<KycVerificationEntry>>) => res.data,
+      providesTags: [{ type: "AdminUsers" as const, id: "KYC_AWAITING" }],
+    }),
+    getAwaitingBusinessKyc: builder.query<PageResponse<BusinessKycEntry>, { page?: number; size?: number }>({
+      query: ({ page = 0, size = 50 } = {}) => ({
+        url: endpoints.adminKycBusinessAwaiting,
+        method: "GET",
+        params: { page, size },
+      }),
+      transformResponse: (res: ApiEnvelope<PageResponse<BusinessKycEntry>>) => res.data,
+      providesTags: [{ type: "AdminUsers" as const, id: "KYC_AWAITING" }],
+    }),
+    decideKyc: builder.mutation<void, { kind: "identity" | "business"; id: string; approve: boolean; reason?: string }>({
+      query: ({ kind, id, approve, reason }) => ({
+        url:
+          kind === "identity"
+            ? approve
+              ? endpoints.adminKycIdentityApprove(id)
+              : endpoints.adminKycIdentityReject(id)
+            : approve
+            ? endpoints.adminKycBusinessApprove(id)
+            : endpoints.adminKycBusinessReject(id),
+        method: "POST",
+        ...(approve ? {} : { body: { reason: reason || "Rejected by admin review" } }),
+      }),
+      invalidatesTags: [{ type: "AdminUsers" as const, id: "KYC_AWAITING" }],
+    }),
   }),
   overrideExisting: false,
 });
@@ -162,4 +204,7 @@ export const {
   useUnsuspendUserMutation,
   useGetProfessionalsQuery,
   useGetUserKycStatusQuery,
+  useGetAwaitingIdentityKycQuery,
+  useGetAwaitingBusinessKycQuery,
+  useDecideKycMutation,
 } = adminApi;
