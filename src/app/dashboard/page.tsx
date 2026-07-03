@@ -7,6 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
+import { useGetPlatformStatsQuery } from "@/services/adminApi";
 
 const GRADIENT = "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)";
 
@@ -14,14 +15,6 @@ type Stat = {
   label: string; value: string; deltaNum: string; deltaPeriod: string;
   Icon: LucideIcon; highlight?: boolean; deltaColor?: string;
 };
-const STATS: Stat[] = [
-  { label: "Total Users", value: "2,385", deltaNum: "+32%", deltaPeriod: "this week", Icon: Users, highlight: true },
-  { label: "Total Listings", value: "847", deltaNum: "+63", deltaPeriod: "this month", Icon: Home, deltaColor: "#027B2A" },
-  { label: "Revenue", value: "₦18.4m", deltaNum: "+31%", deltaPeriod: "vs last month", Icon: CircleDollarSign, deltaColor: "#027B2A" },
-  { label: "Total Subscribers", value: "1,723", deltaNum: "+12%", deltaPeriod: "this month", Icon: Users, deltaColor: "#027B2A" },
-  { label: "Daily Page Views", value: "9,347", deltaNum: "+13%", deltaPeriod: "today", Icon: Eye, deltaColor: "#027B2A" },
-  { label: "Listings Awaiting Approval", value: "28", deltaNum: "5%", deltaPeriod: "this week", Icon: Building2, deltaColor: "#CF3801" },
-];
 
 const REG_DATA = [
   { day: "Mon", owners: 3200, seekers: 5100, agents: 1800, agencies: 900 },
@@ -48,15 +41,15 @@ const PLANS = [
   { name: "Other", value: 7.2, color: "#E3E8EE" },
 ];
 
-const BANNERS = [
+const BANNER_STYLES = [
   {
-    icon: "/icons/admin/alert-clip.svg", title: "28 listings awaiting approval",
+    icon: "/icons/admin/alert-clip.svg",
     sub: "4 have been flagged for possible duplicate of existing approved listing. Review immediately.",
     cta: "Review now", href: "/dashboard/awaiting-approval",
     bg: "rgba(234, 101, 26, 0.05)", border: "#EA651A", badgeBg: "rgba(234, 101, 26, 0.1)", color: "#EA651A",
   },
   {
-    icon: "/icons/admin/alert-shield.svg", title: "18 identity verifications pending Qore ID manual review",
+    icon: "/icons/admin/alert-shield.svg",
     sub: "Oldest: 36 hours ago.",
     cta: "Verify Users", href: "/dashboard/verifications",
     bg: "rgba(138, 56, 245, 0.05)", border: "#8A38F5", badgeBg: "rgba(138, 56, 245, 0.1)", color: "#8A38F5",
@@ -71,7 +64,28 @@ const ACTIVITY = [
   { icon: "/icons/admin/act-uptime.svg", title: "System uptime recorded at 99.9% this week", time: "3 hours ago" },
 ];
 
+const fmt = (n: number | undefined, fallback: string): string =>
+  n === undefined ? fallback : n.toLocaleString("en-NG");
+
 export default function AdminDashboardPage() {
+  const { data: stats } = useGetPlatformStatsQuery();
+
+  // Live values where /admin/stats provides them; original placeholders otherwise
+  // (revenue + subscriber totals aren't exposed by the backend yet).
+  const STATS: Stat[] = [
+    { label: "Total Users", value: fmt(stats?.totalUsers, "2,385"), deltaNum: "+32%", deltaPeriod: "this week", Icon: Users, highlight: true },
+    { label: "Total Listings", value: fmt(stats?.totalProperties, "847"), deltaNum: "+63", deltaPeriod: "this month", Icon: Home, deltaColor: "#027B2A" },
+    { label: "Revenue", value: "₦18.4m", deltaNum: "+31%", deltaPeriod: "vs last month", Icon: CircleDollarSign, deltaColor: "#027B2A" },
+    { label: "Total Subscribers", value: "1,723", deltaNum: "+12%", deltaPeriod: "this month", Icon: Users, deltaColor: "#027B2A" },
+    { label: "Daily Page Views", value: fmt(stats?.totalViewCount, "9,347"), deltaNum: "+13%", deltaPeriod: "today", Icon: Eye, deltaColor: "#027B2A" },
+    { label: "Listings Awaiting Approval", value: fmt(stats?.awaitingApproval, "28"), deltaNum: "5%", deltaPeriod: "this week", Icon: Building2, deltaColor: "#CF3801" },
+  ];
+
+  const BANNERS = [
+    { ...BANNER_STYLES[0], title: `${fmt(stats?.awaitingApproval, "28")} listings awaiting approval` },
+    { ...BANNER_STYLES[1], title: `${fmt(stats?.identityKyc?.pending, "18")} identity verifications pending Qore ID manual review` },
+  ];
+
   return (
     <div className="flex flex-col gap-6">
       {/* ── Alert banners (stacked, full-width) ── */}

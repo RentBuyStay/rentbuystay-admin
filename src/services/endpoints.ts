@@ -99,5 +99,8 @@ export const endpoints = {
   kycIdentityStart: "/me/kyc/identity/start",
   kycBusinessStart: "/me/kyc/business/start",
 
+  // Admin (SUPER_ADMIN dashboard)
+  adminStats: "/admin/stats",
+
   // Add more resource paths here as you integrate them.
 } as const;
