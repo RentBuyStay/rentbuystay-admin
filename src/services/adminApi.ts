@@ -77,6 +77,22 @@ export type PageResponse<T> = {
   size: number;
 };
 
+/** Item from GET /professionals (agents + agencies public directory). */
+export type ProfessionalListItem = {
+  id: string; // userId or organizationId
+  type: "INDIVIDUAL" | "ORGANIZATION";
+  name?: string;
+  avatarUrl?: string;
+  email?: string;
+  phoneNumber?: string;
+  organizationId?: string;
+  organizationName?: string;
+  verified?: boolean;
+  averageRating?: number;
+  reviewCount?: number;
+  createdAt?: string;
+};
+
 export const adminApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStats, void>({
@@ -104,6 +120,16 @@ export const adminApi = api.injectEndpoints({
       query: (id) => ({ url: endpoints.adminUserUnsuspend(id), method: "POST" }),
       invalidatesTags: [{ type: "AdminUsers" as const, id: "LIST" }],
     }),
+    // Public directory of agents + agencies — used to enrich the admin user list
+    // with names/avatars until /admin/users returns profile fields.
+    getProfessionals: builder.query<PageResponse<ProfessionalListItem>, { page?: number; size?: number; search?: string }>({
+      query: ({ page = 0, size = 100, search } = {}) => ({
+        url: endpoints.professionals,
+        method: "GET",
+        params: { page, size, ...(search ? { search } : {}) },
+      }),
+      transformResponse: (res: ApiEnvelope<PageResponse<ProfessionalListItem>>) => res.data,
+    }),
   }),
   overrideExisting: false,
 });
@@ -113,4 +139,5 @@ export const {
   useGetAdminUsersQuery,
   useSuspendUserMutation,
   useUnsuspendUserMutation,
+  useGetProfessionalsQuery,
 } = adminApi;

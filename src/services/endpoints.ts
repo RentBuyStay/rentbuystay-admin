@@ -107,6 +107,7 @@ export const endpoints = {
   adminUserInvite: "/admin/users/invite",
   adminUserCreate: "/admin/users/user",
   adminCreateAdmin: "/admin/users/admin",
+  professionals: "/professionals",
 
   // Add more resource paths here as you integrate them.
 } as const;

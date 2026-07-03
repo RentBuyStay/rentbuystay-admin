@@ -8,10 +8,14 @@ import { type Role } from "@/lib/demoUsers";
 import {
   useGetAdminUsersQuery,
   useGetPlatformStatsQuery,
+  useGetProfessionalsQuery,
   useSuspendUserMutation,
   useUnsuspendUserMutation,
   type AdminUser,
+  type ProfessionalListItem,
 } from "@/services/adminApi";
+import { useGetAgentsQuery } from "@/services/agentApi";
+import type { AgentListItem } from "@/services/types";
 
 type UserRow = {
   id: string;
@@ -38,20 +42,35 @@ const ROLE_BY_TYPE: Record<string, UserRow["role"]> = {
   SUPER_ADMIN: "Admin",
 };
 
-function toRow(u: AdminUser): UserRow {
+function toRow(
+  u: AdminUser,
+  agentsById: Map<string, AgentListItem>,
+  prosById: Map<string, ProfessionalListItem>,
+): UserRow {
   const joined = new Date(u.createdAt);
+  // Enrich from the public directories: /agents covers agents (name, state/city,
+  // listing count); /professionals covers agencies. Seekers/owners have no
+  // profile endpoint yet, so their name/location/listings stay "—".
+  const agent = agentsById.get(u.id);
+  const pro = prosById.get(u.id) ?? (u.organizationId ? prosById.get(u.organizationId) : undefined);
+  const name =
+    [agent?.firstName, agent?.lastName].filter(Boolean).join(" ") ||
+    pro?.name ||
+    pro?.organizationName ||
+    "—";
+  const location = [agent?.city, agent?.state].filter(Boolean).join(", ") || "—";
   return {
     id: u.id,
-    name: "—", // profile names aren't exposed by GET /admin/users yet
+    name,
     email: u.email,
     role: ROLE_BY_TYPE[u.userType] ?? "Seeker",
-    location: "—",
+    location,
     joined: Number.isNaN(joined.getTime())
       ? "—"
       : joined.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }),
-    listings: "—",
+    listings: agent?.listingCount !== undefined ? String(agent.listingCount) : "—",
     status: u.status === "SUSPENDED" ? "Suspended" : "Active",
-    verified: !!u.emailVerifiedAt,
+    verified: agent?.identityVerified ?? pro?.verified ?? !!u.emailVerifiedAt,
   };
 }
 
@@ -106,8 +125,23 @@ export default function UsersPage() {
 
   const { data: usersPage } = useGetAdminUsersQuery({ page, size: PAGE_SIZE });
   const { data: stats } = useGetPlatformStatsQuery();
+  // Directory lookups used to enrich rows with names/locations/listing counts.
+  const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
+  const { data: prosPage } = useGetProfessionalsQuery({ size: 200 });
   const [suspendUser] = useSuspendUserMutation();
   const [unsuspendUser] = useUnsuspendUserMutation();
+
+  const agentsById = useMemo(() => {
+    const m = new Map<string, AgentListItem>();
+    (agentsPage?.content ?? []).forEach((a) => a.userId && m.set(a.userId, a));
+    return m;
+  }, [agentsPage]);
+
+  const prosById = useMemo(() => {
+    const m = new Map<string, ProfessionalListItem>();
+    (prosPage?.content ?? []).forEach((p) => p.id && m.set(p.id, p));
+    return m;
+  }, [prosPage]);
 
   // Live per-type counts from /admin/stats; fall back to page total while loading.
   const TABS: { key: "All" | Role; label: string; count: number }[] = [
@@ -119,10 +153,10 @@ export default function UsersPage() {
   ];
 
   const rows = useMemo(() => {
-    const all = (usersPage?.content ?? []).map(toRow);
+    const all = (usersPage?.content ?? []).map((u) => toRow(u, agentsById, prosById));
     const q = query.trim().toLowerCase();
     return all.filter((r) => (tab === "All" || r.role === tab) && (!q || r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q)));
-  }, [usersPage, tab, query]);
+  }, [usersPage, agentsById, prosById, tab, query]);
 
   const totalPages = usersPage?.totalPages ?? 1;
 
