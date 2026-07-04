@@ -2,7 +2,23 @@
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
-import { PlanFormModal, SuccessModal, ExtendModal, ConfirmModal, CancelExtras, DeleteWarning } from "@/components/PlanModals";
+import { PlanFormModal, SuccessModal, ExtendModal, ConfirmModal, CancelExtras, DeleteWarning, type PlanFormValues, type ExtendValues } from "@/components/PlanModals";
+import {
+  useGetAdminPlansQuery,
+  useGetPlanFrequenciesQuery,
+  useCreateAdminPlanMutation,
+  useUpdateAdminPlanMutation,
+  useDeleteAdminPlanMutation,
+  useGetAdminUserSubscriptionsQuery,
+  useCancelUserSubscriptionMutation,
+  useExtendUserSubscriptionMutation,
+  useGetAdminUsersQuery,
+  useGetProfessionalsQuery,
+  type AdminSubscriptionPlan,
+} from "@/services/adminApi";
+import { useGetAgentsQuery } from "@/services/agentApi";
+import { formatPrice } from "@/lib/property";
+import { EmptyState, FilterDropdown, pageItems } from "@/components/admin/userRows";
 
 const SUCCESS_COPY = {
   create: { title: "Subscription Plan Created", body: "Well-done! The new plan has been added to the platform. Eligible users can now discover and subscribe to it. You can edit or deactivate it at any time from Subscription Management." },
@@ -19,26 +35,25 @@ type Plan = {
   duration: string;
   listings: string;
   featured: string;
+  targetRole?: string;
+  agentSeats?: string;
+  features?: string;
+  raw: AdminSubscriptionPlan;
 };
 
-/* Subscription plans (swap for admin GET /admin/subscription-plans). */
-const PLANS: Plan[] = [
-  { id: "p1", name: "Starter Owner", amount: "₦0", duration: "Monthly", listings: "10", featured: "0" },
-  { id: "p2", name: "Owner Pro", amount: "₦15,000", duration: "Monthly", listings: "25", featured: "2" },
-  { id: "p3", name: "Owner - Mogul", amount: "₦25,000", duration: "Monthly", listings: "50", featured: "4" },
-  { id: "p4", name: "Starter Agent", amount: "₦5,000", duration: "Monthly", listings: "12", featured: "0" },
-  { id: "p5", name: "Agent Pro", amount: "₦20,000", duration: "Monthly", listings: "25", featured: "2" },
-  { id: "p6", name: "Agent - Growth", amount: "₦10,000", duration: "Monthly", listings: "20", featured: "2" },
-  { id: "p7", name: "Agency Pro", amount: "₦50,000", duration: "Monthly", listings: "40", featured: "4" },
-  { id: "p8", name: "Agency - Growth", amount: "₦75,000", duration: "Monthly", listings: "60", featured: "6" },
-  { id: "p9", name: "Agency - Enterprise", amount: "₦120,000", duration: "Monthly", listings: "100", featured: "10" },
-];
-
-type SubStatus = "Active" | "Extended" | "Expired";
+type SubStatus = "Active" | "Grace" | "Expired" | "Cancelled";
 const SUB_STATUS: Record<SubStatus, { bg: string; color: string }> = {
   Active: { bg: "rgba(0,157,53,0.08)", color: "#009D35" },
-  Extended: { bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
+  Grace: { bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
   Expired: { bg: "rgba(227,0,69,0.08)", color: "#E30045" },
+  Cancelled: { bg: "rgba(227,0,69,0.08)", color: "#E30045" },
+};
+
+const STATUS_LABEL: Record<string, SubStatus> = {
+  ACTIVE: "Active",
+  GRACE: "Grace",
+  EXPIRED: "Expired",
+  CANCELLED: "Cancelled",
 };
 
 type Sub = {
@@ -46,25 +61,21 @@ type Sub = {
   name: string;
   email: string;
   plan: string;
+  planTargetRole?: string;
   amount: string;
   paymentDate: string;
   renews: string;
+  endsAtIso?: string;
   status: SubStatus;
 };
 
-/* User subscriptions (swap for admin GET /admin/subscriptions). */
-const USER_SUBS: Sub[] = [
-  { id: "s1", name: "Chiamaka Femi", email: "chiamakafemi@gmail.com", plan: "Owner’s Circle", amount: "₦20,000", paymentDate: "15 Mar 2025", renews: "17 Mar 2026", status: "Active" },
-  { id: "s2", name: "Urban Nest Realty", email: "urbannestrealty@gmail.com", plan: "Agency Premium", amount: "₦65,000", paymentDate: "17 Feb 2026", renews: "28 Feb 2026", status: "Active" },
-  { id: "s3", name: "Amina Yusuf", email: "amina.yusuf@yahoo.com", plan: "Agent Pro", amount: "₦25,000", paymentDate: "28 Jan 2026", renews: "13 Feb 2026", status: "Extended" },
-  { id: "s4", name: "Luca Moretti", email: "luca.moretti@mail.it", plan: "Agent Pro", amount: "₦30,000", paymentDate: "13 Jan 2026", renews: "13 Feb 2026", status: "Active" },
-  { id: "s5", name: "Aura Homes", email: "contact@aurahomes.com", plan: "Agency Lite", amount: "₦40,000", paymentDate: "10 Jan 2026", renews: "10 Feb 2026", status: "Expired" },
-  { id: "s6", name: "Ben Thompson", email: "b.thompson@company.com", plan: "Agency Premium", amount: "₦50,000", paymentDate: "05 Jan 2026", renews: "05 Feb 2026", status: "Active" },
-  { id: "s7", name: "Mira Patel", email: "mira.patel@domain.org", plan: "Owner’s Circle", amount: "₦35,000", paymentDate: "02 Jan 2026", renews: "02 Feb 2026", status: "Active" },
-  { id: "s8", name: "Omar Al-Farsi", email: "omar.alfarsi@email.net", plan: "Owner’s Circle", amount: "₦45,000", paymentDate: "28 Dec 2025", renews: "28 Jan 2026", status: "Active" },
-  { id: "s9", name: "Lina Haddad", email: "lina.haddad@email.net", plan: "Agent Pro", amount: "₦55,000", paymentDate: "20 Dec 2025", renews: "20 Jan 2026", status: "Expired" },
-  { id: "s10", name: "Karim Mansour", email: "karim.mansour@email.net", plan: "Owner’s Circle", amount: "₦60,000", paymentDate: "15 Dec 2025", renews: "15 Jan 2026", status: "Active" },
-];
+const fmtDate = (iso?: string): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-NG", { day: "2-digit", month: "short", year: "numeric" });
+};
+
+const SUBS_PAGE_SIZE = 20;
 
 const TABS = ["Subscription Plans", "User Subscriptions"] as const;
 
@@ -75,20 +86,177 @@ export default function SubscriptionManagementPage() {
   const [planModal, setPlanModal] = useState<{ mode: "create" | "edit"; plan?: Plan } | null>(null);
   const [action, setAction] = useState<{ type: "extend" | "cancel"; sub: Sub } | { type: "delete"; plan: Plan } | null>(null);
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [subsPage, setSubsPage] = useState(0);
+  const [planPage, setPlanPage] = useState(0);
+  const [planFilter, setPlanFilter] = useState<string | null>(null);
+  const [roleFilter, setRoleFilter] = useState<string | null>(null);
+
+  const { data: apiPlans = [], isLoading: loadingPlans } = useGetAdminPlansQuery();
+  const { data: frequencies = [] } = useGetPlanFrequenciesQuery();
+  const { data: subsPageData, isLoading: loadingSubs } = useGetAdminUserSubscriptionsQuery({ page: subsPage, size: SUBS_PAGE_SIZE });
+  const { data: usersPage } = useGetAdminUsersQuery({ page: 0, size: 200 });
+  const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
+  const { data: prosPage } = useGetProfessionalsQuery({ size: 200 });
+  const [createPlan, { isLoading: creatingPlan }] = useCreateAdminPlanMutation();
+  const [updatePlan, { isLoading: updatingPlan }] = useUpdateAdminPlanMutation();
+  const [deletePlan, { isLoading: deletingPlan }] = useDeleteAdminPlanMutation();
+  const [cancelSub, { isLoading: cancelling }] = useCancelUserSubscriptionMutation();
+  const [extendSub, { isLoading: extending }] = useExtendUserSubscriptionMutation();
+
+  const allPlans: Plan[] = useMemo(
+    () =>
+      apiPlans.map((p) => ({
+        id: p.id,
+        name: p.name,
+        amount: formatPrice(p.price),
+        duration: p.frequency?.name ?? (p.durationDays ? `${p.durationDays} days` : "—"),
+        listings: String(p.listingLimit ?? 0),
+        featured: String(p.featuredLimit ?? 0),
+        targetRole: p.targetRole ?? undefined,
+        agentSeats: String(p.agentSeats ?? 0),
+        features: p.features ?? "",
+        raw: p,
+      })),
+    [apiPlans],
+  );
+  const plansById = useMemo(() => new Map(allPlans.map((p) => [p.id, p])), [allPlans]);
 
   const plans = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return PLANS.filter((p) => !q || p.name.toLowerCase().includes(q));
-  }, [query]);
+    return allPlans.filter(
+      (p) =>
+        (!q || p.name.toLowerCase().includes(q)) &&
+        (!roleFilter || (p.targetRole ?? "").toLowerCase() === roleFilter.toLowerCase()),
+    );
+  }, [allPlans, query, roleFilter]);
+
+  // User subscriptions joined with plans (name/amount) and users/directories (identity).
+  const subs: Sub[] = useMemo(() => {
+    const usersById = new Map((usersPage?.content ?? []).map((u) => [u.id, u]));
+    const agentsById = new Map((agentsPage?.content ?? []).map((a) => [a.userId, a]));
+    const prosById = new Map((prosPage?.content ?? []).map((pr) => [pr.id, pr]));
+    return (subsPageData?.content ?? []).map((sub) => {
+      const plan = plansById.get(sub.planId);
+      const u = usersById.get(sub.userId);
+      const agent = agentsById.get(sub.userId);
+      const pro = prosById.get(sub.userId) ?? (u?.organizationId ? prosById.get(u.organizationId) : undefined);
+      const name =
+        [agent?.firstName, agent?.lastName].filter(Boolean).join(" ") ||
+        pro?.name || pro?.organizationName || u?.email?.split("@")[0] || "—";
+      return {
+        id: sub.id,
+        name,
+        email: u?.email ?? "—",
+        plan: plan?.name ?? "—",
+        planTargetRole: plan?.targetRole,
+        amount: plan ? plan.amount : "—",
+        paymentDate: fmtDate(sub.startsAt),
+        renews: fmtDate(sub.endsAt),
+        endsAtIso: sub.endsAt,
+        status: STATUS_LABEL[sub.status] ?? "Expired",
+      };
+    });
+  }, [subsPageData, plansById, usersPage, agentsPage, prosPage]);
+
+  const visibleSubs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return subs.filter(
+      (sv) =>
+        (!q || sv.name.toLowerCase().includes(q) || sv.email.toLowerCase().includes(q)) &&
+        (!planFilter || sv.plan === planFilter) &&
+        (!roleFilter || (sv.planTargetRole ?? "").toLowerCase() === roleFilter.toLowerCase()),
+    );
+  }, [subs, query, planFilter, roleFilter]);
+
+  const PLANS_PAGE_SIZE = 10;
+  const planTotalPages = Math.max(1, Math.ceil(plans.length / PLANS_PAGE_SIZE));
+  const pagedPlans = plans.slice(planPage * PLANS_PAGE_SIZE, (planPage + 1) * PLANS_PAGE_SIZE);
+
+  const subsTotalPages = subsPageData?.totalPages ?? 1;
+  const activeCount = subs.filter((sv) => sv.status === "Active").length;
+  const expiringSoon = subs.filter((sv) => {
+    if (sv.status !== "Active" || !sv.endsAtIso) return false;
+    const diff = new Date(sv.endsAtIso).getTime() - Date.now();
+    return diff > 0 && diff <= 7 * 86400000;
+  }).length;
+
+  const frequencyNames = frequencies.map((f) => f.name);
+  const roleOptions = [...new Set(allPlans.map((p) => p.targetRole).filter((r): r is string => !!r))];
+
+  // Map form values back to the SubscriptionPlan entity shape the API expects.
+  const toPlanBody = (v: PlanFormValues, base?: AdminSubscriptionPlan) => {
+    const freq = frequencies.find((f) => f.name.toLowerCase() === v.duration.toLowerCase());
+    return {
+      ...(base ?? {}),
+      name: v.name,
+      price: v.price,
+      listingLimit: v.listingLimit,
+      featuredLimit: v.featuredLimit,
+      agentSeats: v.agentSeats,
+      targetRole: v.targetRole || base?.targetRole || null,
+      features: v.features,
+      frequency: freq ?? base?.frequency ?? null,
+      durationDays: freq?.days ?? base?.durationDays ?? null,
+      isActive: base?.isActive ?? true,
+    };
+  };
+
+  const handleSavePlan = async (v: PlanFormValues) => {
+    if (!planModal) return;
+    try {
+      if (planModal.mode === "create") await createPlan(toPlanBody(v)).unwrap();
+      else await updatePlan({ id: planModal.plan!.id, body: toPlanBody(v, planModal.plan!.raw) }).unwrap();
+      const copy = SUCCESS_COPY[planModal.mode];
+      setPlanModal(null);
+      setSuccess(copy);
+    } catch {
+      // keep the modal open so nothing is lost; the API error is non-fatal
+    }
+  };
+
+  const handleExtend = async (v: ExtendValues) => {
+    if (action?.type !== "extend") return;
+    try {
+      await extendSub({ id: action.sub.id, newEndDate: v.newEndDate, reason: v.reason, internalNote: v.internalNote }).unwrap();
+      setAction(null);
+      setSuccess(SUCCESS_COPY.extend);
+    } catch {
+      // keep modal open on failure
+    }
+  };
+
+  const handleCancelSub = async () => {
+    if (action?.type !== "cancel") return;
+    try {
+      await cancelSub({ id: action.sub.id, reason: cancelReason || "Cancelled by admin" }).unwrap();
+      setAction(null);
+      setCancelReason("");
+      setSuccess(SUCCESS_COPY.cancel);
+    } catch {
+      // keep modal open on failure
+    }
+  };
+
+  const handleDeletePlan = async () => {
+    if (action?.type !== "delete") return;
+    try {
+      await deletePlan(action.plan.id).unwrap();
+      setAction(null);
+      setSuccess(SUCCESS_COPY.delete);
+    } catch {
+      // keep modal open on failure
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard gradient icon="/icons/admin/sub-mrr.svg" label="MRR" value="₦18.4M" delta="+31% MoM" deltaColor="#FFFFFF" />
-        <StatCard icon="/icons/admin/sub-active.svg" label="Active Subs" value="1,124" delta="+89 this month" deltaColor="#027B2A" />
-        <StatCard icon="/icons/admin/sub-churn.svg" label="Churn Rate" value="2.1%" delta="Improved 0.4%" deltaColor="#027B2A" />
-        <StatCard icon="/icons/admin/sub-expiring.svg" label="Expiring (7 Days)" value="28" delta="Try to send reminders" deltaColor="#807E7E" />
+        <StatCard gradient icon="/icons/admin/sub-mrr.svg" label="MRR" value="—" delta="Awaiting revenue data" deltaColor="#FFFFFF" />
+        <StatCard icon="/icons/admin/sub-active.svg" label="Active Subs" value={String(activeCount)} delta="On this page" deltaColor="#027B2A" />
+        <StatCard icon="/icons/admin/sub-churn.svg" label="Churn Rate" value="—" delta="Awaiting revenue data" deltaColor="#807E7E" />
+        <StatCard icon="/icons/admin/sub-expiring.svg" label="Expiring (7 Days)" value={String(expiringSoon)} delta="Try to send reminders" deltaColor="#807E7E" />
       </div>
 
       {/* Tabs + Create Plan */}
@@ -128,8 +296,8 @@ export default function SubscriptionManagementPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4 flex-wrap">
           <span style={{ fontSize: 16, fontWeight: 500, lineHeight: "24px", letterSpacing: "-0.02em", color: "#121212" }}>Filter:</span>
-          {tab === "User Subscriptions" && <FilterPill label="Plan" minWidth={109} />}
-          <FilterPill label="User type" minWidth={133} />
+          {tab === "User Subscriptions" && <FilterDropdown label="Plan" options={allPlans.map((pl) => pl.name)} value={planFilter} onChange={setPlanFilter} />}
+          <FilterDropdown label="User type" options={roleOptions} value={roleFilter} onChange={setRoleFilter} minWidth={133} />
         </div>
         <div className="flex items-center gap-2 bg-[#F6F6F6] rounded-[12px] h-12 px-4 flex-1 min-w-[220px] lg:max-w-[394px]">
           <Image src="/icons/admin/search-normal.svg" alt="" width={20} height={20} />
@@ -144,6 +312,22 @@ export default function SubscriptionManagementPage() {
 
       {/* Content */}
       {tab === "User Subscriptions" ? (
+        loadingSubs ? (
+        <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
+          Loading subscriptions…
+        </div>
+        ) : visibleSubs.length === 0 ? (
+        <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+          <EmptyState
+            title={query.trim() || planFilter || roleFilter ? "No results found" : "No user subscriptions yet"}
+            subtitle={
+              query.trim() || planFilter || roleFilter
+                ? "No subscriptions match your search or filters."
+                : "When users subscribe to a plan, their subscriptions will appear here."
+            }
+          />
+        </div>
+        ) : (
         <div className="rounded-[20px] border border-[#F6F6F6] overflow-hidden bg-white">
           <div className="overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: "collapse", minWidth: 1000 }}>
@@ -171,7 +355,7 @@ export default function SubscriptionManagementPage() {
                 </tr>
               </thead>
               <tbody>
-                {USER_SUBS.map((s) => {
+                {visibleSubs.map((s) => {
                   const st = SUB_STATUS[s.status];
                   return (
                     <tr key={s.id} style={{ borderBottom: "1px solid #F6F6F6" }} className="hover:bg-[#fafafa]">
@@ -217,16 +401,33 @@ export default function SubscriptionManagementPage() {
           </div>
 
           <div className="flex items-center justify-between px-6 py-4 border-t border-[#ededed]">
-            <button className="flex items-center gap-2 text-[14px] font-medium text-[#344054] border border-[#D0D5DD] rounded-[8px] px-3.5 py-2 hover:bg-[#fafafa]">← Previous</button>
+            <button onClick={() => setSubsPage((n) => Math.max(0, n - 1))} disabled={subsPage === 0} className="flex items-center gap-2 text-[14px] font-medium text-[#344054] border border-[#D0D5DD] rounded-[8px] px-3.5 py-2 hover:bg-[#fafafa] disabled:opacity-50">← Previous</button>
             <div className="hidden sm:flex items-center gap-1">
-              {[1, 2, 3, "…", 8, 9, 10].map((n, i) => (
-                <button key={i} className="rounded-[8px] text-[14px] font-medium" style={{ width: 40, height: 40, background: n === 1 ? "rgba(48,94,130,0.1)" : "transparent", color: n === 1 ? "#305E82" : "#667085" }}>{n}</button>
+              {pageItems(subsPage, subsTotalPages).map((n, i) => (
+                <button key={i} onClick={() => typeof n === "number" && setSubsPage(n - 1)} className="rounded-[8px] text-[14px] font-medium" style={{ width: 40, height: 40, background: n === subsPage + 1 ? "rgba(48,94,130,0.1)" : "transparent", color: n === subsPage + 1 ? "#305E82" : "#667085" }}>{n}</button>
               ))}
             </div>
-            <button className="flex items-center gap-2 text-[14px] font-medium text-[#344054] border border-[#D0D5DD] rounded-[8px] px-3.5 py-2 hover:bg-[#fafafa]">Next →</button>
+            <button onClick={() => setSubsPage((n) => Math.min(subsTotalPages - 1, n + 1))} disabled={subsPage >= subsTotalPages - 1} className="flex items-center gap-2 text-[14px] font-medium text-[#344054] border border-[#D0D5DD] rounded-[8px] px-3.5 py-2 hover:bg-[#fafafa] disabled:opacity-50">Next →</button>
           </div>
         </div>
+        )
       ) : (
+        loadingPlans ? (
+        <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
+          Loading plans…
+        </div>
+        ) : plans.length === 0 ? (
+        <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+          <EmptyState
+            title={query.trim() || roleFilter ? "No results found" : "No subscription plans yet"}
+            subtitle={
+              query.trim() || roleFilter
+                ? "No plans match your search or filters."
+                : "Create your first plan with the Create Plan button above."
+            }
+          />
+        </div>
+        ) : (
         <div className="rounded-[20px] border border-[#F6F6F6] overflow-hidden bg-white">
           <div className="overflow-x-auto">
             <table className="w-full" style={{ borderCollapse: "collapse", minWidth: 1000 }}>
@@ -246,7 +447,7 @@ export default function SubscriptionManagementPage() {
                 </tr>
               </thead>
               <tbody>
-                {plans.map((p) => (
+                {pagedPlans.map((p) => (
                   <tr key={p.id} style={{ borderBottom: "1px solid #F6F6F6" }} className="hover:bg-[#fafafa]">
                     <td style={{ padding: "16px 24px", fontSize: 14, fontWeight: 500, color: "#121212", whiteSpace: "nowrap" }}>{p.name}</td>
                     <td style={{ padding: "16px 24px", fontSize: 14, color: "#121212", whiteSpace: "nowrap" }}>{p.amount}</td>
@@ -287,44 +488,46 @@ export default function SubscriptionManagementPage() {
 
           {/* Pagination */}
           <div className="flex items-center justify-between px-6 py-4 border-t border-[#ededed]">
-            <button className="flex items-center gap-2 text-[14px] font-medium text-[#344054] border border-[#D0D5DD] rounded-[8px] px-3.5 py-2 hover:bg-[#fafafa]">
+            <button onClick={() => setPlanPage((n) => Math.max(0, n - 1))} disabled={planPage === 0} className="flex items-center gap-2 text-[14px] font-medium text-[#344054] border border-[#D0D5DD] rounded-[8px] px-3.5 py-2 hover:bg-[#fafafa] disabled:opacity-50">
               ← Previous
             </button>
             <div className="hidden sm:flex items-center gap-1">
-              {[1, 2, 3, "…", 8, 9, 10].map((n, i) => (
+              {pageItems(planPage, planTotalPages).map((n, i) => (
                 <button
                   key={i}
+                  onClick={() => typeof n === "number" && setPlanPage(n - 1)}
                   className="rounded-[8px] text-[14px] font-medium"
-                  style={{ width: 40, height: 40, background: n === 1 ? "rgba(48,94,130,0.1)" : "transparent", color: n === 1 ? "#305E82" : "#667085" }}
+                  style={{ width: 40, height: 40, background: n === planPage + 1 ? "rgba(48,94,130,0.1)" : "transparent", color: n === planPage + 1 ? "#305E82" : "#667085" }}
                 >
                   {n}
                 </button>
               ))}
             </div>
-            <button className="flex items-center gap-2 text-[14px] font-medium text-[#344054] border border-[#D0D5DD] rounded-[8px] px-3.5 py-2 hover:bg-[#fafafa]">
+            <button onClick={() => setPlanPage((n) => Math.min(planTotalPages - 1, n + 1))} disabled={planPage >= planTotalPages - 1} className="flex items-center gap-2 text-[14px] font-medium text-[#344054] border border-[#D0D5DD] rounded-[8px] px-3.5 py-2 hover:bg-[#fafafa] disabled:opacity-50">
               Next →
             </button>
           </div>
         </div>
+        )
       )}
 
       {planModal && (
         <PlanFormModal
           mode={planModal.mode}
           initial={planModal.plan}
+          durationOptions={frequencyNames}
+          saving={creatingPlan || updatingPlan}
           onClose={() => setPlanModal(null)}
-          onSaved={() => {
-            const copy = SUCCESS_COPY[planModal.mode];
-            setPlanModal(null);
-            setSuccess(copy);
-          }}
+          onSaved={handleSavePlan}
         />
       )}
       {action?.type === "extend" && (
         <ExtendModal
           subtitle={`${action.sub.name} · ${action.sub.plan} Plan · Renews ${action.sub.renews}`}
+          currentEndDate={action.sub.endsAtIso}
+          saving={extending}
           onClose={() => setAction(null)}
-          onConfirm={() => { setAction(null); setSuccess(SUCCESS_COPY.extend); }}
+          onConfirm={handleExtend}
         />
       )}
       {action?.type === "cancel" && (
@@ -333,10 +536,11 @@ export default function SubscriptionManagementPage() {
           title="Cancel Subscription"
           body={`Are you sure you want to cancel ${action.sub.name}'s ${action.sub.plan} plan? This will downgrade the account to the free tier.`}
           confirmLabel="Cancel Subscription"
-          onConfirm={() => { setAction(null); setSuccess(SUCCESS_COPY.cancel); }}
-          onClose={() => setAction(null)}
+          busy={cancelling}
+          onConfirm={handleCancelSub}
+          onClose={() => { setAction(null); setCancelReason(""); }}
         >
-          <CancelExtras />
+          <CancelExtras reason={cancelReason} onReasonChange={setCancelReason} />
         </ConfirmModal>
       )}
       {action?.type === "delete" && (
@@ -344,7 +548,8 @@ export default function SubscriptionManagementPage() {
           title="Delete Subscription Plan"
           body={`You're about to permanently delete the ${action.plan.name} plan. This action cannot be undone.`}
           confirmLabel="Delete Plan"
-          onConfirm={() => { setAction(null); setSuccess(SUCCESS_COPY.delete); }}
+          busy={deletingPlan}
+          onConfirm={handleDeletePlan}
           onClose={() => setAction(null)}
         >
           <DeleteWarning />

@@ -122,6 +122,12 @@ export const endpoints = {
   adminPropertyReject: (id: string) => `/admin/properties/${id}/reject`,
   adminPropertyArchive: (id: string) => `/admin/properties/${id}/archive`,
   reviewsFor: (subjectType: string, subjectId: string) => `/reviews/${subjectType}/${subjectId}`,
+  adminSubscriptionPlans: "/admin/subscription-plans",
+  adminSubscriptionPlan: (id: string) => `/admin/subscription-plans/${id}`,
+  adminSubscriptionFrequencies: "/admin/subscription-plans/frequencies",
+  adminUserSubscriptions: "/admin/user-subscriptions",
+  adminUserSubscriptionCancel: (id: string) => `/admin/user-subscriptions/${id}/cancel`,
+  adminUserSubscriptionExtend: (id: string) => `/admin/user-subscriptions/${id}/extend`,
 
   // Add more resource paths here as you integrate them.
 } as const;

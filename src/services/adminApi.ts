@@ -132,6 +132,40 @@ export type ReviewItem = {
   createdAt?: string;
 };
 
+/** SubscriptionPlan entity from /admin/subscription-plans. */
+export type AdminSubscriptionPlan = {
+  id: string;
+  name: string;
+  price: number;
+  listingLimit?: number | null;
+  featuredLimit?: number | null;
+  isActive?: boolean;
+  description?: string | null;
+  targetRole?: string | null;
+  frequency?: { id: string; name: string; days?: number } | null;
+  durationDays?: number | null;
+  agentSeats?: number | null;
+  features?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PlanFrequency = { id: string; name: string; days?: number };
+
+/** UserSubscription entity from /admin/user-subscriptions. */
+export type AdminUserSubscription = {
+  id: string;
+  userId: string;
+  planId: string;
+  status: "ACTIVE" | "GRACE" | "EXPIRED" | "CANCELLED";
+  startsAt?: string;
+  endsAt?: string;
+  autoRenew?: boolean;
+  cancellationReason?: string | null;
+  internalNote?: string | null;
+  createdAt?: string;
+};
+
 export const adminApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStats, void>({
@@ -235,6 +269,53 @@ export const adminApi = api.injectEndpoints({
       }),
       transformResponse: (res: ApiEnvelope<PageResponse<ReviewItem>>) => res.data,
     }),
+    // ── Subscriptions (admin) ──
+    getAdminPlans: builder.query<AdminSubscriptionPlan[], void>({
+      query: () => ({ url: endpoints.adminSubscriptionPlans, method: "GET" }),
+      transformResponse: (res: ApiEnvelope<AdminSubscriptionPlan[]>) => res.data,
+      providesTags: [{ type: "Subscription" as const, id: "ADMIN_PLANS" }],
+    }),
+    getPlanFrequencies: builder.query<PlanFrequency[], void>({
+      query: () => ({ url: endpoints.adminSubscriptionFrequencies, method: "GET" }),
+      transformResponse: (res: ApiEnvelope<PlanFrequency[]>) => res.data,
+    }),
+    createAdminPlan: builder.mutation<AdminSubscriptionPlan, Partial<AdminSubscriptionPlan>>({
+      query: (body) => ({ url: endpoints.adminSubscriptionPlans, method: "POST", body }),
+      invalidatesTags: [{ type: "Subscription" as const, id: "ADMIN_PLANS" }],
+    }),
+    updateAdminPlan: builder.mutation<AdminSubscriptionPlan, { id: string; body: Partial<AdminSubscriptionPlan> }>({
+      query: ({ id, body }) => ({ url: endpoints.adminSubscriptionPlan(id), method: "PUT", body }),
+      invalidatesTags: [{ type: "Subscription" as const, id: "ADMIN_PLANS" }],
+    }),
+    deleteAdminPlan: builder.mutation<void, string>({
+      query: (id) => ({ url: endpoints.adminSubscriptionPlan(id), method: "DELETE" }),
+      invalidatesTags: [{ type: "Subscription" as const, id: "ADMIN_PLANS" }],
+    }),
+    getAdminUserSubscriptions: builder.query<PageResponse<AdminUserSubscription>, { page?: number; size?: number }>({
+      query: ({ page = 0, size = 20 } = {}) => ({
+        url: endpoints.adminUserSubscriptions,
+        method: "GET",
+        params: { page, size },
+      }),
+      transformResponse: (res: ApiEnvelope<PageResponse<AdminUserSubscription>>) => res.data,
+      providesTags: [{ type: "Subscription" as const, id: "ADMIN_SUBS" }],
+    }),
+    cancelUserSubscription: builder.mutation<void, { id: string; reason?: string; internalNote?: string }>({
+      query: ({ id, reason = "Cancelled by admin", internalNote = "" }) => ({
+        url: endpoints.adminUserSubscriptionCancel(id),
+        method: "POST",
+        body: { reason, internalNote },
+      }),
+      invalidatesTags: [{ type: "Subscription" as const, id: "ADMIN_SUBS" }],
+    }),
+    extendUserSubscription: builder.mutation<void, { id: string; newEndDate: string; reason?: string; internalNote?: string }>({
+      query: ({ id, newEndDate, reason = "", internalNote = "" }) => ({
+        url: endpoints.adminUserSubscriptionExtend(id),
+        method: "POST",
+        body: { newEndDate, reason, internalNote },
+      }),
+      invalidatesTags: [{ type: "Subscription" as const, id: "ADMIN_SUBS" }],
+    }),
     getUserKycStatus: builder.query<KycStatus, string>({
       query: (userId) => ({ url: endpoints.adminUserKyc(userId), method: "GET" }),
       transformResponse: (res: ApiEnvelope<KycStatus>) => res.data,
@@ -293,4 +374,12 @@ export const {
   useRemovePropertyMutation,
   useArchiveAdminPropertyMutation,
   useGetSubjectReviewsQuery,
+  useGetAdminPlansQuery,
+  useGetPlanFrequenciesQuery,
+  useCreateAdminPlanMutation,
+  useUpdateAdminPlanMutation,
+  useDeleteAdminPlanMutation,
+  useGetAdminUserSubscriptionsQuery,
+  useCancelUserSubscriptionMutation,
+  useExtendUserSubscriptionMutation,
 } = adminApi;

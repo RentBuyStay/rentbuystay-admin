@@ -10,6 +10,28 @@ export type PlanInitial = {
   duration?: string;
   listings?: string;
   featured?: string;
+  targetRole?: string;
+  agentSeats?: string;
+  features?: string;
+};
+
+/** Values captured by the plan form, submitted to the admin plans API. */
+export type PlanFormValues = {
+  name: string;
+  targetRole: string;
+  duration: string;
+  price: number;
+  listingLimit: number;
+  featuredLimit: number;
+  agentSeats: number;
+  features: string;
+};
+
+/** Values captured by the extend form. */
+export type ExtendValues = {
+  newEndDate: string; // ISO instant
+  reason: string;
+  internalNote: string;
 };
 
 const FIELD = "h-12 px-4 bg-[#F6F6F6] rounded-[12px] outline-none text-[14px] text-[#121212] placeholder:text-[#807E7E]";
@@ -23,10 +45,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Select({ placeholder, options }: { placeholder: string; options: string[] }) {
+function Select({ placeholder, options, value, onChange }: { placeholder: string; options: string[]; value: string; onChange: (v: string) => void }) {
   return (
     <div className="relative">
-      <select defaultValue="" className={`${FIELD} w-full appearance-none pr-10`}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={`${FIELD} w-full appearance-none pr-10`}>
         <option value="" disabled>{placeholder}</option>
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
@@ -35,19 +57,18 @@ function Select({ placeholder, options }: { placeholder: string; options: string
   );
 }
 
-function Stepper({ defaultValue = 0 }: { defaultValue?: number }) {
-  const [v, setV] = useState(defaultValue);
+function Stepper({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
     <div className="flex items-center justify-between h-12 px-4 bg-[#F6F6F6] rounded-[12px]">
       <input
         type="number"
-        value={v}
-        onChange={(e) => setV(Math.max(0, Number(e.target.value) || 0))}
+        value={value}
+        onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
         className="bg-transparent outline-none w-full text-[14px] text-[#121212] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
       />
       <div className="flex flex-col shrink-0">
-        <button type="button" onClick={() => setV((n) => n + 1)} className="hover:opacity-70" aria-label="Increase"><ChevronUp size={14} color="#807E7E" /></button>
-        <button type="button" onClick={() => setV((n) => Math.max(0, n - 1))} className="hover:opacity-70" aria-label="Decrease"><ChevronDown size={14} color="#807E7E" /></button>
+        <button type="button" onClick={() => onChange(value + 1)} className="hover:opacity-70" aria-label="Increase"><ChevronUp size={14} color="#807E7E" /></button>
+        <button type="button" onClick={() => onChange(Math.max(0, value - 1))} className="hover:opacity-70" aria-label="Decrease"><ChevronDown size={14} color="#807E7E" /></button>
       </div>
     </div>
   );
@@ -56,14 +77,27 @@ function Stepper({ defaultValue = 0 }: { defaultValue?: number }) {
 export function PlanFormModal({
   mode,
   initial,
+  durationOptions,
+  saving,
   onClose,
   onSaved,
 }: {
   mode: "create" | "edit";
   initial?: PlanInitial;
+  durationOptions?: string[];
+  saving?: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (values: PlanFormValues) => void;
 }) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [targetRole, setTargetRole] = useState(initial?.targetRole ?? "");
+  const [duration, setDuration] = useState(initial?.duration ?? "");
+  const [price, setPrice] = useState(initial?.amount?.replace(/[^\d]/g, "") ?? "");
+  const [listingLimit, setListingLimit] = useState(Number(initial?.listings) || 0);
+  const [featuredLimit, setFeaturedLimit] = useState(Number(initial?.featured) || 0);
+  const [agentSeats, setAgentSeats] = useState(Number(initial?.agentSeats) || 0);
+  const [features, setFeatures] = useState(initial?.features ?? "");
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
       <div className="relative bg-white rounded-[24px] w-full max-w-[720px] max-h-[90vh] overflow-y-auto p-6 sm:p-10" onClick={(e) => e.stopPropagation()}>
@@ -80,40 +114,53 @@ export function PlanFormModal({
 
         <form
           className="flex flex-col gap-4 mt-6"
-          onSubmit={(e) => { e.preventDefault(); onSaved(); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSaved({
+              name: name.trim(),
+              targetRole,
+              duration,
+              price: Number(price) || 0,
+              listingLimit,
+              featuredLimit,
+              agentSeats,
+              features,
+            });
+          }}
         >
           <div className="flex flex-col sm:flex-row gap-4">
             <Field label="Plan Name">
-              <input className={FIELD} defaultValue={initial?.name} placeholder="Enter plan name (e.g. Agency Enterprise)" />
+              <input className={FIELD} value={name} onChange={(e) => setName(e.target.value)} placeholder="Enter plan name (e.g. Agency Enterprise)" required />
             </Field>
             <Field label="Target Role">
-              <Select placeholder="Select target role" options={["Owner", "Agent", "Agency", "Seeker"]} />
+              <Select placeholder="Select target role" options={["Owner", "Agent", "Agency", "Seeker"]} value={targetRole} onChange={setTargetRole} />
             </Field>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4">
             <Field label="Duration">
-              <Select placeholder="Select plan duration" options={["Monthly", "Quarterly", "Yearly"]} />
+              <Select placeholder="Select plan duration" options={durationOptions?.length ? durationOptions : ["Monthly", "Quarterly", "Yearly"]} value={duration} onChange={setDuration} />
             </Field>
             <Field label="Price (₦)">
-              <input className={FIELD} defaultValue={initial?.amount?.replace(/[^\d]/g, "")} placeholder="Enter price" inputMode="numeric" />
+              <input className={FIELD} value={price} onChange={(e) => setPrice(e.target.value.replace(/[^\d]/g, ""))} placeholder="Enter price" inputMode="numeric" required />
             </Field>
           </div>
 
-          <Field label="Max Listings"><Stepper defaultValue={Number(initial?.listings) || 0} /></Field>
-          <Field label="Featured Listings"><Stepper defaultValue={Number(initial?.featured) || 0} /></Field>
-          <Field label="Agent Seats (for Agency Plans)"><Stepper /></Field>
+          <Field label="Max Listings"><Stepper value={listingLimit} onChange={setListingLimit} /></Field>
+          <Field label="Featured Listings"><Stepper value={featuredLimit} onChange={setFeaturedLimit} /></Field>
+          <Field label="Agent Seats (for Agency Plans)"><Stepper value={agentSeats} onChange={setAgentSeats} /></Field>
 
           <Field label="Features (one per line)">
-            <textarea className="h-[100px] p-4 bg-[#F6F6F6] rounded-[12px] outline-none resize-none text-[14px] text-[#121212] placeholder:text-[#807E7E]" placeholder="Write plan features here" />
+            <textarea value={features} onChange={(e) => setFeatures(e.target.value)} className="h-[100px] p-4 bg-[#F6F6F6] rounded-[12px] outline-none resize-none text-[14px] text-[#121212] placeholder:text-[#807E7E]" placeholder="Write plan features here" />
           </Field>
 
           <button
             type="submit"
-            className="flex items-center justify-center text-white hover:opacity-90 mt-2"
+            disabled={saving}
+            className="flex items-center justify-center text-white hover:opacity-90 mt-2 disabled:opacity-60"
             style={{ height: 48, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
           >
-            Save Plan
+            {saving ? "Saving…" : "Save Plan"}
           </button>
         </form>
       </div>
@@ -176,7 +223,34 @@ function NotifyCard({ subtitle }: { subtitle: string }) {
   );
 }
 
-export function ExtendModal({ subtitle, onClose, onConfirm }: { subtitle: string; onClose: () => void; onConfirm: () => void }) {
+const EXTEND_MONTHS: Record<string, number> = { "1 month": 1, "3 months": 3, "6 months": 6, "1 year": 12 };
+
+export function ExtendModal({
+  subtitle,
+  currentEndDate,
+  saving,
+  onClose,
+  onConfirm,
+}: {
+  subtitle: string;
+  currentEndDate?: string;
+  saving?: boolean;
+  onClose: () => void;
+  onConfirm: (values: ExtendValues) => void;
+}) {
+  const [duration, setDuration] = useState("");
+  const [reason, setReason] = useState("");
+  const [internalNote, setInternalNote] = useState("");
+
+  // New end date = current expiry (or today, if already past) + selected duration.
+  const baseMs = currentEndDate ? Math.max(new Date(currentEndDate).getTime(), Date.now()) : Date.now();
+  const months = EXTEND_MONTHS[duration] ?? 0;
+  const endDate = new Date(baseMs);
+  endDate.setMonth(endDate.getMonth() + months);
+  const endDateLabel = months
+    ? endDate.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })
+    : "";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
       <div className="relative bg-white rounded-[24px] w-full max-w-[720px] max-h-[90vh] overflow-y-auto p-6 sm:p-10" onClick={(e) => e.stopPropagation()}>
@@ -188,24 +262,31 @@ export function ExtendModal({ subtitle, onClose, onConfirm }: { subtitle: string
           <p style={{ fontSize: 12, lineHeight: "20px", color: "#807E7E" }}>{subtitle}</p>
         </div>
 
-        <form className="flex flex-col gap-4 mt-6" onSubmit={(e) => { e.preventDefault(); onConfirm(); }}>
-          <Field label="Duration"><Select placeholder="Select extension duration" options={["1 month", "3 months", "6 months", "1 year"]} /></Field>
+        <form
+          className="flex flex-col gap-4 mt-6"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!months) return;
+            onConfirm({ newEndDate: endDate.toISOString(), reason, internalNote });
+          }}
+        >
+          <Field label="Duration"><Select placeholder="Select extension duration" options={Object.keys(EXTEND_MONTHS)} value={duration} onChange={setDuration} /></Field>
           <Field label="End Date">
             <div className="flex items-center justify-between h-12 px-4 bg-[#F6F6F6] rounded-[12px]">
-              <input className="bg-transparent outline-none w-full text-[14px] text-[#121212]" defaultValue="15 May, 2026" />
+              <input className="bg-transparent outline-none w-full text-[14px] text-[#121212]" value={endDateLabel} placeholder="Select a duration" readOnly />
               <Calendar size={20} color="#807E7E" className="shrink-0" />
             </div>
           </Field>
-          <Field label="Reason for Extension"><Select placeholder="Select reason for extension" options={["Goodwill gesture", "Service compensation", "Promotional offer", "Other"]} /></Field>
+          <Field label="Reason for Extension"><Select placeholder="Select reason for extension" options={["Goodwill gesture", "Service compensation", "Promotional offer", "Other"]} value={reason} onChange={setReason} /></Field>
           <div className="flex flex-col gap-2">
             <label style={{ fontSize: 14, fontWeight: 500, lineHeight: "24px", letterSpacing: "-0.02em", color: "#121212" }}>
               Internal Note <span style={{ color: "#807E7E", fontSize: 12 }}>(Optional)</span>
             </label>
-            <textarea className="h-[111px] p-4 bg-[#F6F6F6] rounded-[12px] outline-none resize-none text-[14px] text-[#121212] placeholder:text-[#807E7E]" placeholder="Add a note for audit trail" />
+            <textarea value={internalNote} onChange={(e) => setInternalNote(e.target.value)} className="h-[111px] p-4 bg-[#F6F6F6] rounded-[12px] outline-none resize-none text-[14px] text-[#121212] placeholder:text-[#807E7E]" placeholder="Add a note for audit trail" />
           </div>
           <NotifyCard subtitle="Send user an email about this extension" />
-          <button type="submit" className="flex items-center justify-center text-white hover:opacity-90 mt-2" style={{ height: 48, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
-            Confirm Extension
+          <button type="submit" disabled={saving || !months} className="flex items-center justify-center text-white hover:opacity-90 mt-2 disabled:opacity-60" style={{ height: 48, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
+            {saving ? "Extending…" : "Confirm Extension"}
           </button>
         </form>
       </div>
@@ -220,6 +301,7 @@ export function ConfirmModal({
   onConfirm,
   onClose,
   maxWidth = 503,
+  busy,
   children,
 }: {
   title: string;
@@ -228,6 +310,7 @@ export function ConfirmModal({
   onConfirm: () => void;
   onClose: () => void;
   maxWidth?: number;
+  busy?: boolean;
   children?: ReactNode;
 }) {
   return (
@@ -245,8 +328,8 @@ export function ConfirmModal({
         </div>
         {children && <div className="mt-6">{children}</div>}
         <div className="flex flex-col gap-4 mt-6">
-          <button type="button" onClick={onConfirm} className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "#E30045" }}>
-            {confirmLabel}
+          <button type="button" onClick={onConfirm} disabled={busy} className="flex items-center justify-center text-white hover:opacity-90 disabled:opacity-60" style={{ height: 48, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "#E30045" }}>
+            {busy ? "Working…" : confirmLabel}
           </button>
           <button type="button" onClick={onClose} className="flex items-center justify-center hover:bg-[#fafafa]" style={{ height: 48, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#121212", border: "1px solid #F6F6F6" }}>
             No, cancel
@@ -257,12 +340,12 @@ export function ConfirmModal({
   );
 }
 
-export function CancelExtras() {
+export function CancelExtras({ reason, onReasonChange }: { reason: string; onReasonChange: (v: string) => void }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
         <label style={{ fontSize: 14, fontWeight: 500, lineHeight: "24px", letterSpacing: "-0.02em", color: "#121212" }}>Reason for Cancellation</label>
-        <Select placeholder="Select reason for cancellation" options={["User request", "Non-payment", "Policy violation", "Other"]} />
+        <Select placeholder="Select reason for cancellation" options={["User request", "Non-payment", "Policy violation", "Other"]} value={reason} onChange={onReasonChange} />
       </div>
       <NotifyCard subtitle="Send user an email about this cancellation" />
     </div>
