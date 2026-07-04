@@ -624,6 +624,15 @@ export const adminApi = api.injectEndpoints({
         { type: "Notifications" as const, id: `BLOG_${id}` },
       ],
     }),
+    unpublishBlogPost: builder.mutation<AdminBlogPost, string>({
+      query: (id) => ({ url: endpoints.adminBlogUnpublish(id), method: "PUT" }),
+      transformResponse: (res: ApiEnvelope<AdminBlogPost>) => res.data,
+      invalidatesTags: (r, e, id) => [
+        { type: "Notifications" as const, id: "BLOG_LIST" },
+        { type: "Notifications" as const, id: "BLOG_STATS" },
+        { type: "Notifications" as const, id: `BLOG_${id}` },
+      ],
+    }),
     deleteBlogPost: builder.mutation<void, string>({
       query: (id) => ({ url: endpoints.adminBlogPost(id), method: "DELETE" }),
       invalidatesTags: [
@@ -766,6 +775,7 @@ export const {
   useGetBlogPostQuery,
   useCreateBlogPostMutation,
   useUpdateBlogPostMutation,
+  useUnpublishBlogPostMutation,
   useDeleteBlogPostMutation,
   useGetAdminRolesQuery,
   useCreateAdminRoleMutation,

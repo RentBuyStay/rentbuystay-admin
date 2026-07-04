@@ -7,7 +7,7 @@ import { useState } from "react";
 import { ConfirmModal, SuccessModal } from "@/components/PlanModals";
 import { BLOG_COVER } from "@/lib/demoBlog";
 import { EmptyState } from "@/components/admin/userRows";
-import { useGetBlogPostQuery } from "@/services/adminApi";
+import { useGetBlogPostQuery, useUnpublishBlogPostMutation } from "@/services/adminApi";
 
 const fmtDate = (iso?: string | null): string => {
   if (!iso) return "—";
@@ -18,6 +18,7 @@ const fmtDate = (iso?: string | null): string => {
 export default function Page() {
   const params = useParams<{ id: string }>();
   const { data: post, isLoading } = useGetBlogPostQuery(params.id);
+  const [unpublishPost, { isLoading: unpublishing }] = useUnpublishBlogPostMutation();
   const [confirm, setConfirm] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -57,10 +58,12 @@ export default function Page() {
           </div>
         </div>
         <div className="flex items-center gap-6 shrink-0">
-          <button type="button" onClick={() => setConfirm(true)} className="flex items-center gap-2 hover:opacity-70">
-            <Image src="/icons/admin/blog/blog-trash.svg" alt="" width={20} height={20} />
-            <span style={{ fontSize: 14, fontWeight: 500, color: "#E30045" }}>Unpublish Post</span>
-          </button>
+          {post.status === "PUBLISHED" && (
+            <button type="button" onClick={() => setConfirm(true)} className="flex items-center gap-2 hover:opacity-70">
+              <Image src="/icons/admin/blog/blog-trash.svg" alt="" width={20} height={20} />
+              <span style={{ fontSize: 14, fontWeight: 500, color: "#E30045" }}>Unpublish Post</span>
+            </button>
+          )}
           <Link
             href={`/dashboard/blog/${post.id}/edit`}
             className="flex items-center justify-center gap-2 text-white hover:opacity-90"
@@ -88,14 +91,23 @@ export default function Page() {
           title="Unpublish Post"
           body="This post will be taken down and will no longer be visible to users on the platform. It will be saved as a draft so you can review, edit, or republish it at any time. No content or engagement data will be lost."
           confirmLabel="Unpublish Post"
-          onConfirm={() => { setConfirm(false); setSuccess(true); }}
+          busy={unpublishing}
+          onConfirm={async () => {
+            try {
+              await unpublishPost(params.id).unwrap();
+              setConfirm(false);
+              setSuccess(true);
+            } catch {
+              setConfirm(false);
+            }
+          }}
           onClose={() => setConfirm(false)}
         />
       )}
       {success && (
         <SuccessModal
-          title="Unpublish Isn't Available Yet"
-          body="The backend doesn't support unpublishing a live post yet (only publish and schedule transitions exist — request filed). The post is still published. You can edit it, or delete it from Blog Management."
+          title="Post Unpublished"
+          body="The post has been taken down and saved as a draft. You can review, edit, or republish it any time from Blog Management."
           onClose={() => setSuccess(false)}
         />
       )}

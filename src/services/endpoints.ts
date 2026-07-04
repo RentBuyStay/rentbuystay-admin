@@ -140,6 +140,7 @@ export const endpoints = {
   adminNotificationHistory: "/admin/notifications/history",
   adminBlog: "/admin/blog",
   adminBlogPost: (id: string) => `/admin/blog/${id}`,
+  adminBlogUnpublish: (id: string) => `/admin/blog/${id}/unpublish`,
   adminBlogStats: "/admin/blog/stats",
   adminRoles: "/admin/roles",
   adminRole: (id: string) => `/admin/roles/${id}`,
