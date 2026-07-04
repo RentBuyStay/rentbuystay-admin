@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Users, Home, CircleDollarSign, Eye, Building2, ArrowUp, ChevronDown, type LucideIcon } from "lucide-react";
+import { Users, Home, CircleDollarSign, Eye, Building2, ArrowUp, type LucideIcon } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
 import {
@@ -22,11 +22,12 @@ type Stat = {
   Icon: LucideIcon; highlight?: boolean; deltaColor?: string;
 };
 
+// Per-series look — legend dot colour + bar fill (vertical gradients from Figma).
 const SERIES = [
-  { key: "owners", name: "Property Owners", color: "#305E82" },
-  { key: "seekers", name: "Property Seekers", color: "#75A3C7" },
-  { key: "agents", name: "Agents", color: "#FFAE00" },
-  { key: "agencies", name: "Agencies", color: "#C9A8F0" },
+  { key: "owners", name: "Property Owners", dot: "#509CF5", fill: "url(#regGradOwners)" },
+  { key: "seekers", name: "Property Seekers", dot: "#ADADFB", fill: "#ADADFB" },
+  { key: "agents", name: "Agents", dot: "#F7936F", fill: "url(#regGradAgents)" },
+  { key: "agencies", name: "Agencies", dot: "#305E82", fill: "url(#regGradAgencies)" },
 ] as const;
 
 // Palette for the revenue-by-plan pie — plans come live from the backend, colours cycle.
@@ -186,14 +187,15 @@ export default function AdminDashboardPage() {
         <div className="rounded-[16px] bg-white p-6 flex flex-col gap-6" style={{ border: "1px solid #F6F6F6" }}>
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-[16px] font-semibold" style={{ color: "#16192C" }}>User Registrations</h3>
+              <h3 className="text-[16px] font-semibold leading-[25px]" style={{ color: "#16192C" }}>User Registrations</h3>
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setRangeOpen((v) => !v)}
-                  className="flex items-center gap-1 text-[14px] text-[#000] hover:opacity-80"
+                  className="flex items-center gap-2 text-[14px] leading-[23px] text-[#000] hover:opacity-80"
                 >
-                  {rangeLabel} <ChevronDown size={16} className="text-[#807e7e]" style={{ transform: rangeOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+                  {rangeLabel}
+                  <Image src="/icons/admin/chart-chevron.svg" alt="" width={20} height={20} style={{ transform: rangeOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
                 </button>
                 {rangeOpen && (
                   <>
@@ -217,8 +219,8 @@ export default function AdminDashboardPage() {
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-2">
               {SERIES.map((s) => (
-                <span key={s.key} className="flex items-center gap-1.5 text-[12px] text-[#807e7e]">
-                  <span className="inline-block rounded-full" style={{ width: 8, height: 8, background: s.color }} />
+                <span key={s.key} className="flex items-center gap-1.5 text-[11px] leading-[12px]" style={{ color: "#807E7E" }}>
+                  <span className="inline-block rounded-full" style={{ width: 8, height: 8, background: s.dot }} />
                   {s.name}
                 </span>
               ))}
@@ -226,13 +228,23 @@ export default function AdminDashboardPage() {
           </div>
           <div style={{ width: "100%", height: 259 }} className="relative">
             <ResponsiveContainer>
-              <BarChart data={REG_DATA} barGap={2} barCategoryGap="22%">
-                <CartesianGrid vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#807e7e" }} interval={xTickInterval} minTickGap={4} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#121212" }} width={28} allowDecimals={false} />
-                <Tooltip cursor={{ fill: "rgba(48,94,130,0.05)" }} contentStyle={{ borderRadius: 12, border: "1px solid #ededed", fontSize: 12 }} />
+              <BarChart data={REG_DATA} barGap={4} barCategoryGap="18%">
+                <defs>
+                  <linearGradient id="regGradOwners" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor="#68DBF2" /><stop offset="1" stopColor="#509CF5" />
+                  </linearGradient>
+                  <linearGradient id="regGradAgents" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor="#FFEF5E" /><stop offset="1" stopColor="#F7936F" />
+                  </linearGradient>
+                  <linearGradient id="regGradAgencies" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor="#75A3C7" /><stop offset="1" stopColor="#305E82" />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#807E7E" }} interval={xTickInterval} minTickGap={4} tickMargin={12} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#121212", fontWeight: 500 }} width={26} allowDecimals={false} tickFormatter={(v) => (v >= 1000 ? `${v / 1000}k` : `${v}`)} />
+                <Tooltip cursor={{ fill: "rgba(48,94,130,0.04)" }} contentStyle={{ borderRadius: 12, border: "1px solid #ededed", fontSize: 12 }} />
                 {SERIES.map((s) => (
-                  <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} radius={[4, 4, 0, 0]} maxBarSize={rangeDays <= 7 ? 10 : 6} />
+                  <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.fill} radius={[4, 4, 4, 4]} maxBarSize={8} background={{ fill: "#F6F6F6", radius: 4 }} />
                 ))}
               </BarChart>
             </ResponsiveContainer>
