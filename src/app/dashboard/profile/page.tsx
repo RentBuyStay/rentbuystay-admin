@@ -99,26 +99,24 @@ export default function ProfilePage() {
   };
 
   const p = me?.profile;
-  // Agency-specific demo defaults — Figma 714:88389 shows these exact values
-  // for Urban Nest Realty. The real backend can populate them via me/profile
-  // and me/organization once those fields exist; until then the page renders
-  // with sensible placeholders that match the Figma comp.
+  // Neutral fallbacks for the agency profile variant — real values come from
+  // me/profile + me/organization; anything missing renders as an em dash rather
+  // than fabricated data. (Admins never hit this branch — see isAgency below.)
   const AGENCY_DEMO = {
-    companyName: "Urban Nest Realty",
-    initials: "UN",
-    contactEmail: "contact@urbannestrealty.com",
-    email: "olaitanbadejo@email.com",
-    phone: "+234 801 234 5678",
+    companyName: DASH,
+    initials: "",
+    contactEmail: DASH,
+    email: DASH,
+    phone: DASH,
     whatsapp: DASH,
-    website: "www.urbannestrealty.com",
-    state: "Lagos",
-    city: "Eti-Osa",
-    officeAddress: "14 Adeola Odeku Street, Victoria Island",
+    website: DASH,
+    state: DASH,
+    city: DASH,
+    officeAddress: DASH,
     companyRegNo: DASH,
     esvarbonLicence: DASH,
-    yearEstablished: "2018",
-    bio:
-      "Established in 2018, Urban Nest Realty offers a wide range of residential and commercial properties in Lagos, Abuja, Ogun, and Ibadan. Our experienced team is dedicated to helping you find the perfect space with confidence and ease.",
+    yearEstablished: DASH,
+    bio: DASH,
   };
   // Real agency org data (GET /me organization) with demo fallbacks so the page
   // still renders sensibly before the org is populated. Display reads from here;
@@ -158,7 +156,7 @@ export default function ProfilePage() {
         bio: org.bio,
         initials: agencyInitials,
         avatarUrl: o?.logoUrl || p?.avatarUrl,
-        memberSince: memberSince(me?.joinedAt) || "Jan 2026",
+        memberSince: memberSince(me?.joinedAt),
         verified: Boolean(me?.verification?.complete),
       }
     : {
