@@ -4,9 +4,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { getAdmin, ADMINS, ROLE_COLOR, adminInitials } from "@/lib/demoAdmins";
 import { ChangeRoleModal } from "@/components/AdminModals";
 import { ConfirmModal, SuccessModal } from "@/components/PlanModals";
+import { EmptyState } from "@/components/admin/userRows";
+import { fmtRoleDate } from "@/lib/adminRoles";
+import {
+  useGetAdminRolesQuery,
+  useGetAdminUsersQuery,
+  useSuspendUserMutation,
+} from "@/services/adminApi";
+
+const adminInitials = (name: string) => {
+  const p = name.trim().split(/[\s.@_-]+/);
+  return ((p[0]?.[0] ?? "") + (p[1]?.[0] ?? "")).toUpperCase() || "A";
+};
 
 function hexA(hex: string, a: number) {
   const n = parseInt(hex.slice(1), 16);
@@ -19,11 +30,41 @@ const fieldValue: React.CSSProperties = { fontSize: 16, fontWeight: 400, color: 
 export default function Page() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const admin = getAdmin(params.id) ?? ADMINS[0];
-  const [role, setRole] = useState(admin.role);
+  const { data: usersPage, isLoading } = useGetAdminUsersQuery({ page: 0, size: 200 });
+  const { data: roles = [] } = useGetAdminRolesQuery();
+  const [suspendUser] = useSuspendUserMutation();
   const [changeOpen, setChangeOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
+
+  const base = (usersPage?.content ?? []).find((u) => u.id === params.id);
+  const admin = base
+    ? {
+        id: base.id,
+        name: base.email.split("@")[0],
+        firstName: "—",
+        lastName: "—",
+        email: base.email,
+        phone: "—",
+        added: fmtRoleDate(base.createdAt),
+      }
+    : null;
+  const role = base?.adminRole?.name ?? (base?.userType === "SUPER_ADMIN" ? "Super Admin" : "Admin");
+
+  if (isLoading) {
+    return (
+      <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
+        Loading admin…
+      </div>
+    );
+  }
+  if (!admin) {
+    return (
+      <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+        <EmptyState title="Admin not found" subtitle="This account may have been removed. Go back to Platform Settings." />
+      </div>
+    );
+  }
 
   const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <div className="flex flex-col gap-2">
@@ -74,7 +115,7 @@ export default function Page() {
         <Field label="Email Address"><span style={fieldValue}>{admin.email}</span></Field>
         <Field label="Phone Number"><span style={fieldValue}>{admin.phone}</span></Field>
         <Field label="Role">
-          <span className="inline-flex items-center rounded-[16px] w-fit" style={{ background: hexA(ROLE_COLOR[role], 0.08), color: ROLE_COLOR[role], fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{role}</span>
+          <span className="inline-flex items-center rounded-[16px] w-fit" style={{ background: hexA("#305E82", 0.08), color: "#305E82", fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{role}</span>
         </Field>
         <Field label="Added on"><span style={fieldValue}>{admin.added}</span></Field>
       </div>
@@ -82,8 +123,13 @@ export default function Page() {
       {changeOpen && (
         <ChangeRoleModal
           currentRole={role}
+          roleOptions={roles.map((r) => r.name)}
           onClose={() => setChangeOpen(false)}
-          onSave={(r) => { setRole(r as typeof role); setChangeOpen(false); setSuccess({ title: "Changes Saved", body: "Your changes have been saved successfully and are now live. Any updates you made will reflect immediately." }); }}
+          onSave={() => {
+            setChangeOpen(false);
+            // No endpoint exists to change an existing admin's role (issue filed).
+            setSuccess({ title: "Role Change Isn't Available Yet", body: "The backend has no endpoint to change an existing admin's role — the request has been filed. To move this admin now, remove them and re-add with the new role." });
+          }}
         />
       )}
       {removing && (
@@ -91,7 +137,15 @@ export default function Page() {
           title="Remove Admin"
           body={`Are you sure you want to remove ${admin.name} from the system? They will immediately lose all admin access, be logged out of the panel, and will no longer be able to perform any administrative actions on RentBuyStay. This action cannot be undone.`}
           confirmLabel="Remove Admin"
-          onConfirm={() => { setRemoving(false); setSuccess({ title: "Admin Removed Successfully", body: `Done! ${admin.name} has been removed from the system. Their access has been revoked immediately and all active sessions have been terminated. This change has been recorded in your admin activity log.` }); }}
+          onConfirm={async () => {
+            try {
+              await suspendUser({ id: admin.id, reason: "Admin access revoked", notifyUser: true }).unwrap();
+              setRemoving(false);
+              setSuccess({ title: "Admin Removed Successfully", body: `Done! ${admin.name} has been suspended. Their access has been revoked immediately and all active sessions have been terminated. This change has been recorded in your admin activity log.` });
+            } catch {
+              setRemoving(false);
+            }
+          }}
           onClose={() => setRemoving(false)}
         />
       )}

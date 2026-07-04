@@ -133,6 +133,9 @@ export const endpoints = {
   adminBlog: "/admin/blog",
   adminBlogPost: (id: string) => `/admin/blog/${id}`,
   adminBlogStats: "/admin/blog/stats",
+  adminRoles: "/admin/roles",
+  adminRole: (id: string) => `/admin/roles/${id}`,
+  adminSettingsGroup: (group: string) => `/admin/settings/${group}`,
 
   // Add more resource paths here as you integrate them.
 } as const;

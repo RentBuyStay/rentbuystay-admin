@@ -6,14 +6,38 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import RolePermissions from "@/components/RolePermissions";
 import { ConfirmModal, SuccessModal } from "@/components/PlanModals";
-import { getRole, ROLES, DEFAULT_PERMS } from "@/lib/demoRoles";
+import { EmptyState } from "@/components/admin/userRows";
+import { toPermMatrix, toPermissionDtos } from "@/lib/adminRoles";
+import {
+  useDeleteAdminRoleMutation,
+  useGetAdminRolesQuery,
+  useUpdateAdminRoleMutation,
+} from "@/services/adminApi";
 
 export default function Page() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const role = getRole(params.id) ?? ROLES[0];
+  const { data: roles = [], isLoading } = useGetAdminRolesQuery();
+  const role = roles.find((r) => r.id === params.id);
   const [confirm, setConfirm] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [deleteRole, { isLoading: deleting }] = useDeleteAdminRoleMutation();
+  const [updateRole] = useUpdateAdminRoleMutation();
+
+  if (isLoading) {
+    return (
+      <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
+        Loading role…
+      </div>
+    );
+  }
+  if (!role) {
+    return (
+      <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+        <EmptyState title="Role not found" subtitle="This role may have been deleted. Go back to Platform Settings." />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,14 +54,28 @@ export default function Page() {
         </button>
       </div>
 
-      <RolePermissions initial={DEFAULT_PERMS} />
+      {/* Permission toggles save immediately. */}
+      <RolePermissions
+        key={role.id}
+        initial={toPermMatrix(role)}
+        onChange={(m) => updateRole({ id: role.id, body: { name: role.name, permissions: toPermissionDtos(m) } })}
+      />
 
       {confirm && (
         <ConfirmModal
           title="Delete Role"
           body="Are you sure you want to delete this role from the system? All users will lose their access, be logged out of the panel, and will no longer be able to perform any administrative actions on RentBuyStay except you reassign them a new role. This action cannot be undone."
           confirmLabel="Delete Role"
-          onConfirm={() => { setConfirm(false); setSuccess(true); }}
+          busy={deleting}
+          onConfirm={async () => {
+            try {
+              await deleteRole(role.id).unwrap();
+              setConfirm(false);
+              setSuccess(true);
+            } catch {
+              setConfirm(false);
+            }
+          }}
           onClose={() => setConfirm(false)}
         />
       )}

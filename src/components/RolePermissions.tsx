@@ -3,9 +3,14 @@
 import { useState } from "react";
 import { MODULES, PERMISSIONS, type PermMatrix } from "@/lib/demoRoles";
 
-export default function RolePermissions({ initial }: { initial: PermMatrix }) {
+export default function RolePermissions({ initial, onChange }: { initial: PermMatrix; onChange?: (m: PermMatrix) => void }) {
   const [state, setState] = useState<PermMatrix>(() => Object.fromEntries(MODULES.map((m) => [m, [...(initial[m] ?? [false, false, false, false])]])));
-  const toggle = (m: string, i: number) => setState((s) => ({ ...s, [m]: s[m].map((v, j) => (j === i ? !v : v)) }));
+  const toggle = (m: string, i: number) =>
+    setState((s) => {
+      const next = { ...s, [m]: s[m].map((v, j) => (j === i ? !v : v)) };
+      onChange?.(next);
+      return next;
+    });
 
   return (
     <div className="flex flex-col gap-4">

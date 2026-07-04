@@ -58,6 +58,7 @@ export type AdminUserStatus = "PENDING" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED"
 export type AdminUser = {
   id: string;
   email: string;
+  adminRole?: { id: string; name: string } | null;
   userType: AdminUserType;
   status: AdminUserStatus;
   organizationId?: string | null;
@@ -214,6 +215,40 @@ export type BlogPostPayload = {
   coverImageUrl?: string | null;
   publishNow?: boolean;
   scheduledAt?: string | null;
+};
+
+/** Role permission entry (module + CRUD flags). */
+export type RolePermissionDto = {
+  module:
+    | "USER_MANAGEMENT"
+    | "VERIFICATION_MANAGEMENT"
+    | "PROPERTY_MANAGEMENT"
+    | "AWAITING_APPROVAL"
+    | "SUBSCRIPTIONS"
+    | "SETTINGS"
+    | "BLOG_MANAGEMENT";
+  canCreate: boolean;
+  canView: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+};
+
+export type AdminRoleItem = {
+  id: string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
+  permissions?: RolePermissionDto[];
+};
+
+export type AddNewAdminPayload = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  roleId: string;
+  password: string;
+  confirmPassword: string;
 };
 
 export const adminApi = api.injectEndpoints({
@@ -425,6 +460,37 @@ export const adminApi = api.injectEndpoints({
         { type: "Notifications" as const, id: "BLOG_STATS" },
       ],
     }),
+    // ── Roles & platform settings (admin) ──
+    getAdminRoles: builder.query<AdminRoleItem[], void>({
+      query: () => ({ url: endpoints.adminRoles, method: "GET" }),
+      transformResponse: (res: ApiEnvelope<AdminRoleItem[]>) => res.data,
+      providesTags: [{ type: "AdminUsers" as const, id: "ROLES" }],
+    }),
+    createAdminRole: builder.mutation<AdminRoleItem, { name: string; permissions: RolePermissionDto[] }>({
+      query: (body) => ({ url: endpoints.adminRoles, method: "POST", body }),
+      invalidatesTags: [{ type: "AdminUsers" as const, id: "ROLES" }],
+    }),
+    updateAdminRole: builder.mutation<AdminRoleItem, { id: string; body: { name: string; permissions: RolePermissionDto[] } }>({
+      query: ({ id, body }) => ({ url: endpoints.adminRole(id), method: "PUT", body }),
+      invalidatesTags: [{ type: "AdminUsers" as const, id: "ROLES" }],
+    }),
+    deleteAdminRole: builder.mutation<void, string>({
+      query: (id) => ({ url: endpoints.adminRole(id), method: "DELETE" }),
+      invalidatesTags: [{ type: "AdminUsers" as const, id: "ROLES" }],
+    }),
+    addNewAdmin: builder.mutation<unknown, AddNewAdminPayload>({
+      query: (body) => ({ url: endpoints.adminCreateAdmin, method: "POST", body }),
+      invalidatesTags: [{ type: "AdminUsers" as const, id: "LIST" }],
+    }),
+    getSettingsGroup: builder.query<Record<string, string>, string>({
+      query: (group) => ({ url: endpoints.adminSettingsGroup(group), method: "GET" }),
+      transformResponse: (res: ApiEnvelope<Record<string, string>>) => res.data,
+      providesTags: (r, e, group) => [{ type: "AdminUsers" as const, id: `SETTINGS_${group}` }],
+    }),
+    updateSettingsGroup: builder.mutation<void, { group: string; settings: Record<string, string> }>({
+      query: ({ group, settings }) => ({ url: endpoints.adminSettingsGroup(group), method: "PUT", body: settings }),
+      invalidatesTags: (r, e, { group }) => [{ type: "AdminUsers" as const, id: `SETTINGS_${group}` }],
+    }),
     getUserKycStatus: builder.query<KycStatus, string>({
       query: (userId) => ({ url: endpoints.adminUserKyc(userId), method: "GET" }),
       transformResponse: (res: ApiEnvelope<KycStatus>) => res.data,
@@ -500,4 +566,11 @@ export const {
   useCreateBlogPostMutation,
   useUpdateBlogPostMutation,
   useDeleteBlogPostMutation,
+  useGetAdminRolesQuery,
+  useCreateAdminRoleMutation,
+  useUpdateAdminRoleMutation,
+  useDeleteAdminRoleMutation,
+  useAddNewAdminMutation,
+  useGetSettingsGroupQuery,
+  useUpdateSettingsGroupMutation,
 } = adminApi;
