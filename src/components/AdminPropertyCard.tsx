@@ -36,7 +36,7 @@ const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
   Seeker: { bg: "rgba(20,174,92,0.08)", color: "#14AE5C" },
 };
 
-export default function AdminPropertyCard({ property: p, hideTrash }: { property: AdminProperty; hideTrash?: boolean }) {
+export default function AdminPropertyCard({ property: p, hideTrash, onDelete }: { property: AdminProperty; hideTrash?: boolean; onDelete?: (id: string) => void }) {
   const status = STATUS_BADGE[p.status];
   const role = ROLE_BADGE[p.lister.role];
   return (
@@ -63,7 +63,7 @@ export default function AdminPropertyCard({ property: p, hideTrash }: { property
             <span className="rounded-[16px]" style={{ background: status.bg, color: status.color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{p.status}</span>
           </div>
           {!hideTrash && (
-            <button type="button" aria-label="Delete listing" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="hover:opacity-70 shrink-0">
+            <button type="button" aria-label="Delete listing" onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete?.(p.id); }} className="hover:opacity-70 shrink-0">
               <Image src="/icons/admin/prop-trash.svg" alt="" width={20} height={20} />
             </button>
           )}

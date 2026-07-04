@@ -190,3 +190,39 @@ function sellerFrom(p: PropertyResponse): SeekerListing["seller"] {
   const initials = ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "PO";
   return { name, initials, verified: false };
 }
+
+// --- Admin moderation card view model (Property Management / Awaiting Approval) ---
+
+import type { AdminProperty, AdminPropertyStatus } from "@/components/AdminPropertyCard";
+import type { Role } from "@/lib/demoUsers";
+
+const ADMIN_STATUS_BY_BACKEND: Record<PropertyResponse["status"], AdminPropertyStatus> = {
+  ACTIVE: "Active",
+  ARCHIVED: "Archived",
+  AWAITING_APPROVAL: "Awaiting Approval",
+  REJECTED: "Rejected",
+  DRAFT: "Archived",
+  LIMIT_EXCEEDED: "Removed",
+};
+
+/** Map a backend PropertyResponse to the admin moderation card view model. */
+export function toAdminPropertyFromApi(p: PropertyResponse): AdminProperty {
+  const role: Role = p.assignedAgentName ? "Agent" : p.organizationId ? "Agency" : "Owner";
+  const name = p.assignedAgentName || p.ownerName || "Property Owner";
+  const parts = name.trim().split(/\s+/);
+  const initials = ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "P";
+  return {
+    id: p.id,
+    image: primaryPhoto(p),
+    listingType: p.listingType === "BUY" ? "For Sale" : p.listingType === "SHORTLET" ? "Shortlet" : "For Rent",
+    price: formatPrice(p.price, p.currency),
+    priceSuffix: SUFFIX_BY_FREQUENCY[p.priceFrequency] || undefined,
+    status: ADMIN_STATUS_BY_BACKEND[p.status] ?? "Active",
+    title: p.title,
+    location: [p.city, p.state].filter(Boolean).join(", ") || "—",
+    sqft: p.totalAreaSqm ? `${p.totalAreaSqm.toLocaleString()} sqm` : "—",
+    beds: p.bedrooms ?? 0,
+    baths: p.bathrooms ?? 0,
+    lister: { name, initials, verified: false, role },
+  };
+}

@@ -115,6 +115,11 @@ export const endpoints = {
   adminKycIdentityReject: (id: string) => `/admin/kyc/identity/${id}/reject`,
   adminKycBusinessApprove: (id: string) => `/admin/kyc/business/${id}/approve`,
   adminKycBusinessReject: (id: string) => `/admin/kyc/business/${id}/reject`,
+  adminProperties: "/admin/properties",
+  adminPropertiesAwaiting: "/admin/properties/awaiting-approval",
+  adminProperty: (id: string) => `/admin/properties/${id}`,
+  adminPropertyApprove: (id: string) => `/admin/properties/${id}/approve`,
+  adminPropertyReject: (id: string) => `/admin/properties/${id}/reject`,
 
   // Add more resource paths here as you integrate them.
 } as const;

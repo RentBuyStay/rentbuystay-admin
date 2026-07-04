@@ -4,32 +4,46 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import AdminPropertyCard from "@/components/AdminPropertyCard";
-import { ADMIN_PROPERTIES, toAdminProperty } from "@/lib/demoProperties";
-
-/* Cards derived from the shared property data (so the card and its detail match). */
-const PROPERTIES = ADMIN_PROPERTIES.map(toAdminProperty);
-
-const TABS: { key: "All" | "Active" | "Archived" | "Removed"; label: string; count: number }[] = [
-  { key: "All", label: "All", count: 2416 },
-  { key: "Active", label: "Active", count: 2619 },
-  { key: "Archived", label: "Archived", count: 273 },
-  { key: "Removed", label: "Removed", count: 8 },
-];
+import { toAdminPropertyFromApi } from "@/lib/property";
+import { EmptyState } from "@/components/admin/userRows";
+import { useGetAdminPropertiesQuery, useRemovePropertyMutation } from "@/services/adminApi";
 
 const FILTERS = ["Location", "Status"];
 
+type TabKey = "All" | "Active" | "Archived" | "Removed";
+
 export default function PropertyManagementPage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("All");
+  const [tab, setTab] = useState<TabKey>("All");
   const [query, setQuery] = useState("");
+
+  const { data: propPage, isLoading } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
+  const [removeProperty] = useRemovePropertyMutation();
+
+  const all = useMemo(() => (propPage?.content ?? []).map(toAdminPropertyFromApi), [propPage]);
+
+  const TABS: { key: TabKey; label: string; count: number }[] = [
+    { key: "All", label: "All", count: propPage?.totalElements ?? 0 },
+    { key: "Active", label: "Active", count: all.filter((p) => p.status === "Active").length },
+    { key: "Archived", label: "Archived", count: all.filter((p) => p.status === "Archived").length },
+    { key: "Removed", label: "Removed", count: all.filter((p) => p.status === "Removed").length },
+  ];
 
   const properties = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return PROPERTIES.filter(
+    return all.filter(
       (p) =>
         (tab === "All" || p.status === tab) &&
         (!q || p.title.toLowerCase().includes(q) || p.location.toLowerCase().includes(q) || p.lister.name.toLowerCase().includes(q)),
     );
-  }, [tab, query]);
+  }, [all, tab, query]);
+
+  const handleDelete = async (id: string) => {
+    try {
+      await removeProperty(id).unwrap();
+    } catch {
+      // list re-fetches via tag invalidation; card stays if the call failed
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -91,14 +105,25 @@ export default function PropertyManagementPage() {
       </div>
 
       {/* Grid */}
-      {properties.length === 0 ? (
+      {isLoading ? (
         <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
-          No properties found.
+          Loading properties…
+        </div>
+      ) : properties.length === 0 ? (
+        <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+          <EmptyState
+            title={query.trim() ? "No results found" : "No properties yet"}
+            subtitle={
+              query.trim()
+                ? "No properties match your search. Try a different title, location or lister."
+                : "Listings created across the platform will appear here for moderation."
+            }
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6">
           {properties.map((p) => (
-            <AdminPropertyCard key={p.id} property={p} />
+            <AdminPropertyCard key={p.id} property={p} onDelete={handleDelete} />
           ))}
         </div>
       )}

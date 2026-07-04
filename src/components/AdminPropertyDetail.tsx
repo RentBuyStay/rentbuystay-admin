@@ -4,10 +4,17 @@ import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Trash2, Pencil, X } from "lucide-react";
-import { getDemoProperty } from "@/lib/demoProperties";
 import { toSeekerListing, formatPrice } from "@/lib/property";
 import type { PropertyStatus } from "@/services/types";
 import type { Role } from "@/lib/demoUsers";
+import { EmptyState } from "@/components/admin/userRows";
+import {
+  useApprovePropertyMutation,
+  useGetAdminPropertiesQuery,
+  useGetAwaitingPropertiesQuery,
+  useRejectPropertyMutation,
+  useRemovePropertyMutation,
+} from "@/services/adminApi";
 
 const STATUS_BADGE: Record<PropertyStatus, { label: string; bg: string; color: string }> = {
   ACTIVE: { label: "Active", bg: "#ECFDF3", color: "#027A48" },
@@ -16,14 +23,6 @@ const STATUS_BADGE: Record<PropertyStatus, { label: string; bg: string; color: s
   REJECTED: { label: "Removed", bg: "rgba(227,0,69,0.05)", color: "#E30045" },
   DRAFT: { label: "Draft", bg: "#F2F4F7", color: "#475467" },
   LIMIT_EXCEEDED: { label: "Limit exceeded", bg: "#FEF3F2", color: "#B42318" },
-};
-
-const ADMIN_STATUS: Record<string, { label: string; bg: string; color: string }> = {
-  Active: { label: "Active", bg: "#ECFDF3", color: "#027A48" },
-  Archived: { label: "Archived", bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
-  Removed: { label: "Removed", bg: "rgba(227,0,69,0.05)", color: "#E30045" },
-  "Awaiting Approval": { label: "Awaiting Approval", bg: "#FFF7E9", color: "#EA651A" },
-  Rejected: { label: "Rejected", bg: "#FFF7E9", color: "#EA651A" },
 };
 
 const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
@@ -65,25 +64,75 @@ const SECTION_HEADING: React.CSSProperties = {
 
 export default function AdminPropertyDetail({ propertyId }: { propertyId: string }) {
   const router = useRouter();
-  const property = getDemoProperty(propertyId);
+  // Pending listings aren't reachable via the public /properties/{id}, so read
+  // from the admin lists (both queries are already cached by the list pages).
+  const { data: allPage, isLoading: loadingAll } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
+  const { data: awaitingPage, isLoading: loadingAwaiting } = useGetAwaitingPropertiesQuery({ page: 0, size: 100 });
+  const [approveProperty, { isLoading: approving }] = useApprovePropertyMutation();
+  const [rejectProperty, { isLoading: rejecting }] = useRejectPropertyMutation();
+  const [removeProperty, { isLoading: removing }] = useRemovePropertyMutation();
+
+  const property =
+    (awaitingPage?.content ?? []).find((p) => p.id === propertyId) ??
+    (allPage?.content ?? []).find((p) => p.id === propertyId);
+
+  if (loadingAll || loadingAwaiting) {
+    return (
+      <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
+        Loading property…
+      </div>
+    );
+  }
+  if (!property) {
+    return (
+      <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+        <EmptyState title="Property not found" subtitle="This listing may have been removed, or it hasn't loaded yet. Go back and try again." />
+      </div>
+    );
+  }
+  return <DetailBody property={property} propertyId={propertyId} router={router} actions={{
+    approve: () => approveProperty(propertyId).unwrap().catch(() => {}),
+    reject: () => rejectProperty({ id: propertyId }).unwrap().catch(() => {}),
+    remove: async () => {
+      try {
+        await removeProperty(propertyId).unwrap();
+        router.push("/dashboard/properties");
+      } catch {
+        // stay on the page if removal failed
+      }
+    },
+    busy: approving || rejecting || removing,
+  }} />;
+}
+
+type DetailActions = { approve: () => void; reject: () => void; remove: () => void; busy: boolean };
+
+function DetailBody({
+  property,
+  propertyId,
+  router,
+  actions,
+}: {
+  property: import("@/services/types").PropertyResponse;
+  propertyId: string;
+  router: ReturnType<typeof useRouter>;
+  actions: DetailActions;
+}) {
   const listing = toSeekerListing(property);
 
   const tagWord = listing.tag === "FOR SALE" ? "Sale" : listing.tag === "SHORTLET" ? "Shortlet" : "Rent";
   const displayTitle = `${property.title} for ${tagWord} in ${listing.location}`;
-  const status =
-    (property.adminStatus && ADMIN_STATUS[property.adminStatus]) ||
-    STATUS_BADGE[property.status] ||
-    STATUS_BADGE.ACTIVE;
+  const status = STATUS_BADGE[property.status] || STATUS_BADGE.ACTIVE;
   const images = property.photos?.length ? property.photos.map((p) => p.url) : [listing.image];
   const sqft = property.totalAreaSqm ? `${property.totalAreaSqm.toLocaleString()} sqft` : listing.sqft;
 
   // Lister
-  const listerRole: Role = property.listerRole ?? (property.assignedAgentName ? "Agent" : "Owner");
-  const listerName = property.listerName ?? property.assignedAgentName ?? property.ownerName ?? listing.seller.name;
-  const listerVerified = property.listerVerified ?? true;
+  const listerRole: Role = property.assignedAgentName ? "Agent" : property.organizationId ? "Agency" : "Owner";
+  const listerName = property.assignedAgentName ?? property.ownerName ?? listing.seller.name;
+  const listerVerified = false;
   const roleBadge = ROLE_BADGE[listerRole];
-  const approvalFlow = property.adminStatus === "Awaiting Approval" || property.adminStatus === "Rejected";
-  const isRejected = property.adminStatus === "Rejected";
+  const approvalFlow = property.status === "AWAITING_APPROVAL" || property.status === "REJECTED";
+  const isRejected = property.status === "REJECTED";
 
   return (
     <div className="flex flex-col" style={{ gap: 24 }}>
@@ -149,16 +198,16 @@ export default function AdminPropertyDetail({ propertyId }: { propertyId: string
           </span>
         ) : approvalFlow ? (
           <div className="flex items-center" style={{ gap: 16 }}>
-            <button type="button" className="flex items-center justify-center hover:opacity-70" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
+            <button type="button" onClick={actions.reject} disabled={actions.busy} className="flex items-center justify-center hover:opacity-70 disabled:opacity-50" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
               <X size={20} /> Reject
             </button>
-            <button type="button" className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(0deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2)), linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
+            <button type="button" onClick={actions.approve} disabled={actions.busy} className="flex items-center justify-center text-white hover:opacity-90 disabled:opacity-50" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(0deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2)), linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
               <Image src="/icons/admin/verify/approve-check.svg" alt="" width={20} height={20} /> Approve
             </button>
           </div>
         ) : (
           <div className="flex items-center" style={{ gap: 16 }}>
-            <button type="button" className="flex items-center justify-center hover:opacity-70" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
+            <button type="button" onClick={actions.remove} disabled={actions.busy} className="flex items-center justify-center hover:opacity-70 disabled:opacity-50" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
               <Trash2 size={20} /> Remove Listing
             </button>
             <button type="button" onClick={() => router.push(`/dashboard/properties/${propertyId}/edit`)} className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>

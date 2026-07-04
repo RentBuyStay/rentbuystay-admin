@@ -1,6 +1,6 @@
 import { api } from "./api";
 import { endpoints } from "./endpoints";
-import type { ApiEnvelope } from "./types";
+import type { ApiEnvelope, PropertyResponse } from "./types";
 
 /** Shapes from GET /admin/stats (PlatformStatsResponse). */
 export type UserBreakdown = {
@@ -156,6 +156,52 @@ export const adminApi = api.injectEndpoints({
       }),
       transformResponse: (res: ApiEnvelope<PageResponse<ProfessionalListItem>>) => res.data,
     }),
+    // ── Properties (admin moderation) ──
+    getAdminProperties: builder.query<PageResponse<PropertyResponse>, { page?: number; size?: number }>({
+      query: ({ page = 0, size = 100 } = {}) => ({
+        url: endpoints.adminProperties,
+        method: "GET",
+        params: { page, size },
+      }),
+      transformResponse: (res: ApiEnvelope<PageResponse<PropertyResponse>>) => res.data,
+      providesTags: [{ type: "Properties" as const, id: "ADMIN_LIST" }],
+    }),
+    getAwaitingProperties: builder.query<PageResponse<PropertyResponse>, { page?: number; size?: number }>({
+      query: ({ page = 0, size = 100 } = {}) => ({
+        url: endpoints.adminPropertiesAwaiting,
+        method: "GET",
+        params: { page, size },
+      }),
+      transformResponse: (res: ApiEnvelope<PageResponse<PropertyResponse>>) => res.data,
+      providesTags: [{ type: "Properties" as const, id: "ADMIN_AWAITING" }],
+    }),
+    approveProperty: builder.mutation<void, string>({
+      query: (id) => ({ url: endpoints.adminPropertyApprove(id), method: "POST" }),
+      invalidatesTags: [
+        { type: "Properties" as const, id: "ADMIN_LIST" },
+        { type: "Properties" as const, id: "ADMIN_AWAITING" },
+        "Property" as const,
+      ],
+    }),
+    rejectProperty: builder.mutation<void, { id: string; reason?: string }>({
+      query: ({ id, reason }) => ({
+        url: endpoints.adminPropertyReject(id),
+        method: "POST",
+        body: { reason: reason || "Rejected by admin review" },
+      }),
+      invalidatesTags: [
+        { type: "Properties" as const, id: "ADMIN_LIST" },
+        { type: "Properties" as const, id: "ADMIN_AWAITING" },
+        "Property" as const,
+      ],
+    }),
+    removeProperty: builder.mutation<void, string>({
+      query: (id) => ({ url: endpoints.adminProperty(id), method: "DELETE" }),
+      invalidatesTags: [
+        { type: "Properties" as const, id: "ADMIN_LIST" },
+        { type: "Properties" as const, id: "ADMIN_AWAITING" },
+      ],
+    }),
     getUserKycStatus: builder.query<KycStatus, string>({
       query: (userId) => ({ url: endpoints.adminUserKyc(userId), method: "GET" }),
       transformResponse: (res: ApiEnvelope<KycStatus>) => res.data,
@@ -207,4 +253,9 @@ export const {
   useGetAwaitingIdentityKycQuery,
   useGetAwaitingBusinessKycQuery,
   useDecideKycMutation,
+  useGetAdminPropertiesQuery,
+  useGetAwaitingPropertiesQuery,
+  useApprovePropertyMutation,
+  useRejectPropertyMutation,
+  useRemovePropertyMutation,
 } = adminApi;

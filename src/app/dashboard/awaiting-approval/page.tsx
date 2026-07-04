@@ -3,27 +3,36 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import AdminPropertyCard from "@/components/AdminPropertyCard";
-import { AWAITING_APPROVAL_PROPERTIES, toAdminProperty } from "@/lib/demoProperties";
-
-const ALL = AWAITING_APPROVAL_PROPERTIES.map(toAdminProperty);
-
-const TABS: { key: "Awaiting Approval" | "Rejected"; count: number }[] = [
-  { key: "Awaiting Approval", count: 24 },
-  { key: "Rejected", count: 37 },
-];
+import { toAdminPropertyFromApi } from "@/lib/property";
+import { EmptyState } from "@/components/admin/userRows";
+import { useGetAdminPropertiesQuery, useGetAwaitingPropertiesQuery } from "@/services/adminApi";
 
 export default function AwaitingApprovalPage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("Awaiting Approval");
+  const [tab, setTab] = useState<"Awaiting Approval" | "Rejected">("Awaiting Approval");
   const [query, setQuery] = useState("");
+
+  const { data: awaitingPage, isLoading: loadingAwaiting } = useGetAwaitingPropertiesQuery({ page: 0, size: 100 });
+  // Rejected listings come from the full platform list (no dedicated endpoint).
+  const { data: allPage, isLoading: loadingAll } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
+  const isLoading = tab === "Awaiting Approval" ? loadingAwaiting : loadingAll;
+
+  const awaiting = useMemo(() => (awaitingPage?.content ?? []).map(toAdminPropertyFromApi), [awaitingPage]);
+  const rejected = useMemo(
+    () => (allPage?.content ?? []).filter((p) => p.status === "REJECTED").map(toAdminPropertyFromApi),
+    [allPage],
+  );
+
+  const TABS: { key: "Awaiting Approval" | "Rejected"; count: number }[] = [
+    { key: "Awaiting Approval", count: awaitingPage?.totalElements ?? 0 },
+    { key: "Rejected", count: rejected.length },
+  ];
 
   const properties = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return ALL.filter(
-      (p) =>
-        p.status === tab &&
-        (!q || p.title.toLowerCase().includes(q) || p.location.toLowerCase().includes(q) || p.lister.name.toLowerCase().includes(q)),
+    return (tab === "Awaiting Approval" ? awaiting : rejected).filter(
+      (p) => !q || p.title.toLowerCase().includes(q) || p.location.toLowerCase().includes(q) || p.lister.name.toLowerCase().includes(q),
     );
-  }, [tab, query]);
+  }, [awaiting, rejected, tab, query]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -70,9 +79,22 @@ export default function AwaitingApprovalPage() {
       </div>
 
       {/* Grid */}
-      {properties.length === 0 ? (
+      {isLoading ? (
         <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
-          No {tab.toLowerCase()} properties.
+          Loading listings…
+        </div>
+      ) : properties.length === 0 ? (
+        <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+          <EmptyState
+            title={query.trim() ? "No results found" : `No ${tab.toLowerCase()} listings`}
+            subtitle={
+              query.trim()
+                ? "No listings match your search. Try a different title, location or lister."
+                : tab === "Awaiting Approval"
+                ? "You're all caught up. New listings submitted for approval will appear here."
+                : "Listings you reject will appear here."
+            }
+          />
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6">
