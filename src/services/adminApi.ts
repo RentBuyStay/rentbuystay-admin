@@ -22,6 +22,37 @@ export type KycStats = {
 
 export type RegionStat = { state: string; count: number };
 
+/** GET /admin/stats/registrations — one zero-filled day in the time series. */
+export type RegistrationDayStat = {
+  date: string; // ISO date (yyyy-MM-dd)
+  owners: number;
+  seekers: number;
+  agents: number;
+  agencies: number;
+  total: number;
+};
+
+/** GET /admin/stats/revenue — realised revenue by plan + subscriber totals. */
+export type PlanRevenue = {
+  planId: string;
+  planName: string;
+  amount: number;
+  subscribers: number;
+};
+export type RevenueStats = {
+  currency: string;
+  total: number;
+  totalSubscribers: number;
+  byPlan: PlanRevenue[];
+};
+
+/** GET /admin/activity — one entry in the recent-activity feed. */
+export type ActivityItem = {
+  type: string;
+  message: string;
+  occurredAt: string; // ISO instant
+};
+
 export type PlatformStats = {
   totalUsers: number;
   activeUsers: number;
@@ -256,6 +287,26 @@ export const adminApi = api.injectEndpoints({
     getPlatformStats: builder.query<PlatformStats, void>({
       query: () => ({ url: endpoints.adminStats, method: "GET" }),
       transformResponse: (res: ApiEnvelope<PlatformStats>) => res.data,
+    }),
+    getRegistrationStats: builder.query<RegistrationDayStat[], { days?: number }>({
+      query: ({ days = 7 } = {}) => ({
+        url: endpoints.adminStatsRegistrations,
+        method: "GET",
+        params: { days },
+      }),
+      transformResponse: (res: ApiEnvelope<RegistrationDayStat[]>) => res.data,
+    }),
+    getRevenueStats: builder.query<RevenueStats, void>({
+      query: () => ({ url: endpoints.adminStatsRevenue, method: "GET" }),
+      transformResponse: (res: ApiEnvelope<RevenueStats>) => res.data,
+    }),
+    getRecentActivity: builder.query<ActivityItem[], { size?: number }>({
+      query: ({ size = 10 } = {}) => ({
+        url: endpoints.adminActivity,
+        method: "GET",
+        params: { size },
+      }),
+      transformResponse: (res: ApiEnvelope<ActivityItem[]>) => res.data,
     }),
     getAdminUsers: builder.query<PageResponse<AdminUser>, { page?: number; size?: number }>({
       query: ({ page = 0, size = 20 } = {}) => ({
@@ -534,6 +585,9 @@ export const adminApi = api.injectEndpoints({
 
 export const {
   useGetPlatformStatsQuery,
+  useGetRegistrationStatsQuery,
+  useGetRevenueStatsQuery,
+  useGetRecentActivityQuery,
   useGetAdminUsersQuery,
   useSuspendUserMutation,
   useUnsuspendUserMutation,

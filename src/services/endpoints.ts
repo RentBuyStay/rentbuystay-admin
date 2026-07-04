@@ -101,6 +101,9 @@ export const endpoints = {
 
   // Admin (SUPER_ADMIN dashboard)
   adminStats: "/admin/stats",
+  adminStatsRegistrations: "/admin/stats/registrations",
+  adminStatsRevenue: "/admin/stats/revenue",
+  adminActivity: "/admin/activity",
   adminUsers: "/admin/users",
   adminUserSuspend: (id: string) => `/admin/users/${id}/suspend`,
   adminUserUnsuspend: (id: string) => `/admin/users/${id}/unsuspend`,

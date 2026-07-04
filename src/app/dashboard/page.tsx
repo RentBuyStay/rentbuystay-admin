@@ -7,7 +7,12 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
-import { useGetPlatformStatsQuery } from "@/services/adminApi";
+import {
+  useGetPlatformStatsQuery,
+  useGetRegistrationStatsQuery,
+  useGetRevenueStatsQuery,
+  useGetRecentActivityQuery,
+} from "@/services/adminApi";
 
 const GRADIENT = "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)";
 
@@ -16,10 +21,6 @@ type Stat = {
   Icon: LucideIcon; highlight?: boolean; deltaColor?: string;
 };
 
-// Awaiting a registrations time-series endpoint (backend issue #6) — zeros, not mock data.
-const REG_DATA = ["Mon", "Tue", "Wed", "Thur", "Fri", "Sat", "Sun"].map((day) => ({
-  day, owners: 0, seekers: 0, agents: 0, agencies: 0,
-}));
 const SERIES = [
   { key: "owners", name: "Property Owners", color: "#305E82" },
   { key: "seekers", name: "Property Seekers", color: "#75A3C7" },
@@ -27,15 +28,17 @@ const SERIES = [
   { key: "agencies", name: "Agencies", color: "#C9A8F0" },
 ] as const;
 
-// Awaiting a revenue-by-plan endpoint (backend issue #6) — zeros, not mock data.
-const PLANS = [
-  { name: "Agent Pro", value: 0, color: "#305E82" },
-  { name: "Agency", value: 0, color: "#75A3C7" },
-  { name: "RBS Owner", value: 0, color: "#FFAE00" },
-  { name: "Agency Premium", value: 0, color: "#8A38F5" },
-  { name: "Agent Enterprise", value: 0, color: "#027B2A" },
-  { name: "Other", value: 0, color: "#E3E8EE" },
-];
+// Palette for the revenue-by-plan pie — plans come live from the backend, colours cycle.
+const PLAN_COLORS = ["#305E82", "#75A3C7", "#FFAE00", "#8A38F5", "#027B2A", "#E3E8EE"];
+
+// Icon per activity type key returned by /admin/activity.
+const ACTIVITY_ICON: Record<string, string> = {
+  user: "/icons/admin/alert-shield.svg",
+  listing: "/icons/admin/alert-clip.svg",
+  property: "/icons/admin/alert-clip.svg",
+  verification: "/icons/admin/alert-shield.svg",
+  kyc: "/icons/admin/alert-shield.svg",
+};
 
 const BANNER_STYLES = [
   {
@@ -52,22 +55,59 @@ const BANNER_STYLES = [
   },
 ];
 
-// Awaiting an activity-feed endpoint (backend issue #6) — empty, not mock data.
-const ACTIVITY: { icon: string; title: string; time: string }[] = [];
-
 const fmt = (n: number | undefined, fallback: string): string =>
   n === undefined ? fallback : n.toLocaleString("en-NG");
 
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thur", "Fri", "Sat"];
+const dayLabel = (iso: string): string => {
+  const d = new Date(`${iso}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? iso : WEEKDAYS[d.getDay()];
+};
+
+const relativeTime = (iso: string): string => {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+};
+
 export default function AdminDashboardPage() {
   const { data: stats } = useGetPlatformStatsQuery();
+  const { data: registrations } = useGetRegistrationStatsQuery({ days: 7 });
+  const { data: revenue } = useGetRevenueStatsQuery();
+  const { data: activity } = useGetRecentActivityQuery({ size: 10 });
+
+  // User-registrations bar chart — real per-day counts, weekday-labelled.
+  const REG_DATA = (registrations ?? []).map((d) => ({
+    day: dayLabel(d.date),
+    owners: d.owners, seekers: d.seekers, agents: d.agents, agencies: d.agencies,
+  }));
+
+  // Revenue-by-plan pie — real plans as a share of realised revenue.
+  const revenueTotal = revenue?.total ?? 0;
+  const PLANS = (revenue?.byPlan ?? []).map((p, i) => ({
+    name: p.planName,
+    value: revenueTotal > 0 ? Math.round((p.amount / revenueTotal) * 100) : 0,
+    color: PLAN_COLORS[i % PLAN_COLORS.length],
+  }));
+
+  const ACTIVITY = (activity ?? []).map((a) => ({
+    icon: ACTIVITY_ICON[a.type] ?? "/icons/admin/alert-shield.svg",
+    title: a.message,
+    time: relativeTime(a.occurredAt),
+  }));
 
   // Live values where /admin/stats provides them; original placeholders otherwise
   // (revenue + subscriber totals aren't exposed by the backend yet).
   const STATS: Stat[] = [
     { label: "Total Users", value: fmt(stats?.totalUsers, "—"), deltaNum: "", deltaPeriod: "", Icon: Users, highlight: true },
     { label: "Total Listings", value: fmt(stats?.totalProperties, "—"), deltaNum: "", deltaPeriod: "", Icon: Home, deltaColor: "#027B2A" },
-    { label: "Revenue", value: "—", deltaNum: "", deltaPeriod: "", Icon: CircleDollarSign, deltaColor: "#027B2A" },
-    { label: "Total Subscribers", value: "—", deltaNum: "", deltaPeriod: "", Icon: Users, deltaColor: "#027B2A" },
+    { label: "Revenue", value: revenue ? `₦${fmt(revenue.total, "0")}` : "—", deltaNum: "", deltaPeriod: "", Icon: CircleDollarSign, deltaColor: "#027B2A" },
+    { label: "Total Subscribers", value: fmt(revenue?.totalSubscribers, "—"), deltaNum: "", deltaPeriod: "", Icon: Users, deltaColor: "#027B2A" },
     { label: "Daily Page Views", value: fmt(stats?.totalViewCount, "—"), deltaNum: "", deltaPeriod: "", Icon: Eye, deltaColor: "#027B2A" },
     { label: "Listings Awaiting Approval", value: fmt(stats?.awaitingApproval, "—"), deltaNum: "", deltaPeriod: "", Icon: Building2, deltaColor: "#CF3801" },
   ];
@@ -146,7 +186,7 @@ export default function AdminDashboardPage() {
               <BarChart data={REG_DATA} barGap={2} barCategoryGap="22%">
                 <CartesianGrid vertical={false} stroke="#f0f0f0" />
                 <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#807e7e" }} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#121212" }} width={28} domain={[0, 7000]} ticks={[1000, 2000, 3000, 4000, 5000, 6000, 7000]} tickFormatter={(v) => `${v / 1000}k`} />
+                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#121212" }} width={28} allowDecimals={false} />
                 <Tooltip cursor={{ fill: "rgba(48,94,130,0.05)" }} contentStyle={{ borderRadius: 12, border: "1px solid #ededed", fontSize: 12 }} />
                 {SERIES.map((s) => (
                   <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} radius={[4, 4, 0, 0]} maxBarSize={10} />
