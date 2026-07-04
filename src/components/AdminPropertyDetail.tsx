@@ -119,6 +119,7 @@ function DetailBody({
   actions: DetailActions;
 }) {
   const listing = toSeekerListing(property);
+  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
 
   const tagWord = listing.tag === "FOR SALE" ? "Sale" : listing.tag === "SHORTLET" ? "Shortlet" : "Rent";
   const displayTitle = `${property.title} for ${tagWord} in ${listing.location}`;
@@ -180,12 +181,39 @@ function DetailBody({
                 <span style={{ fontSize: 14, lineHeight: "24px", letterSpacing: "-0.02em", color: "#807E7E" }}>{(property.viewCount ?? 0).toLocaleString()} views</span>
               </div>
               {/* Move to: status */}
-              <div className="flex items-center" style={{ gap: 8 }}>
+              <div className="relative flex items-center" style={{ gap: 8 }}>
                 <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "24px", color: "#305E82" }}>Move to:</span>
-                <button type="button" className="flex items-center hover:opacity-80" style={{ gap: 8, padding: "4px 12px", borderRadius: 20, background: status.bg }}>
+                <button type="button" onClick={() => setStatusMenuOpen((v) => !v)} className="flex items-center hover:opacity-80" style={{ gap: 8, padding: "4px 12px", borderRadius: 20, background: status.bg }}>
                   <span style={{ fontSize: 12, fontWeight: 500, lineHeight: "18px", color: status.color }}>{status.label}</span>
                   <ChevronDown size={16} color={status.color} />
                 </button>
+                {statusMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setStatusMenuOpen(false)} aria-hidden="true" />
+                    <div
+                      className="absolute left-16 top-9 z-20 bg-white rounded-[12px] border border-[#F6F6F6] overflow-hidden flex flex-col py-2"
+                      style={{ minWidth: 180, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}
+                    >
+                      {/* The backend's only transition for a published listing is removal
+                          (approve/reject apply to pending listings via the header buttons). */}
+                      {property.status === "ACTIVE" ? (
+                        <button
+                          type="button"
+                          disabled={actions.busy}
+                          onClick={() => { setStatusMenuOpen(false); actions.remove(); }}
+                          className="flex items-center w-full px-4 text-left hover:bg-[#fafafa] disabled:opacity-50"
+                          style={{ height: 40, fontSize: 13, fontWeight: 500, color: "#E30045" }}
+                        >
+                          Removed
+                        </button>
+                      ) : (
+                        <span className="flex items-center px-4" style={{ height: 40, fontSize: 13, color: "#807E7E" }}>
+                          No status change available
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
