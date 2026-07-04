@@ -19,6 +19,7 @@ import {
 import { useGetAgentsQuery } from "@/services/agentApi";
 import { formatPrice } from "@/lib/property";
 import { EmptyState, FilterDropdown, pageItems } from "@/components/admin/userRows";
+import RowActionsMenu from "@/components/admin/RowActionsMenu";
 
 const SUCCESS_COPY = {
   create: { title: "Subscription Plan Created", body: "Well-done! The new plan has been added to the platform. Eligible users can now discover and subscribe to it. You can edit or deactivate it at any time from Subscription Management." },
@@ -82,7 +83,6 @@ const TABS = ["Subscription Plans", "User Subscriptions"] as const;
 export default function SubscriptionManagementPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Subscription Plans");
   const [query, setQuery] = useState("");
-  const [menuFor, setMenuFor] = useState<string | null>(null);
   const [planModal, setPlanModal] = useState<{ mode: "create" | "edit"; plan?: Plan } | null>(null);
   const [action, setAction] = useState<{ type: "extend" | "cancel"; sub: Sub } | { type: "delete"; plan: Plan } | null>(null);
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
@@ -375,23 +375,19 @@ export default function SubscriptionManagementPage() {
                       <td style={{ padding: "16px 24px" }}>
                         <span className="inline-flex items-center rounded-[16px] whitespace-nowrap" style={{ background: st.bg, color: st.color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{s.status}</span>
                       </td>
-                      <td style={{ padding: "16px 24px", position: "relative" }}>
-                        <button type="button" onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === s.id ? null : s.id); }} aria-label="Actions" className="inline-flex items-center justify-center hover:opacity-70">
-                          <Image src="/icons/admin/suspended-action.svg" alt="" width={28} height={28} />
-                        </button>
-                        {menuFor === s.id && (
-                          <>
-                            <div className="fixed inset-0 z-10" onClick={() => setMenuFor(null)} aria-hidden="true" />
-                            <div className="absolute right-6 top-12 z-20 bg-white rounded-[16px] border border-[#F6F6F6] overflow-hidden flex flex-col" style={{ width: 170, gap: 8, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}>
-                              <button type="button" onClick={() => { setMenuFor(null); setAction({ type: "extend", sub: s }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa] whitespace-nowrap" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
+                      <td style={{ padding: "16px 24px" }} onClick={(e) => e.stopPropagation()}>
+                        <RowActionsMenu width={190} trigger={<Image src="/icons/admin/suspended-action.svg" alt="" width={28} height={28} />}>
+                          {(close) => (
+                            <>
+                              <button type="button" onClick={() => { close(); setAction({ type: "extend", sub: s }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa] whitespace-nowrap" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
                                 <Image src="/icons/admin/menu-extend.svg" alt="" width={16} height={16} className="shrink-0" /> Extend Subscription
                               </button>
-                              <button type="button" onClick={() => { setMenuFor(null); setAction({ type: "cancel", sub: s }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa] whitespace-nowrap" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
+                              <button type="button" onClick={() => { close(); setAction({ type: "cancel", sub: s }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa] whitespace-nowrap" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
                                 <Image src="/icons/admin/menu-cancel.svg" alt="" width={16} height={16} className="shrink-0" /> Cancel Subscription
                               </button>
-                            </div>
-                          </>
-                        )}
+                            </>
+                          )}
+                        </RowActionsMenu>
                       </td>
                     </tr>
                   );
@@ -454,31 +450,19 @@ export default function SubscriptionManagementPage() {
                     <td style={{ padding: "16px 24px", fontSize: 14, color: "#121212", whiteSpace: "nowrap" }}>{p.duration}</td>
                     <td style={{ padding: "16px 24px", fontSize: 14, color: "#121212" }}>{p.listings}</td>
                     <td style={{ padding: "16px 24px", fontSize: 14, color: "#121212" }}>{p.featured}</td>
-                    <td style={{ padding: "16px 24px", position: "relative" }}>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === p.id ? null : p.id); }}
-                        aria-label="Actions"
-                        className="inline-flex items-center justify-center hover:opacity-70"
-                      >
-                        <Image src="/icons/admin/suspended-action.svg" alt="" width={28} height={28} />
-                      </button>
-                      {menuFor === p.id && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => setMenuFor(null)} aria-hidden="true" />
-                          <div
-                            className="absolute right-6 top-12 z-20 bg-white rounded-[16px] border border-[#F6F6F6] overflow-hidden flex flex-col"
-                            style={{ width: 135, gap: 8, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}
-                          >
-                            <button type="button" onClick={() => { setMenuFor(null); setPlanModal({ mode: "edit", plan: p }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
+                    <td style={{ padding: "16px 24px" }} onClick={(e) => e.stopPropagation()}>
+                      <RowActionsMenu width={150} trigger={<Image src="/icons/admin/suspended-action.svg" alt="" width={28} height={28} />}>
+                        {(close) => (
+                          <>
+                            <button type="button" onClick={() => { close(); setPlanModal({ mode: "edit", plan: p }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
                               <Image src="/icons/admin/menu-edit.svg" alt="" width={16} height={16} /> Edit Plan
                             </button>
-                            <button type="button" onClick={() => { setMenuFor(null); setAction({ type: "delete", plan: p }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
+                            <button type="button" onClick={() => { close(); setAction({ type: "delete", plan: p }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
                               <Image src="/icons/admin/menu-delete.svg" alt="" width={16} height={16} /> Delete Plan
                             </button>
-                          </div>
-                        </>
-                      )}
+                          </>
+                        )}
+                      </RowActionsMenu>
                     </td>
                   </tr>
                 ))}

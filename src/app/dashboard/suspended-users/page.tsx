@@ -8,13 +8,13 @@ import {
   useUnsuspendUserMutation,
 } from "@/services/adminApi";
 import { Badge, EmptyState, ROLE_STYLE, VerificationCell, toRow } from "@/components/admin/userRows";
+import RowActionsMenu from "@/components/admin/RowActionsMenu";
 import { useToast } from "@/components/Toast";
 
 export default function SuspendedUsersPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [query, setQuery] = useState("");
-  const [menuFor, setMenuFor] = useState<string | null>(null);
 
   // Server-side status filter + search.
   const { data: usersPage, isLoading } = useGetAdminUsersQuery({
@@ -31,7 +31,6 @@ export default function SuspendedUsersPage() {
   );
 
   const handleReactivate = async (id: string) => {
-    setMenuFor(null);
     try {
       await unsuspendUser(id).unwrap();
     } catch {
@@ -129,32 +128,19 @@ export default function SuspendedUsersPage() {
                   <td style={{ padding: "16px 24px" }}>
                     <VerificationCell verified={r.verified} />
                   </td>
-                  <td style={{ padding: "16px 24px", position: "relative" }}>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === r.id ? null : r.id); }}
-                      aria-label="Actions"
-                      className="inline-flex items-center justify-center hover:opacity-70"
-                    >
-                      <Image src="/icons/admin/suspended-action.svg" alt="" width={28} height={28} />
-                    </button>
-                    {menuFor === r.id && (
-                      <>
-                        <div className="fixed inset-0 z-10" onClick={(e) => { e.stopPropagation(); setMenuFor(null); }} aria-hidden="true" />
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="absolute right-6 top-12 z-20 bg-white rounded-[12px] border border-[#F6F6F6] overflow-hidden flex flex-col"
-                          style={{ width: 160, gap: 8, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}
-                        >
-                          <button type="button" onClick={() => handleReactivate(r.id)} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
+                  <td style={{ padding: "16px 24px" }} onClick={(e) => e.stopPropagation()}>
+                    <RowActionsMenu width={180} trigger={<Image src="/icons/admin/suspended-action.svg" alt="" width={28} height={28} />}>
+                      {(close) => (
+                        <>
+                          <button type="button" onClick={() => { close(); handleReactivate(r.id); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
                             <Image src="/icons/admin/menu-reactivate.svg" alt="" width={16} height={16} /> Reactivate User
                           </button>
-                          <button type="button" onClick={() => { setMenuFor(null); toast("Permanent data deletion isn't available yet — the user stays suspended (access already revoked).", "info"); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
+                          <button type="button" onClick={() => { close(); toast("Permanent data deletion isn't available yet — the user stays suspended (access already revoked).", "info"); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
                             <Image src="/icons/admin/menu-delete.svg" alt="" width={16} height={16} /> Delete User Data
                           </button>
-                        </div>
-                      </>
-                    )}
+                        </>
+                      )}
+                    </RowActionsMenu>
                   </td>
                 </tr>
               ))}

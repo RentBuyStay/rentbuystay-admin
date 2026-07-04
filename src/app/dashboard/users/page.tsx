@@ -13,6 +13,7 @@ import {
   useCreateNewUserMutation,
 } from "@/services/adminApi";
 import { Badge, FilterDropdown, ROLE_STYLE, VerificationCell, pageItems, toRow, type UserRow } from "@/components/admin/userRows";
+import RowActionsMenu from "@/components/admin/RowActionsMenu";
 import NotifyUserModal from "@/components/admin/NotifyUserModal";
 import { CreateUserModal, type CreateUserValues } from "@/components/AdminModals";
 import { SuccessModal } from "@/components/PlanModals";
@@ -31,7 +32,6 @@ export default function UsersPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"All" | Role>("All");
   const [query, setQuery] = useState("");
-  const [menuFor, setMenuFor] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
@@ -102,7 +102,6 @@ export default function UsersPage() {
   const totalPages = usersPage?.totalPages ?? 1;
 
   const handleSuspendToggle = async (row: UserRow) => {
-    setMenuFor(null);
     try {
       if (row.status === "Suspended") await unsuspendUser(row.id).unwrap();
       else await suspendUser({ id: row.id, reason: "Suspended by admin", notifyUser: true }).unwrap();
@@ -112,7 +111,7 @@ export default function UsersPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6" onClick={() => setMenuFor(null)}>
+    <div className="flex flex-col gap-6">
       {/* Tabs + Create User */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4 overflow-x-auto">
@@ -223,32 +222,22 @@ export default function UsersPage() {
                   <td style={{ padding: "16px 24px" }}>
                     <VerificationCell verified={r.verified} />
                   </td>
-                  <td style={{ padding: "16px 24px", position: "relative" }}>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === r.id ? null : r.id); }}
-                      className="hover:bg-[#f0f0f0] rounded-lg p-1.5"
-                      aria-label="Actions"
-                    >
-                      <MoreVertical size={18} className="text-[#807e7e]" />
-                    </button>
-                    {menuFor === r.id && (
-                      <div
-                        className="absolute right-6 top-12 z-20 bg-white rounded-[16px] border border-[#f6f6f6] py-2 w-[180px]"
-                        style={{ boxShadow: "0px 15px 40px 0px rgba(165,165,165,0.25)" }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button onClick={() => router.push(`/dashboard/users/${r.id}`)} className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium text-[#807e7e] hover:bg-[#fafafa]">
-                          <Image src="/icons/admin/menu-eye.svg" alt="" width={16} height={16} /> View Profile
-                        </button>
-                        <button onClick={() => { setMenuFor(null); setNotifyFor(r); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium text-[#807e7e] hover:bg-[#fafafa]">
-                          <Image src="/icons/admin/menu-notification.svg" alt="" width={16} height={16} /> Send Notification
-                        </button>
-                        <button onClick={() => handleSuspendToggle(r)} className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium hover:bg-[#fafafa]" style={{ color: "#E30045" }}>
-                          <Image src="/icons/admin/menu-suspend.svg" alt="" width={16} height={16} /> {r.status === "Suspended" ? "Unsuspend" : "Suspend"}
-                        </button>
-                      </div>
-                    )}
+                  <td style={{ padding: "16px 24px" }} onClick={(e) => e.stopPropagation()}>
+                    <RowActionsMenu width={180} trigger={<span className="hover:bg-[#f0f0f0] rounded-lg p-1.5"><MoreVertical size={18} className="text-[#807e7e]" /></span>}>
+                      {(close) => (
+                        <>
+                          <button onClick={() => { close(); router.push(`/dashboard/users/${r.id}`); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium text-[#807e7e] hover:bg-[#fafafa]">
+                            <Image src="/icons/admin/menu-eye.svg" alt="" width={16} height={16} /> View Profile
+                          </button>
+                          <button onClick={() => { close(); setNotifyFor(r); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium text-[#807e7e] hover:bg-[#fafafa]">
+                            <Image src="/icons/admin/menu-notification.svg" alt="" width={16} height={16} /> Send Notification
+                          </button>
+                          <button onClick={() => { close(); handleSuspendToggle(r); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium hover:bg-[#fafafa]" style={{ color: "#E30045" }}>
+                            <Image src="/icons/admin/menu-suspend.svg" alt="" width={16} height={16} /> {r.status === "Suspended" ? "Unsuspend" : "Suspend"}
+                          </button>
+                        </>
+                      )}
+                    </RowActionsMenu>
                   </td>
                 </tr>
               ))}
