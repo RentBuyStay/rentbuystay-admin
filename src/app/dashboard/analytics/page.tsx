@@ -3,6 +3,13 @@
 import Image from "next/image";
 import { useState } from "react";
 import NigeriaMap from "@/components/NigeriaMap";
+import { useMemo } from "react";
+import {
+  useGetPlatformStatsQuery,
+  useGetAdminUsersQuery,
+  useGetAdminPropertiesQuery,
+} from "@/services/adminApi";
+import { useGetAgentsQuery } from "@/services/agentApi";
 
 const TABS = ["Platform Overview", "User Analytics", "Listing Analytics", "Geographic"] as const;
 type Tab = (typeof TABS)[number];
@@ -26,8 +33,175 @@ const th: React.CSSProperties = { height: 44, padding: "0 16px 0 24px", borderBo
 const cell: React.CSSProperties = { height: 72, padding: "0 16px 0 24px", borderBottom: "1px solid #F6F6F6" };
 const num: React.CSSProperties = { fontSize: 14, fontWeight: 500, color: "#121212" };
 
+const GEO_PALETTE = ["#FF8800", "#37B26E", "#8A38F5", "#578AF0", "#44CFE4", "#EE46BC"];
+
+type PageData = {
+  stats?: import("@/services/adminApi").PlatformStats;
+  regByRole: { role: string; pct: string; value: string; barPct: number }[];
+  newThisMonth: number;
+  verified: number;
+  verifiedPct: number;
+  topUsers: { name: string; email: string; role: string; listings: string; views: string; leads: string; since: string }[];
+  listingTypes: { label: string; pct: string; value: string; barPct: number }[];
+  propertyTypes: { label: string; value: string }[];
+  newListingsHeights: number[];
+  approvalRate: string;
+  topListings: { id: string; title: string; loc: string; type: string; views: string; inq: string; conv: string; status: string }[];
+  avgViews: string;
+  geoLegend: { city: string; state: string; color: string }[];
+  geoFills: Record<string, string>;
+  geoRows: { city: string; users: string; listings: string; leads: string; revenue: string; price: string; growth: string }[];
+  topState?: { state: string; count: number };
+  topStatePct: string;
+  activeStates: number;
+};
+
 export default function Page() {
   const [tab, setTab] = useState<Tab>("Platform Overview");
+
+  const { data: stats } = useGetPlatformStatsQuery();
+  const { data: usersPage } = useGetAdminUsersQuery({ page: 0, size: 200 });
+  const { data: propsPage } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
+  const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
+
+  const data = useMemo(() => {
+    const users = usersPage?.content ?? [];
+    const props = propsPage?.content ?? [];
+    const agents = agentsPage?.content ?? [];
+
+    // Users by role (real percentages from /admin/stats).
+    const byType = stats?.usersByType;
+    const roleCounts = [
+      { role: "Seeker", n: byType?.seekers ?? 0 },
+      { role: "Agent", n: byType?.agents ?? 0 },
+      { role: "Owner", n: byType?.owners ?? 0 },
+      { role: "Agency", n: byType?.agencies ?? 0 },
+    ];
+    const roleTotal = Math.max(1, roleCounts.reduce((a, r) => a + r.n, 0));
+    const regByRole = roleCounts.map((r) => ({
+      role: r.role,
+      pct: `${Math.round((r.n / roleTotal) * 100)}%`,
+      value: r.n.toLocaleString("en-NG"),
+      barPct: Math.round((r.n / roleTotal) * 100),
+    }));
+
+    const now = new Date();
+    const newThisMonth = users.filter((u) => {
+      const d = new Date(u.createdAt);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+    const verified = (stats?.identityKyc?.verified ?? 0) + (stats?.businessKyc?.verified ?? 0);
+    const verifiedPct = stats?.totalUsers ? Math.round((verified / stats.totalUsers) * 100) : 0;
+
+    const fmtSince = (iso?: string) => {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-NG", { day: "2-digit", month: "short", year: "numeric" });
+    };
+    const topUsers = [...agents]
+      .sort((a, b) => (b.listingCount ?? 0) - (a.listingCount ?? 0))
+      .slice(0, 8)
+      .map((a) => ({
+        name: [a.firstName, a.lastName].filter(Boolean).join(" ") || "—",
+        email: a.email ?? "—",
+        role: "Agent",
+        listings: String(a.listingCount ?? 0),
+        views: "—",
+        leads: "—",
+        since: fmtSince(a.createdAt),
+      }));
+
+    // Listing type distribution from the platform properties.
+    const typeCount = { RENT: 0, BUY: 0, SHORTLET: 0 } as Record<string, number>;
+    props.forEach((pr) => { typeCount[pr.listingType] = (typeCount[pr.listingType] ?? 0) + 1; });
+    const typeTotal = Math.max(1, props.length);
+    const listingTypes = [
+      { label: "For Rent", n: typeCount.RENT },
+      { label: "For Sale", n: typeCount.BUY },
+      { label: "Shortlet", n: typeCount.SHORTLET },
+    ].map((t) => ({
+      label: t.label,
+      pct: `${Math.round((t.n / typeTotal) * 100)}%`,
+      value: t.n.toLocaleString("en-NG"),
+      barPct: Math.round((t.n / typeTotal) * 100),
+    }));
+
+    const propTypeCounts = new Map<string, number>();
+    props.forEach((pr) => {
+      const k = pr.propertyTypeName ?? "Other";
+      propTypeCounts.set(k, (propTypeCounts.get(k) ?? 0) + 1);
+    });
+    const propertyTypes = [...propTypeCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([label, n]) => ({ label, value: String(n) }));
+
+    const monthly = Array(12).fill(0) as number[];
+    props.forEach((pr) => {
+      const d = new Date(pr.createdAt ?? "");
+      if (!Number.isNaN(d.getTime()) && d.getFullYear() === now.getFullYear()) monthly[d.getMonth()] += 1;
+    });
+    const monthlyMax = Math.max(1, ...monthly);
+    const newListingsHeights = monthly.map((n) => Math.round((n / monthlyMax) * 200));
+
+    const approvedish = (stats?.activeListings ?? 0);
+    const rejectedish = (stats?.rejectedListings ?? 0);
+    const approvalRate = approvedish + rejectedish > 0 ? `${Math.round((approvedish / (approvedish + rejectedish)) * 100)}%` : "—";
+
+    const topListings = [...props]
+      .sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0))
+      .slice(0, 8)
+      .map((pr) => ({
+        id: pr.referenceCode,
+        title: pr.title,
+        loc: [pr.city, pr.state].filter(Boolean).join(", ") || "—",
+        type: pr.listingType === "BUY" ? "For Sale" : pr.listingType === "SHORTLET" ? "Shortlet" : "For Rent",
+        views: (pr.viewCount ?? 0).toLocaleString("en-NG"),
+        inq: "—",
+        conv: "—",
+        status: pr.status === "ACTIVE" ? "Active" : pr.status === "AWAITING_APPROVAL" ? "Pending" : "Expired",
+      }));
+
+    const avgViews = stats?.totalProperties ? Math.round((stats.totalViewCount ?? 0) / stats.totalProperties).toLocaleString("en-NG") : "—";
+
+    // Geographic: real listings-per-state from /admin/stats.
+    const regions = [...(stats?.listingsByState ?? [])].sort((a, b) => b.count - a.count);
+    const geoLegend = regions.slice(0, 6).map((r, i) => ({ city: r.state, state: r.state, color: GEO_PALETTE[i % GEO_PALETTE.length] }));
+    const geoFills = Object.fromEntries(geoLegend.map((l) => [l.state, l.color]));
+    const geoRows = regions.slice(0, 8).map((r) => ({
+      city: r.state,
+      users: "—",
+      listings: r.count.toLocaleString("en-NG"),
+      leads: "—",
+      revenue: "—",
+      price: "—",
+      growth: "—",
+    }));
+    const listingsTotal = Math.max(1, regions.reduce((a, r) => a + r.count, 0));
+    const topState = regions[0];
+
+    return {
+      stats,
+      regByRole,
+      newThisMonth,
+      verified,
+      verifiedPct,
+      topUsers,
+      listingTypes,
+      propertyTypes,
+      newListingsHeights,
+      approvalRate,
+      topListings,
+      avgViews,
+      geoLegend,
+      geoFills,
+      geoRows,
+      topState,
+      topStatePct: topState ? `${Math.round((topState.count / listingsTotal) * 100)}% of listings` : "—",
+      activeStates: regions.length,
+    };
+  }, [stats, usersPage, propsPage, agentsPage]);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Tabs */}
@@ -51,10 +225,10 @@ export default function Page() {
         })}
       </div>
 
-      {tab === "Platform Overview" && <PlatformOverview />}
-      {tab === "User Analytics" && <UserAnalytics />}
-      {tab === "Listing Analytics" && <ListingAnalytics />}
-      {tab === "Geographic" && <GeographicTab />}
+      {tab === "Platform Overview" && <PlatformOverview d={data} />}
+      {tab === "User Analytics" && <UserAnalytics d={data} />}
+      {tab === "Listing Analytics" && <ListingAnalytics d={data} />}
+      {tab === "Geographic" && <GeographicTab d={data} />}
     </div>
   );
 }
@@ -190,30 +364,14 @@ const STATUS_COLOR: Record<string, string> = { Active: "#009D35", Pending: "#DC8
 
 /* ════════════ Platform Overview ════════════ */
 
+/* Session/bounce/conversion tracking doesn't exist yet (backend issue #6). */
 const PLATFORM_STATS: Stat[] = [
-  { label: "Total Sessions (30 Days)", value: "284k", delta: "+22%", gradient: true },
-  { label: "Average Session (Min)", value: "8.4", delta: "+1.3min" },
-  { label: "Bounce Rate", value: "34%", delta: "-5% this week" },
-  { label: "Conversion Rate", value: "6.8%", delta: "+6.4%" },
+  { label: "Total Sessions (30 Days)", value: "—", delta: "Awaiting analytics data", gradient: true },
+  { label: "Average Session (Min)", value: "—", delta: "Awaiting analytics data" },
+  { label: "Bounce Rate", value: "—", delta: "Awaiting analytics data" },
+  { label: "Conversion Rate", value: "—", delta: "Awaiting analytics data" },
 ];
 const DAYS = ["Mon", "Tue", "Wed", "Thur", "Fri", "Sat", "Sun"];
-const GEO_LEGEND = [
-  { city: "Lagos", state: "Lagos", color: "#FF8800" },
-  { city: "Abuja", state: "FCT", color: "#37B26E" },
-  { city: "Port-Harcourt", state: "Rivers", color: "#8A38F5" },
-  { city: "Ibadan", state: "Oyo", color: "#578AF0" },
-  { city: "Ogun", state: "Ogun", color: "#44CFE4" },
-  { city: "Kaduna", state: "Kaduna", color: "#EE46BC" },
-];
-const GEO_FILLS = Object.fromEntries(GEO_LEGEND.map((l) => [l.state, l.color]));
-const GEO_ROWS = [
-  { city: "Lagos", users: "1,842", listings: "612", leads: "4,820", revenue: "₦14.2M", growth: "+28%" },
-  { city: "Abuja", users: "384", listings: "142", leads: "2,107", revenue: "₦7.4M", growth: "+19%" },
-  { city: "Kaduna", users: "312", listings: "128", leads: "1,540", revenue: "₦6.2M", growth: "+21%" },
-  { city: "Port-Harcourt", users: "209", listings: "119", leads: "980", revenue: "₦5.6M", growth: "+34%" },
-  { city: "Ibadan", users: "124", listings: "83", leads: "320", revenue: "₦2.8M", growth: "+12%" },
-  { city: "Ogun", users: "85", listings: "58", leads: "140", revenue: "₦1.7M", growth: "+8%" },
-];
 
 function GeoMapCard({ title, subtitle, legend, fills }: { title: string; subtitle: string; legend: { city: string; color: string }[]; fills: Record<string, string> }) {
   return (
@@ -233,7 +391,7 @@ function GeoMapCard({ title, subtitle, legend, fills }: { title: string; subtitl
   );
 }
 
-function PlatformOverview() {
+function PlatformOverview({ d }: { d: PageData }) {
   return (
     <>
       <StatCards stats={PLATFORM_STATS} />
@@ -246,7 +404,7 @@ function PlatformOverview() {
               <span className="flex items-center gap-2.5"><span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: BLUE }} /><span style={{ fontSize: 11, color: "#807E7E" }}>Active Users</span></span>
             </div>
           </div>
-          <ChartPlot labels={DAYS} series={[{ heights: [119, 79, 119, 86, 33, 76, 74], grad: CYAN }, { heights: [94, 149, 119, 177, 59, 88, 121], grad: BLUE }]} />
+          <ChartPlot labels={DAYS} series={[{ heights: [0, 0, 0, 0, 0, 0, 0], grad: CYAN }, { heights: [0, 0, 0, 0, 0, 0, 0], grad: BLUE }]} />
         </div>
         <div className="flex flex-col bg-white" style={cardStyle}>
           <div className="flex flex-col gap-4">
@@ -256,7 +414,7 @@ function PlatformOverview() {
               <span className="flex items-center gap-2.5"><span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: BLUE }} /><span style={{ fontSize: 11, color: "#807E7E" }}>Leads Generated</span></span>
             </div>
           </div>
-          <ChartPlot labels={DAYS} series={[{ heights: [143, 79, 148, 86, 196, 76, 74], grad: GOLD }, { heights: [62, 86, 95, 36, 59, 88, 121], grad: BLUE }]} />
+          <ChartPlot labels={DAYS} series={[{ heights: [0, 0, 0, 0, 0, 0, 0], grad: GOLD }, { heights: [0, 0, 0, 0, 0, 0, 0], grad: BLUE }]} />
         </div>
       </div>
       {/* Geographic distribution — map + table in one card */}
@@ -266,10 +424,10 @@ function PlatformOverview() {
           <span style={{ fontSize: 11, fontWeight: 400, lineHeight: "20px", color: "#807E7E" }}>Top cities by listing activity</span>
         </div>
         <div className="mx-6 relative overflow-hidden h-80 sm:h-96" style={{ background: "rgba(246,246,246,0.5)", borderRadius: 15 }}>
-          <NigeriaMap fills={GEO_FILLS} />
+          <NigeriaMap fills={d.geoFills} />
           <div className="absolute right-6 bottom-6 flex flex-col gap-3 z-10">
-            <div className="flex items-center gap-4">{GEO_LEGEND.slice(0, 3).map((l) => <LegendDot key={l.city} {...l} />)}</div>
-            <div className="flex items-center gap-4">{GEO_LEGEND.slice(3).map((l) => <LegendDot key={l.city} {...l} />)}</div>
+            <div className="flex items-center gap-4">{d.geoLegend.slice(0, 3).map((l) => <LegendDot key={l.city} {...l} />)}</div>
+            <div className="flex items-center gap-4">{d.geoLegend.slice(3).map((l) => <LegendDot key={l.city} {...l} />)}</div>
           </div>
         </div>
         <div className="mx-6 mt-6 mb-6 overflow-x-auto">
@@ -278,7 +436,7 @@ function PlatformOverview() {
               <tr>{["City", "Users", "Listings", "Leads", "Revenue", "Growth"].map((h) => <th key={h} className="text-left" style={th}>{h}</th>)}</tr>
             </thead>
             <tbody>
-              {GEO_ROWS.map((r) => (
+              {d.geoRows.map((r) => (
                 <tr key={r.city}>
                   <td style={cell}><span style={{ fontSize: 14, fontWeight: 500, color: "#101828" }}>{r.city}</span></td>
                   <td style={cell}><span style={num}>{r.users}</span></td>
@@ -298,31 +456,16 @@ function PlatformOverview() {
 
 /* ════════════ User Analytics ════════════ */
 
-const USER_STATS: Stat[] = [
-  { label: "New This Month", value: "318", delta: "+28%", gradient: true },
-  { label: "Verified Users", value: "1,284", delta: "67% of total" },
-  { label: "Churn Rate (30 Days)", value: "1.8%", delta: "Improved 0.3%" },
-  { label: "Avg. Account Age", value: "8mo", delta: "+0.7 monthly" },
-];
-const REG_BY_ROLE = [
-  { role: "Seeker", pct: "53%", value: "1,284", barPct: 51 },
-  { role: "Agent", pct: "25%", value: "612", barPct: 25 },
-  { role: "Owner", pct: "16%", value: "384", barPct: 19 },
-  { role: "Agency", pct: "16%", value: "136", barPct: 8 },
-];
-const HEAT_BG = ["#F6F6F6", "#F6F6F6", "#F6F6F6", "#F6F6F6", "#F6F6F6", "#FFFDE7", "#FFFDE7", "#FFF2CF", "#EA7917", "#EA7917", "#EA7917", "#EA7917", "#EA7917", "#EF9B51", "#EA7917", "#EA7917", "#EA7917", "#EA7917", "#EA7917", "#EF9B51", "#FFF2CF", "#FFFDE7", "#FFFDE7", "#FFFDE7"];
-const TOP_USERS = [
-  { name: "Tunde Adeyemi", email: "tundeade@gmail.com", role: "Agent", listings: "8", views: "2,616", leads: "16", since: "15 May 2025" },
-  { name: "Urban Nest Realty", email: "contact@urbannestrealty.com", role: "Agency", listings: "4", views: "776", leads: "24", since: "15 May 2025" },
-  { name: "Chinedu Nwosu", email: "chinedu.nwosu@example.com", role: "Agent", listings: "6", views: "1,812", leads: "36", since: "15 May 2025" },
-  { name: "Bola Adebayo", email: "bola.adebayo@example.com", role: "Agent", listings: "11", views: "3,492", leads: "24", since: "15 May 2025" },
-  { name: "Kemi Oladipo", email: "kemi.oladipo@example.com", role: "Owner", listings: "4", views: "1,052", leads: "12", since: "15 Apr 2025" },
-  { name: "Emeka Obi", email: "emeka.obi@example.com", role: "Agent", listings: "7", views: "2,646", leads: "42", since: "17 Mar 2026" },
-  { name: "Prime Properties Nigeria", email: "primeproperties@gmail.com", role: "Agency", listings: "3", views: "531", leads: "9", since: "28 Feb 2026" },
-  { name: "Yewande Balogun", email: "yewande.balogun@example.com", role: "Owner", listings: "2", views: "602", leads: "6", since: "13 Feb 2026" },
-];
+/* Heatmap awaits session tracking (backend issue #6) — neutral cells, no fake peaks. */
+const HEAT_BG = Array(24).fill("#F6F6F6");
 
-function UserAnalytics() {
+function UserAnalytics({ d }: { d: PageData }) {
+  const USER_STATS: Stat[] = [
+    { label: "New This Month", value: String(d.newThisMonth), delta: "From latest signups", gradient: true },
+    { label: "Verified Users", value: d.verified.toLocaleString("en-NG"), delta: `${d.verifiedPct}% of total` },
+    { label: "Churn Rate (30 Days)", value: "—", delta: "Awaiting analytics data" },
+    { label: "Avg. Account Age", value: "—", delta: "Awaiting analytics data" },
+  ];
   return (
     <>
       <StatCards stats={USER_STATS} />
@@ -330,7 +473,7 @@ function UserAnalytics() {
         <div className="flex flex-col bg-white" style={cardStyle}>
           <ChartHeader title="User Registrations by Role" right={<Dropdown label="Last 30 Days" />} />
           <div className="flex flex-col" style={{ gap: 24 }}>
-            {REG_BY_ROLE.map((r) => <HBarRow key={r.role} label={r.role} color={ROLE_COLOR[r.role]} pct={r.pct} value={r.value} barPct={r.barPct} />)}
+            {d.regByRole.map((r) => <HBarRow key={r.role} label={r.role} color={ROLE_COLOR[r.role]} pct={r.pct} value={r.value} barPct={r.barPct} />)}
           </div>
         </div>
         <div className="flex flex-col bg-white" style={cardStyle}>
@@ -345,11 +488,11 @@ function UserAnalytics() {
               );
             })}
           </div>
-          <span style={{ fontSize: 11, fontWeight: 400, color: "#807E7E" }}>Peak: 9AM–11AM and 4PM–6PM (WAT)</span>
+          <span style={{ fontSize: 11, fontWeight: 400, color: "#807E7E" }}>Awaiting session tracking data</span>
         </div>
       </div>
       <TableCard title="Top Performing Users" head={["User", "Role", "Listings", "Total Views", "Leads", "Member Since"]} minWidth={840}>
-        {TOP_USERS.map((u) => (
+        {d.topUsers.map((u) => (
           <tr key={u.email}>
             <td style={cell}><Stack2 a={u.name} b={u.email} /></td>
             <td style={cell}><Pill label={u.role} color={ROLE_COLOR[u.role]} /></td>
@@ -366,39 +509,16 @@ function UserAnalytics() {
 
 /* ════════════ Listing Analytics ════════════ */
 
-const LISTING_STATS: Stat[] = [
-  { label: "Total Active", value: "847", delta: "+63 this month", gradient: true },
-  { label: "Avg. Views/Listing", value: "284", delta: "+38 this month" },
-  { label: "Avg. Inquiries/Listing", value: "6.4", delta: "+1.2" },
-  { label: "Avg. Time to Rent/Sell", value: "18d", delta: "-3d improved" },
-];
-const LISTING_TYPES = [
-  { label: "For Rent", pct: "57%", value: "482", barPct: 51 },
-  { label: "For Sale", pct: "29%", value: "824", barPct: 25 },
-  { label: "Shortlet", pct: "14%", value: "117", barPct: 8 },
-];
 const LISTING_TYPE_BARCOLOR: Record<string, string> = { "For Rent": "#1F7EEE", "For Sale": "#305E82", Shortlet: "#8A38F5" };
-const PROPERTY_TYPES = [
-  { label: "Flats/Apartments", value: "412" },
-  { label: "House", value: "184" },
-  { label: "Commercial Property", value: "112" },
-  { label: "Co-working Space", value: "88" },
-  { label: "Land", value: "34" },
-];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const NEW_LISTINGS = [33, 74, 50, 117, 102, 63, 157, 86, 102, 0, 0, 0];
-const TOP_LISTINGS = [
-  { id: "RBS-L-004821", title: "3-Bedroom Flat, Lekki Phase 1", loc: "Lekki Phase 1, Lagos", type: "For Rent", views: "2,616", inq: "16", conv: "1.9%", status: "Active" },
-  { id: "RBS-L-004822", title: "2-Bedroom Apartment, Victoria Island", loc: "Victoria Island, Lagos", type: "Shortlet", views: "776", inq: "24", conv: "1.7%", status: "Active" },
-  { id: "RBS-L-004823", title: "4-Bedroom Duplex, Ikoyi", loc: "Ikoyi, Lagos", type: "For Rent", views: "1,812", inq: "36", conv: "3.5%", status: "Active" },
-  { id: "RBS-L-004824", title: "Office Space, Ikeja GRA", loc: "Ikeja GRA, Lagos", type: "For Rent", views: "3,492", inq: "24", conv: "1.6%", status: "Active" },
-  { id: "RBS-L-004826", title: "2-Bedroom Flat, Lekki Phase 1", loc: "Lekki Phase 1, Lagos", type: "For Sale", views: "1,052", inq: "12", conv: "0.0%", status: "Pending" },
-  { id: "RBS-L-004827", title: "2-Bedroom Flat, Lekki Phase 1", loc: "Lekki Phase 1, Lagos", type: "For Rent", views: "2,646", inq: "42", conv: "2.9%", status: "Active" },
-  { id: "RBS-L-004828", title: "2-Bedroom Flat, Lekki Phase 1", loc: "Lekki Phase 1, Lagos", type: "Shortlet", views: "531", inq: "9", conv: "1.1%", status: "Expired" },
-  { id: "RBS-L-004829", title: "2-Bedroom Flat, Lekki Phase 1", loc: "Lekki Phase 1, Lagos", type: "For Sale", views: "602", inq: "6", conv: "1.5%", status: "Active" },
-];
 
-function ListingAnalytics() {
+function ListingAnalytics({ d }: { d: PageData }) {
+  const LISTING_STATS: Stat[] = [
+    { label: "Total Active", value: (d.stats?.activeListings ?? 0).toLocaleString("en-NG"), delta: "Live", gradient: true },
+    { label: "Avg. Views/Listing", value: d.avgViews, delta: "All time" },
+    { label: "Avg. Inquiries/Listing", value: "—", delta: "Awaiting analytics data" },
+    { label: "Avg. Time to Rent/Sell", value: "—", delta: "Awaiting analytics data" },
+  ];
   return (
     <>
       <StatCards stats={LISTING_STATS} />
@@ -406,11 +526,11 @@ function ListingAnalytics() {
         <div className="flex flex-col bg-white" style={cardStyle}>
           <ChartHeader title="User Registrations by Role" right={<Dropdown label="Last 30 Days" />} />
           <div className="flex flex-col" style={{ gap: 24 }}>
-            {LISTING_TYPES.map((r) => <HBarRow key={r.label} label={r.label} color={LISTING_TYPE_BARCOLOR[r.label]} pct={r.pct} value={r.value} barPct={r.barPct} badgeW={72} />)}
+            {d.listingTypes.map((r) => <HBarRow key={r.label} label={r.label} color={LISTING_TYPE_BARCOLOR[r.label]} pct={r.pct} value={r.value} barPct={r.barPct} badgeW={72} />)}
           </div>
           <h3 style={{ fontSize: 16, fontWeight: 600, lineHeight: "24px", color: "#16192C" }}>Listings by Property Types</h3>
           <div className="flex flex-col" style={{ gap: 16 }}>
-            {PROPERTY_TYPES.map((p) => (
+            {d.propertyTypes.map((p) => (
               <div key={p.label} className="flex items-center justify-between">
                 <span style={{ fontSize: 12, color: "#807E7E" }}>{p.label}</span>
                 <span style={{ fontSize: 12, fontWeight: 500, color: "#121212" }}>{p.value}</span>
@@ -422,19 +542,19 @@ function ListingAnalytics() {
           <ChartHeader title="New Listings Per Month" right={<Dropdown label="Last 12 months" />} />
           <div className="flex items-center" style={{ gap: 40 }}>
             <div className="flex flex-col" style={{ gap: 2 }}>
-              <span style={{ fontSize: 16, fontWeight: 600, color: "#305E82" }}>92%</span>
+              <span style={{ fontSize: 16, fontWeight: 600, color: "#305E82" }}>{d.approvalRate}</span>
               <span style={{ fontSize: 10, color: "#807E7E" }}>Approval Rate</span>
             </div>
             <div className="flex flex-col" style={{ gap: 2 }}>
-              <span style={{ fontSize: 16, fontWeight: 600, color: "#305E82" }}>4.2h</span>
+              <span style={{ fontSize: 16, fontWeight: 600, color: "#305E82" }}>—</span>
               <span style={{ fontSize: 10, color: "#807E7E" }}>Avg. Review Time</span>
             </div>
           </div>
-          <ChartPlot labels={MONTHS} series={[{ heights: NEW_LISTINGS, grad: BLUE }]} plotH={237} barW={16} />
+          <ChartPlot labels={MONTHS} series={[{ heights: d.newListingsHeights, grad: BLUE }]} plotH={237} barW={16} />
         </div>
       </div>
       <TableCard title="Top Performing Listings" head={["Property ID", "Property", "Type", "Total Views", "Inquiries", "Conversion", "Status"]} minWidth={980}>
-        {TOP_LISTINGS.map((l) => (
+        {d.topListings.map((l) => (
           <tr key={l.id}>
             <td style={cell}><span style={num}>{l.id}</span></td>
             <td style={cell}><Stack2 a={l.title} b={l.loc} /></td>
@@ -452,30 +572,18 @@ function ListingAnalytics() {
 
 /* ════════════ Geographic ════════════ */
 
-const GEO_STATS: Stat[] = [
-  { label: "Top City", value: "Lagos", delta: "76% of activity", gradient: true },
-  { label: "Active States", value: "12", delta: "+3 this year" },
-  { label: "Fastest Growing", value: "PH", delta: "+34% MoM" },
-  { label: "Rural Listings", value: "4.2%", delta: "+1.1%" },
-];
-const GEO_TAB_LEGEND = GEO_LEGEND.slice(0, 5);
-const GEO_TAB_FILLS = Object.fromEntries(GEO_TAB_LEGEND.map((l) => [l.state, l.color]));
-const STATE_ROWS = [
-  { city: "Lagos", users: "1,842", listings: "612", leads: "4,820", revenue: "₦14.2M", price: "₦14.2M", growth: "+28%" },
-  { city: "Abuja", users: "384", listings: "142", leads: "2,107", revenue: "₦7.4M", price: "₦7.4M", growth: "+19%" },
-  { city: "Port-Harcourt", users: "209", listings: "119", leads: "980", revenue: "₦5.6M", price: "₦5.6M", growth: "+34%" },
-  { city: "Ibadan", users: "124", listings: "83", leads: "320", revenue: "₦2.8M", price: "₦2.8M", growth: "+12%" },
-  { city: "Kano", users: "85", listings: "58", leads: "140", revenue: "₦1.7M", price: "₦1.7M", growth: "+8%" },
-  { city: "Ogun", users: "58", listings: "27", leads: "84", revenue: "₦908K", price: "₦908K", growth: "+12%" },
-  { city: "Enugu", users: "44", listings: "12", leads: "58", revenue: "₦673K", price: "₦673K", growth: "+22%" },
-  { city: "Benin City", users: "32", listings: "8", leads: "42", revenue: "₦481K", price: "₦481K", growth: "+18%" },
-];
 
-function GeographicTab() {
+function GeographicTab({ d }: { d: PageData }) {
+  const GEO_STATS: Stat[] = [
+    { label: "Top City", value: d.topState?.state ?? "—", delta: d.topStatePct, gradient: true },
+    { label: "Active States", value: String(d.activeStates), delta: "With live listings" },
+    { label: "Fastest Growing", value: "—", delta: "Awaiting analytics data" },
+    { label: "Rural Listings", value: "—", delta: "Awaiting analytics data" },
+  ];
   return (
     <>
       <StatCards stats={GEO_STATS} />
-      <GeoMapCard title="Nigeria Market Distribution" subtitle="Click a division to drill down" legend={GEO_TAB_LEGEND} fills={GEO_TAB_FILLS} />
+      <GeoMapCard title="Nigeria Market Distribution" subtitle="Click a division to drill down" legend={d.geoLegend.slice(0, 5)} fills={d.geoFills} />
       <TableCard
         title="State-by-State Breakdown"
         head={["City", "Users", "Listings", "Leads", "Revenue", "Avg. Price (Rent)", "MoM Growth"]}
@@ -487,7 +595,7 @@ function GeographicTab() {
           </button>
         }
       >
-        {STATE_ROWS.map((r) => (
+        {d.geoRows.map((r) => (
           <tr key={r.city}>
             <td style={cell}><span style={{ fontSize: 14, fontWeight: 500, color: "#101828" }}>{r.city}</span></td>
             <td style={cell}><span style={num}>{r.users}</span></td>
