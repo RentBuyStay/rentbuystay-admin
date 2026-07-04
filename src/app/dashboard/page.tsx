@@ -91,7 +91,7 @@ export default function AdminDashboardPage() {
   const rangeLabel = RANGE_OPTIONS.find((r) => r.days === rangeDays)?.label ?? "Last 7 Days";
 
   const { data: stats } = useGetPlatformStatsQuery();
-  const { data: registrations } = useGetRegistrationStatsQuery({ days: rangeDays });
+  const { data: registrations, isLoading: regLoading, isError: regError } = useGetRegistrationStatsQuery({ days: rangeDays });
   const { data: revenue } = useGetRevenueStatsQuery();
   const { data: activity } = useGetRecentActivityQuery({ size: 10 });
 
@@ -236,10 +236,21 @@ export default function AdminDashboardPage() {
                 ))}
               </BarChart>
             </ResponsiveContainer>
-            {registrations && regTotal === 0 && (
+            {(regLoading || regError || regTotal === 0) && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ gap: 6 }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "#121212" }}>No new registrations</span>
-                <span style={{ fontSize: 12, color: "#807E7E" }}>No sign-ups in the {rangeLabel.toLowerCase()}. Try a wider range.</span>
+                {regLoading ? (
+                  <span style={{ fontSize: 13, color: "#807E7E" }}>Loading registrations…</span>
+                ) : regError ? (
+                  <>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#E30045" }}>Couldn&rsquo;t load registrations</span>
+                    <span style={{ fontSize: 12, color: "#807E7E" }}>The registrations endpoint returned an error.</span>
+                  </>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#121212" }}>No new registrations</span>
+                    <span style={{ fontSize: 12, color: "#807E7E" }}>No sign-ups in the {rangeLabel.toLowerCase()}. Try a wider range.</span>
+                  </>
+                )}
               </div>
             )}
           </div>
