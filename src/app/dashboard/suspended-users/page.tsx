@@ -20,7 +20,7 @@ export default function SuspendedUsersPage() {
 
   // No server-side status filter exists yet (issue #7) — pull a large page and
   // keep only SUSPENDED locally.
-  const { data: usersPage } = useGetAdminUsersQuery({ page: 0, size: 200 });
+  const { data: usersPage, isLoading } = useGetAdminUsersQuery({ page: 0, size: 200 });
   const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
   const { data: prosPage } = useGetProfessionalsQuery({ size: 200 });
   const [unsuspendUser] = useUnsuspendUserMutation();
@@ -61,7 +61,24 @@ export default function SuspendedUsersPage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Loading / empty states — same pattern as messages + verifications */}
+      {isLoading ? (
+        <div
+          className="bg-white flex items-center justify-center text-center"
+          style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}
+        >
+          Loading suspended users…
+        </div>
+      ) : rows.length === 0 ? (
+        <div
+          className="bg-white flex items-center justify-center text-center"
+          style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}
+        >
+          {query.trim()
+            ? "No suspended users match your search."
+            : "No suspended users. Users you suspend from User Management will appear here."}
+        </div>
+      ) : (
       <div className="rounded-[20px] border border-[#F6F6F6] overflow-hidden bg-white">
         <div className="overflow-x-auto">
           <table className="w-full" style={{ borderCollapse: "collapse", minWidth: 1012 }}>
@@ -175,6 +192,7 @@ export default function SuspendedUsersPage() {
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }
