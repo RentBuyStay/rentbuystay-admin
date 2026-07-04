@@ -135,6 +135,8 @@ export const endpoints = {
   adminUserSubscriptionExtend: (id: string) => `/admin/user-subscriptions/${id}/extend`,
   adminNotificationTemplates: "/admin/notifications/templates",
   adminNotificationTemplate: (id: string) => `/admin/notifications/templates/${id}`,
+  adminNotificationBroadcast: "/admin/notifications/broadcast",
+  adminNotificationHistory: "/admin/notifications/history",
   adminBlog: "/admin/blog",
   adminBlogPost: (id: string) => `/admin/blog/${id}`,
   adminBlogStats: "/admin/blog/stats",

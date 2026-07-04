@@ -3,14 +3,26 @@
 import Image from "next/image";
 import { useState } from "react";
 import { NotificationFormModal, type NotificationFormValues } from "@/components/NotificationModals";
-import { SuccessModal } from "@/components/PlanModals";
+import { ConfirmModal, SuccessModal } from "@/components/PlanModals";
 import { EmptyState } from "@/components/admin/userRows";
 import {
+  useBroadcastNotificationMutation,
   useCreateNotificationTemplateMutation,
+  useDeleteNotificationTemplateMutation,
+  useGetNotificationHistoryQuery,
   useGetNotificationTemplatesQuery,
   useUpdateNotificationTemplateMutation,
   type NotificationTemplate,
 } from "@/services/adminApi";
+
+/* Form audience label → backend BroadcastAudience. */
+const AUDIENCE_MAP: Record<string, string> = {
+  "All Users": "ALL",
+  Owners: "OWNERS",
+  Agents: "AGENTS",
+  Agencies: "AGENCIES",
+  Seekers: "SEEKERS",
+};
 
 const SUCCESS_COPY = {
   send: { title: "Notification Sent", body: "Done! Your message has been successfully broadcast to the selected audience. Sit back — delivery is in progress. Check the Sent History tab to monitor open rates and engagement." },
@@ -32,9 +44,17 @@ const TEMPLATE_LOOKS = [
   { icon: "tmpl-doc-green.svg", accent: "#009D35" },
 ];
 
-/* Sending broadcasts + history need backend endpoints that don't exist yet. */
-const SEND_UNAVAILABLE =
-  "Broadcast sending isn't available yet — the backend has no send endpoint. You can still save this as a template.";
+const fmtDateTime = (iso?: string | null): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime())
+    ? "—"
+    : d.toLocaleString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+};
+
+const AUDIENCE_LABEL: Record<string, string> = {
+  ALL: "All Users", OWNERS: "Owners", AGENTS: "Agents", AGENCIES: "Agencies", SEEKERS: "Seekers",
+};
 
 function hexA(hex: string, a: number) {
   const n = parseInt(hex.slice(1), 16);
@@ -49,11 +69,16 @@ export default function Page() {
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
   const [editing, setEditing] = useState<NotificationTemplate | null>(null);
   const [sendNotice, setSendNotice] = useState<string | undefined>(undefined);
+  const [deleting, setDeleting] = useState<NotificationTemplate | null>(null);
 
   const { data: templatesPage, isLoading } = useGetNotificationTemplatesQuery({});
+  const { data: historyPage } = useGetNotificationHistoryQuery({});
   const [createTemplate, { isLoading: creating }] = useCreateNotificationTemplateMutation();
   const [updateTemplate, { isLoading: updating }] = useUpdateNotificationTemplateMutation();
+  const [deleteTemplate, { isLoading: deletingTpl }] = useDeleteNotificationTemplateMutation();
+  const [broadcast, { isLoading: sending }] = useBroadcastNotificationMutation();
   const templates = templatesPage?.content ?? [];
+  const history = historyPage?.content ?? [];
 
   const toBody = (v: NotificationFormValues) => ({
     name: v.subject,
@@ -65,8 +90,22 @@ export default function Page() {
 
   const handleSubmit = async (v: NotificationFormValues) => {
     if (modal === "send") {
-      // No broadcast endpoint exists (see backend issue) — refuse honestly.
-      setSendNotice(SEND_UNAVAILABLE);
+      if (!v.audience) { setSendNotice("Please choose a target audience."); return; }
+      try {
+        await broadcast({
+          templateId: editing?.id,
+          subject: v.subject,
+          bodyHtml: v.bodyHtml,
+          audience: AUDIENCE_MAP[v.audience] ?? "ALL",
+          channels: ["EMAIL"],
+        }).unwrap();
+        setModal(null);
+        setEditing(null);
+        setSendNotice(undefined);
+        setSuccess(SUCCESS_COPY.send);
+      } catch {
+        setSendNotice("Couldn't send the broadcast. Please try again.");
+      }
       return;
     }
     try {
@@ -151,6 +190,9 @@ export default function Page() {
               <button type="button" onClick={() => { setEditing(tpl); setSendNotice(undefined); setModal("send"); }} aria-label="Send template" className="flex items-center justify-center hover:bg-[#fafafa]" style={{ width: 48, height: 48, borderRadius: 12 }}>
                 <Image src="/icons/admin/notif/notif-send.svg" alt="" width={24} height={24} />
               </button>
+              <button type="button" onClick={() => setDeleting(tpl)} aria-label="Delete template" className="flex items-center justify-center hover:bg-[#fafafa]" style={{ width: 48, height: 48, borderRadius: 12 }}>
+                <Image src="/icons/admin/blog/blog-trash.svg" alt="" width={20} height={20} />
+              </button>
             </div>
           </div>
           );
@@ -164,8 +206,34 @@ export default function Page() {
           <h2 style={{ fontSize: 16, fontWeight: 600, lineHeight: "24px", color: "#16192C" }}>Notification History</h2>
         </div>
         <div className="mx-6 mb-6">
-          {/* No sent-history endpoint exists yet (backend issue) — no fake rows. */}
-          <EmptyState title="No notification history yet" subtitle="Sent broadcasts and their delivery stats will appear here once broadcast sending is available." />
+          {history.length === 0 ? (
+            <EmptyState title="No notification history yet" subtitle="Sent broadcasts and their delivery stats will appear here once you send one." />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full" style={{ minWidth: 720, borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...th, textAlign: "left", paddingLeft: 0 }}>Subject</th>
+                    <th style={{ ...th, textAlign: "left" }}>Audience</th>
+                    <th style={{ ...th, textAlign: "left" }}>Recipients</th>
+                    <th style={{ ...th, textAlign: "left" }}>Status</th>
+                    <th style={{ ...th, textAlign: "left" }}>Sent</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((b) => (
+                    <tr key={b.id}>
+                      <td style={{ ...cell, paddingLeft: 0 }}><span style={{ fontSize: 14, fontWeight: 600, color: "#121212" }}>{b.subject}</span></td>
+                      <td style={cell}><Pill label={AUDIENCE_LABEL[b.audience] ?? b.audience} color="#305E82" /></td>
+                      <td style={cell}><span style={{ fontSize: 14, color: "#121212" }}>{b.sentCount}/{b.recipientCount}{b.failedCount ? ` · ${b.failedCount} failed` : ""}</span></td>
+                      <td style={cell}><Pill label={b.status} color={b.status === "SENT" || b.status === "COMPLETED" ? "#009D35" : b.status === "FAILED" ? "#E30045" : "#DC8E1D"} /></td>
+                      <td style={cell}><span style={{ fontSize: 14, color: "#807E7E" }}>{fmtDateTime(b.sentAt ?? b.createdAt)}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </section>
 
@@ -178,7 +246,7 @@ export default function Page() {
               : undefined
           }
           notice={modal === "send" ? sendNotice : undefined}
-          busy={creating || updating}
+          busy={creating || updating || sending}
           title={FORM_COPY[modal].title}
           subtitle={FORM_COPY[modal].subtitle}
           submitLabel={FORM_COPY[modal].submitLabel}
@@ -186,6 +254,24 @@ export default function Page() {
           onClose={() => { setModal(null); setEditing(null); setSendNotice(undefined); }}
           onSubmit={handleSubmit}
           onSaveAsTemplate={handleSaveAsTemplate}
+        />
+      )}
+      {deleting && (
+        <ConfirmModal
+          title="Delete Template"
+          body={`Are you sure you want to delete the "${deleting.name}" template? This can't be undone.`}
+          confirmLabel="Delete Template"
+          busy={deletingTpl}
+          onConfirm={async () => {
+            try {
+              await deleteTemplate(deleting.id).unwrap();
+              setDeleting(null);
+              setSuccess({ title: "Template Deleted", body: "The notification template has been removed." });
+            } catch {
+              setDeleting(null);
+            }
+          }}
+          onClose={() => setDeleting(null)}
         />
       )}
       {success && <SuccessModal title={success.title} body={success.body} onClose={() => setSuccess(null)} />}

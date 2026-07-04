@@ -253,6 +253,22 @@ export type NotificationTemplate = {
   updatedAt?: string;
 };
 
+/** NotificationBroadcast entity from /admin/notifications/history. */
+export type NotificationBroadcast = {
+  id: string;
+  templateId?: string | null;
+  subject: string;
+  bodyHtml?: string | null;
+  audience: "ALL" | "OWNERS" | "AGENTS" | "AGENCIES" | "SEEKERS";
+  channels?: string[] | null;
+  recipientCount: number;
+  sentCount: number;
+  failedCount: number;
+  status: string;
+  createdAt?: string;
+  sentAt?: string | null;
+};
+
 /** Blog post from /admin/blog. */
 export type BlogPostStatusApi = "DRAFT" | "PUBLISHED" | "SCHEDULED";
 
@@ -544,6 +560,27 @@ export const adminApi = api.injectEndpoints({
       query: ({ id, body }) => ({ url: endpoints.adminNotificationTemplate(id), method: "PUT", body }),
       invalidatesTags: [{ type: "Notifications" as const, id: "TEMPLATES" }],
     }),
+    deleteNotificationTemplate: builder.mutation<void, string>({
+      query: (id) => ({ url: endpoints.adminNotificationTemplate(id), method: "DELETE" }),
+      invalidatesTags: [{ type: "Notifications" as const, id: "TEMPLATES" }],
+    }),
+    broadcastNotification: builder.mutation<
+      NotificationBroadcast,
+      { templateId?: string; subject?: string; bodyHtml?: string; audience: string; channels: string[] }
+    >({
+      query: (body) => ({ url: endpoints.adminNotificationBroadcast, method: "POST", body }),
+      transformResponse: (res: ApiEnvelope<NotificationBroadcast>) => res.data,
+      invalidatesTags: [{ type: "Notifications" as const, id: "HISTORY" }],
+    }),
+    getNotificationHistory: builder.query<PageResponse<NotificationBroadcast>, { page?: number; size?: number }>({
+      query: ({ page = 0, size = 20 } = {}) => ({
+        url: endpoints.adminNotificationHistory,
+        method: "GET",
+        params: { page, size },
+      }),
+      transformResponse: (res: ApiEnvelope<PageResponse<NotificationBroadcast>>) => res.data,
+      providesTags: [{ type: "Notifications" as const, id: "HISTORY" }],
+    }),
     // ── Blog (admin) ──
     getBlogStats: builder.query<BlogStats, void>({
       query: () => ({ url: endpoints.adminBlogStats, method: "GET" }),
@@ -712,6 +749,9 @@ export const {
   useGetNotificationTemplatesQuery,
   useCreateNotificationTemplateMutation,
   useUpdateNotificationTemplateMutation,
+  useDeleteNotificationTemplateMutation,
+  useBroadcastNotificationMutation,
+  useGetNotificationHistoryQuery,
   useGetBlogStatsQuery,
   useGetBlogPostsQuery,
   useGetBlogPostQuery,
