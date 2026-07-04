@@ -740,7 +740,7 @@ function ListedByCard({ listing }: { listing: SeekerListing }) {
           </div>
         </div>
         <Link
-          href="#"
+          href={listing.ownerUserId ? `/dashboard/users/${listing.ownerUserId}` : "/dashboard/users"}
           className="hover:underline"
           style={{
             fontFamily: "var(--font-geist-sans), system-ui, sans-serif",

@@ -8,9 +8,11 @@ import {
   useUnsuspendUserMutation,
 } from "@/services/adminApi";
 import { Badge, EmptyState, ROLE_STYLE, VerificationCell, toRow } from "@/components/admin/userRows";
+import { useToast } from "@/components/Toast";
 
 export default function SuspendedUsersPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [menuFor, setMenuFor] = useState<string | null>(null);
 
@@ -147,7 +149,7 @@ export default function SuspendedUsersPage() {
                           <button type="button" onClick={() => handleReactivate(r.id)} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
                             <Image src="/icons/admin/menu-reactivate.svg" alt="" width={16} height={16} /> Reactivate User
                           </button>
-                          <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
+                          <button type="button" onClick={() => { setMenuFor(null); toast("Permanent data deletion isn't available yet — the user stays suspended (access already revoked).", "info"); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
                             <Image src="/icons/admin/menu-delete.svg" alt="" width={16} height={16} /> Delete User Data
                           </button>
                         </div>
