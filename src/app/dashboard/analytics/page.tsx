@@ -41,6 +41,7 @@ type PageData = {
   newThisMonth: number;
   verified: number;
   verifiedPct: number;
+  avgAccountAge: string;
   topUsers: { name: string; email: string; role: string; listings: string; views: string; leads: string; since: string }[];
   listingTypes: { label: string; pct: string; value: string; barPct: number }[];
   propertyTypes: { label: string; value: string }[];
@@ -92,6 +93,19 @@ export default function Page() {
     }).length;
     const verified = (stats?.identityKyc?.verified ?? 0) + (stats?.businessKyc?.verified ?? 0);
     const verifiedPct = stats?.totalUsers ? Math.round((verified / stats.totalUsers) * 100) : 0;
+
+    // Average age of user accounts (from createdAt on the loaded users).
+    const ages = users
+      .map((u) => now.getTime() - new Date(u.createdAt).getTime())
+      .filter((ms) => Number.isFinite(ms) && ms > 0);
+    const avgDays = ages.length ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length / 86_400_000) : 0;
+    const avgAccountAge = !ages.length
+      ? "—"
+      : avgDays >= 365
+        ? `${(avgDays / 365).toFixed(1)} yrs`
+        : avgDays >= 30
+          ? `${Math.round(avgDays / 30)} mo`
+          : `${avgDays} days`;
 
     const fmtSince = (iso?: string) => {
       if (!iso) return "—";
@@ -186,6 +200,7 @@ export default function Page() {
       newThisMonth,
       verified,
       verifiedPct,
+      avgAccountAge,
       topUsers,
       listingTypes,
       propertyTypes,
@@ -464,7 +479,7 @@ function UserAnalytics({ d }: { d: PageData }) {
     { label: "New This Month", value: String(d.newThisMonth), delta: "From latest signups", gradient: true },
     { label: "Verified Users", value: d.verified.toLocaleString("en-NG"), delta: `${d.verifiedPct}% of total` },
     { label: "Churn Rate (30 Days)", value: "—", delta: "Awaiting analytics data" },
-    { label: "Avg. Account Age", value: "—", delta: "Awaiting analytics data" },
+    { label: "Avg. Account Age", value: d.avgAccountAge, delta: "Across all users" },
   ];
   return (
     <>
