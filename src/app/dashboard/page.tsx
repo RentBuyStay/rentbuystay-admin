@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Users, Home, CircleDollarSign, Eye, Building2, ArrowUp, type LucideIcon } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from "recharts";
 import {
@@ -22,13 +22,27 @@ type Stat = {
   Icon: LucideIcon; highlight?: boolean; deltaColor?: string;
 };
 
-// Per-series look — legend dot colour + bar fill (vertical gradients from Figma).
+// Per-series look — legend dot colour + bar fill (vertical gradients from the design).
 const SERIES = [
-  { key: "owners", name: "Property Owners", dot: "#509CF5", fill: "url(#regGradOwners)" },
+  { key: "owners", name: "Property Owners", dot: "#509CF5", fill: "linear-gradient(180deg, #68DBF2 0%, #509CF5 100%)" },
   { key: "seekers", name: "Property Seekers", dot: "#ADADFB", fill: "#ADADFB" },
-  { key: "agents", name: "Agents", dot: "#F7936F", fill: "url(#regGradAgents)" },
-  { key: "agencies", name: "Agencies", dot: "#305E82", fill: "url(#regGradAgencies)" },
+  { key: "agents", name: "Agents", dot: "#F7936F", fill: "linear-gradient(180deg, #FFEF5E 0%, #F7936F 100%)" },
+  { key: "agencies", name: "Agencies", dot: "#305E82", fill: "linear-gradient(180deg, #75A3C7 0%, #305E82 100%)" },
 ] as const;
+
+// Y-axis scale for the registrations chart — nice integer ticks, min top of 4.
+function regAxisScale(rawMax: number): { top: number; ticks: number[] } {
+  const m = Math.max(1, rawMax);
+  let top: number;
+  if (m <= 4) top = 4;
+  else if (m <= 7) top = m;
+  else top = Math.ceil(m / 5) * 5;
+  const step = top <= 7 ? 1 : Math.ceil(top / 5);
+  const ticks: number[] = [];
+  for (let v = top; v >= 0; v -= step) ticks.push(v);
+  return { top, ticks };
+}
+const kFmt = (v: number): string => (v >= 1000 ? `${v / 1000}k` : `${v}`);
 
 // Palette for the revenue-by-plan pie — plans come live from the backend, colours cycle.
 const PLAN_COLORS = ["#305E82", "#75A3C7", "#FFAE00", "#8A38F5", "#027B2A", "#E3E8EE"];
@@ -102,8 +116,10 @@ export default function AdminDashboardPage() {
     owners: d.owners, seekers: d.seekers, agents: d.agents, agencies: d.agencies,
   }));
   const regTotal = (registrations ?? []).reduce((sum, d) => sum + (d.total ?? 0), 0);
-  // Thin the x-axis ticks so long ranges stay readable.
-  const xTickInterval = rangeDays <= 7 ? 0 : Math.ceil(REG_DATA.length / 8);
+  const regMax = Math.max(1, ...REG_DATA.flatMap((d) => [d.owners, d.seekers, d.agents, d.agencies]));
+  const regScale = regAxisScale(regMax);
+  // For long ranges the per-day lanes get too dense — show fewer day labels.
+  const regLabelEvery = REG_DATA.length <= 10 ? 1 : Math.ceil(REG_DATA.length / 8);
 
   // Revenue-by-plan pie — real plans as a share of realised revenue.
   const revenueTotal = revenue?.total ?? 0;
@@ -226,28 +242,41 @@ export default function AdminDashboardPage() {
               ))}
             </div>
           </div>
-          <div style={{ width: "100%", height: 259 }} className="relative">
-            <ResponsiveContainer>
-              <BarChart data={REG_DATA} barGap={4} barCategoryGap="18%">
-                <defs>
-                  <linearGradient id="regGradOwners" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="#68DBF2" /><stop offset="1" stopColor="#509CF5" />
-                  </linearGradient>
-                  <linearGradient id="regGradAgents" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="#FFEF5E" /><stop offset="1" stopColor="#F7936F" />
-                  </linearGradient>
-                  <linearGradient id="regGradAgencies" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0" stopColor="#75A3C7" /><stop offset="1" stopColor="#305E82" />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#807E7E" }} interval={xTickInterval} minTickGap={4} tickMargin={12} />
-                <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "#121212", fontWeight: 500 }} width={26} allowDecimals={false} tickFormatter={(v) => (v >= 1000 ? `${v / 1000}k` : `${v}`)} />
-                <Tooltip cursor={{ fill: "rgba(48,94,130,0.04)" }} contentStyle={{ borderRadius: 12, border: "1px solid #ededed", fontSize: 12 }} />
-                {SERIES.map((s) => (
-                  <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.fill} radius={[4, 4, 4, 4]} maxBarSize={8} background={{ fill: "#F6F6F6", radius: 4 }} />
+          <div style={{ height: 259 }} className="relative flex flex-col">
+            {/* Plot: y-axis + fixed gray lanes with gradient fills (all lanes always shown). */}
+            <div className="flex" style={{ flex: 1, minHeight: 0, gap: 16 }}>
+              <div className="flex flex-col justify-between shrink-0" style={{ width: 22 }}>
+                {regScale.ticks.map((t) => (
+                  <span key={t} style={{ fontSize: 10, fontWeight: 500, lineHeight: "10px", color: "#121212" }}>{kFmt(t)}</span>
                 ))}
-              </BarChart>
-            </ResponsiveContainer>
+              </div>
+              <div className="flex-1 flex items-end" style={{ justifyContent: "space-between", minWidth: 0 }}>
+                {REG_DATA.map((d, i) => (
+                  <div key={i} className="flex items-end justify-center" style={{ height: "100%", gap: 6 }}>
+                    {SERIES.map((s) => {
+                      const v = d[s.key] as number;
+                      const pct = Math.min(100, (v / regScale.top) * 100);
+                      return (
+                        <div key={s.key} className="flex items-end overflow-hidden" style={{ width: 8, height: "100%", background: "#F6F6F6", borderRadius: 4 }}>
+                          <div style={{ width: "100%", height: `${pct}%`, minHeight: v > 0 ? 8 : 0, background: s.fill, borderRadius: 4, transition: "height .3s ease" }} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Day labels, aligned under each group. */}
+            <div className="flex" style={{ gap: 16, marginTop: 12 }}>
+              <div className="shrink-0" style={{ width: 22 }} />
+              <div className="flex-1 flex" style={{ justifyContent: "space-between", minWidth: 0 }}>
+                {REG_DATA.map((d, i) => (
+                  <span key={i} style={{ fontSize: 10, lineHeight: "10px", color: "#807E7E", textAlign: "center", width: 50 }}>
+                    {i % regLabelEvery === 0 ? d.day : ""}
+                  </span>
+                ))}
+              </div>
+            </div>
             {(regLoading || regError || regTotal === 0) && (
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ gap: 6 }}>
                 {regLoading ? (
