@@ -114,6 +114,8 @@ export const endpoints = {
   adminUserKyc: (id: string) => `/admin/kyc/users/${id}`,
   adminKycIdentityAwaiting: "/admin/kyc/identity/awaiting",
   adminKycBusinessAwaiting: "/admin/kyc/business/awaiting",
+  adminKycIdentity: "/admin/kyc/identity",
+  adminKycBusiness: "/admin/kyc/business",
   adminKycIdentityApprove: (id: string) => `/admin/kyc/identity/${id}/approve`,
   adminKycIdentityReject: (id: string) => `/admin/kyc/identity/${id}/reject`,
   adminKycBusinessApprove: (id: string) => `/admin/kyc/business/${id}/approve`,

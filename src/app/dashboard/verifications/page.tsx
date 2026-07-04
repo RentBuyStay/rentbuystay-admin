@@ -6,13 +6,19 @@ import Link from "next/link";
 import { type Role } from "@/lib/demoUsers";
 import {
   useDecideKycMutation,
-  useGetAwaitingBusinessKycQuery,
-  useGetAwaitingIdentityKycQuery,
+  useGetBusinessKycQuery,
+  useGetIdentityKycQuery,
   useGetPlatformStatsQuery,
   useGetProfessionalsQuery,
   type BusinessKycEntry,
   type KycVerificationEntry,
 } from "@/services/adminApi";
+
+const STATUS_BY_TAB: Record<"Pending" | "Approved" | "Rejected", string> = {
+  Pending: "PENDING",
+  Approved: "VERIFIED",
+  Rejected: "REJECTED",
+};
 import { EmptyState } from "@/components/admin/userRows";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%). */
@@ -50,11 +56,14 @@ const submittedLabel = (iso?: string): string => {
 export default function VerificationManagementPage() {
   const [tab, setTab] = useState<"Pending" | "Approved" | "Rejected">("Pending");
 
+  const status = STATUS_BY_TAB[tab];
   const { data: stats } = useGetPlatformStatsQuery();
-  const { data: identityPage } = useGetAwaitingIdentityKycQuery({});
-  const { data: businessPage } = useGetAwaitingBusinessKycQuery({});
+  const { data: identityPage } = useGetIdentityKycQuery({ status });
+  const { data: businessPage } = useGetBusinessKycQuery({ status });
   const { data: prosPage } = useGetProfessionalsQuery({ size: 200 });
   const [decideKyc, { isLoading: deciding }] = useDecideKycMutation();
+
+  const isPending = tab === "Pending";
 
   const pending = (stats?.identityKyc?.pending ?? 0) + (stats?.businessKyc?.pending ?? 0);
   const approved = (stats?.identityKyc?.verified ?? 0) + (stats?.businessKyc?.verified ?? 0);
@@ -66,18 +75,19 @@ export default function VerificationManagementPage() {
     { key: "Rejected", count: rejected },
   ];
 
-  // Business rows name their subject (user/org id) — enrich via the directory.
-  // Identity rows carry no user reference at all (backend gap, issue #8).
+  // Identity rows now carry their subject (userId + name/email); business rows
+  // name their subject id — enrich agency/owner names via the directory.
   const list: QueueItem[] = useMemo(() => {
     const pros = new Map((prosPage?.content ?? []).map((p) => [p.id, p]));
     const identity: QueueItem[] = (identityPage?.content ?? []).map((v) => ({
       kind: "identity",
       id: v.id,
-      name: "—",
-      email: "—",
+      name: [v.firstName, v.lastName].filter(Boolean).join(" ") || v.email || "—",
+      email: v.email || "—",
       role: "Seeker",
       doc: docLabel(v),
       submitted: submittedLabel(v.createdAt),
+      subjectUserId: v.userId,
     }));
     const business: QueueItem[] = (businessPage?.content ?? []).map((v: BusinessKycEntry) => {
       const pro = v.subjectId ? pros.get(v.subjectId) : undefined;
@@ -151,9 +161,8 @@ export default function VerificationManagementPage() {
         })}
       </div>
 
-      {/* List — the backend only exposes the awaiting queue; approved/rejected
-          have real counts (tabs/cards) but no list endpoint yet. */}
-      {tab !== "Pending" || list.length === 0 ? (
+      {/* List — server-filtered by the active tab's status. */}
+      {list.length === 0 ? (
         <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
           <EmptyState
             title={`No ${tab.toLowerCase()} verifications`}
@@ -170,7 +179,8 @@ export default function VerificationManagementPage() {
             <VerificationCard
               key={`${v.kind}-${v.id}`}
               v={v}
-              pending
+              pending={isPending}
+              verified={tab === "Approved"}
               onApprove={() => handleDecision(v, true)}
               onReject={() => handleDecision(v, false)}
             />

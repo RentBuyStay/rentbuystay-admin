@@ -163,9 +163,14 @@ export type ProfessionalListItem = {
   createdAt?: string;
 };
 
-/** GET /admin/kyc/users/{userId} — authoritative KYC state for any user. */
+/** GET /admin/kyc/users/{userId} — authoritative KYC state for any user.
+ *  The admin identity list/queue also carries the subject's user reference. */
 export type KycVerificationEntry = {
   id: string;
+  userId?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
   verificationType?: string;
   provider?: string;
   documentType?: string;
@@ -634,6 +639,24 @@ export const adminApi = api.injectEndpoints({
       transformResponse: (res: ApiEnvelope<PageResponse<BusinessKycEntry>>) => res.data,
       providesTags: [{ type: "AdminUsers" as const, id: "KYC_AWAITING" }],
     }),
+    getIdentityKyc: builder.query<PageResponse<KycVerificationEntry>, { status?: string; page?: number; size?: number }>({
+      query: ({ status = "PENDING", page = 0, size = 50 } = {}) => ({
+        url: endpoints.adminKycIdentity,
+        method: "GET",
+        params: { status, page, size },
+      }),
+      transformResponse: (res: ApiEnvelope<PageResponse<KycVerificationEntry>>) => res.data,
+      providesTags: [{ type: "AdminUsers" as const, id: "KYC_AWAITING" }],
+    }),
+    getBusinessKyc: builder.query<PageResponse<BusinessKycEntry>, { status?: string; page?: number; size?: number }>({
+      query: ({ status = "PENDING", page = 0, size = 50 } = {}) => ({
+        url: endpoints.adminKycBusiness,
+        method: "GET",
+        params: { status, page, size },
+      }),
+      transformResponse: (res: ApiEnvelope<PageResponse<BusinessKycEntry>>) => res.data,
+      providesTags: [{ type: "AdminUsers" as const, id: "KYC_AWAITING" }],
+    }),
     decideKyc: builder.mutation<void, { kind: "identity" | "business"; id: string; approve: boolean; reason?: string }>({
       query: ({ kind, id, approve, reason }) => ({
         url:
@@ -668,6 +691,8 @@ export const {
   useGetUserKycStatusQuery,
   useGetAwaitingIdentityKycQuery,
   useGetAwaitingBusinessKycQuery,
+  useGetIdentityKycQuery,
+  useGetBusinessKycQuery,
   useDecideKycMutation,
   useGetAdminPropertiesQuery,
   useGetAwaitingPropertiesQuery,
