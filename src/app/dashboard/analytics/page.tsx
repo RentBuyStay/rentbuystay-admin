@@ -62,9 +62,10 @@ type PageData = {
 
 export default function Page() {
   const [tab, setTab] = useState<Tab>("Platform Overview");
+  const [poRange, setPoRange] = useState<number>(7);
 
   const { data: stats } = useGetPlatformStatsQuery();
-  const { data: registrations } = useGetRegistrationStatsQuery({ days: 7 });
+  const { data: registrations } = useGetRegistrationStatsQuery({ days: poRange });
   const { data: usersPage } = useGetAdminUsersQuery({ page: 0, size: 200 });
   const { data: propsPage } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
   const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
@@ -260,7 +261,7 @@ export default function Page() {
         })}
       </div>
 
-      {tab === "Platform Overview" && <PlatformOverview d={data} />}
+      {tab === "Platform Overview" && <PlatformOverview d={data} range={poRange} onRange={setPoRange} />}
       {tab === "User Analytics" && <UserAnalytics d={data} />}
       {tab === "Listing Analytics" && <ListingAnalytics d={data} />}
       {tab === "Geographic" && <GeographicTab d={data} />}
@@ -287,14 +288,45 @@ function StatCards({ stats }: { stats: Stat[] }) {
   );
 }
 
+/** Static label (used where the data isn't windowable). */
 function Dropdown({ label }: { label: string }) {
   return (
-    <button type="button" className="flex items-center gap-2 shrink-0">
+    <span className="flex items-center gap-2 shrink-0">
       <span style={{ fontSize: 14, fontWeight: 400, lineHeight: "23px", color: "#000000" }}>{label}</span>
-      <Image src="/icons/admin/analytics/chart-arrow-down.svg" alt="" width={20} height={20} />
-    </button>
+    </span>
   );
 }
+
+/** Interactive range selector — used where the series can be re-queried by window. */
+function RangeDropdown({ value, options, onChange }: { value: number; options: { days: number; label: string }[]; onChange: (days: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const current = options.find((o) => o.days === value)?.label ?? options[0]?.label ?? "";
+  return (
+    <div className="relative shrink-0">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex items-center gap-2 hover:opacity-80">
+        <span style={{ fontSize: 14, fontWeight: 400, lineHeight: "23px", color: "#000000" }}>{current}</span>
+        <Image src="/icons/admin/analytics/chart-arrow-down.svg" alt="" width={20} height={20} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden="true" />
+          <div className="absolute right-0 top-8 z-20 bg-white rounded-[12px] border border-[#F6F6F6] overflow-hidden flex flex-col py-1" style={{ minWidth: 150, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}>
+            {options.map((o) => (
+              <button key={o.days} type="button" onClick={() => { onChange(o.days); setOpen(false); }} className="flex items-center w-full px-4 text-left hover:bg-[#fafafa]" style={{ height: 38, fontSize: 13, fontWeight: 500, color: o.days === value ? "#305E82" : "#807E7E", background: o.days === value ? "rgba(48,94,130,0.06)" : "transparent" }}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+const RANGE_OPTIONS = [
+  { days: 7, label: "Last 7 Days" },
+  { days: 30, label: "Last 30 Days" },
+  { days: 90, label: "Last 90 Days" },
+];
 
 function ChartHeader({ title, subtitle, right }: { title: string; subtitle?: string; right?: React.ReactNode }) {
   return (
@@ -445,14 +477,14 @@ function GeoMapCard({ title, subtitle, legend, fills }: { title: string; subtitl
   );
 }
 
-function PlatformOverview({ d }: { d: PageData }) {
+function PlatformOverview({ d, range, onRange }: { d: PageData; range: number; onRange: (days: number) => void }) {
   return (
     <>
       <StatCards stats={PLATFORM_STATS} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="flex flex-col bg-white" style={cardStyle}>
           <div className="flex flex-col gap-4">
-            <ChartHeader title="New Users vs Active Users" right={<Dropdown label="Last 7 Days" />} />
+            <ChartHeader title="New Users vs Active Users" right={<RangeDropdown value={range} options={RANGE_OPTIONS} onChange={onRange} />} />
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-2.5"><span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: CYAN }} /><span style={{ fontSize: 11, color: "#807E7E" }}>New Users</span></span>
               <span className="flex items-center gap-2.5"><span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: BLUE }} /><span style={{ fontSize: 11, color: "#807E7E" }}>Active Users</span></span>
@@ -462,7 +494,7 @@ function PlatformOverview({ d }: { d: PageData }) {
         </div>
         <div className="flex flex-col bg-white" style={cardStyle}>
           <div className="flex flex-col gap-4">
-            <ChartHeader title="Listings Posted vs Leads Generated" right={<Dropdown label="Last 7 Days" />} />
+            <ChartHeader title="Listings Posted vs Leads Generated" right={<RangeDropdown value={range} options={RANGE_OPTIONS} onChange={onRange} />} />
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-2.5"><span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: GOLD }} /><span style={{ fontSize: 11, color: "#807E7E" }}>Listings Posted</span></span>
               <span className="flex items-center gap-2.5"><span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: BLUE }} /><span style={{ fontSize: 11, color: "#807E7E" }}>Leads Generated</span></span>
@@ -525,7 +557,7 @@ function UserAnalytics({ d }: { d: PageData }) {
       <StatCards stats={USER_STATS} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="flex flex-col bg-white" style={cardStyle}>
-          <ChartHeader title="User Registrations by Role" right={<Dropdown label="Last 30 Days" />} />
+          <ChartHeader title="User Registrations by Role" right={<Dropdown label="All time" />} />
           <div className="flex flex-col" style={{ gap: 24 }}>
             {d.regByRole.map((r) => <HBarRow key={r.role} label={r.role} color={ROLE_COLOR[r.role]} pct={r.pct} value={r.value} barPct={r.barPct} />)}
           </div>
@@ -578,7 +610,7 @@ function ListingAnalytics({ d }: { d: PageData }) {
       <StatCards stats={LISTING_STATS} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="flex flex-col bg-white" style={cardStyle}>
-          <ChartHeader title="User Registrations by Role" right={<Dropdown label="Last 30 Days" />} />
+          <ChartHeader title="User Registrations by Role" right={<Dropdown label="All time" />} />
           <div className="flex flex-col" style={{ gap: 24 }}>
             {d.listingTypes.map((r) => <HBarRow key={r.label} label={r.label} color={LISTING_TYPE_BARCOLOR[r.label]} pct={r.pct} value={r.value} barPct={r.barPct} badgeW={72} />)}
           </div>
