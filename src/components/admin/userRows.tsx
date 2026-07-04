@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import type { Role } from "@/lib/demoUsers";
 import {
   useGetUserKycStatusQuery,
@@ -129,6 +130,64 @@ export function EmptyState({ title, subtitle }: { title: string; subtitle: strin
           {subtitle}
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Filter pill with a dropdown — same pill styling as the static design, with
+ * the app's action-menu panel for options. "All" clears the filter.
+ */
+export function FilterDropdown({
+  label,
+  options,
+  value,
+  onChange,
+  minWidth,
+}: {
+  label: string;
+  options: string[];
+  value: string | null;
+  onChange: (v: string | null) => void;
+  minWidth?: number;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center justify-between bg-[#F6F6F6] rounded-[12px] hover:bg-[#ededed]"
+        style={{ height: 48, padding: "8px 16px", gap: 16, minWidth: minWidth ?? 109, color: value ? "#121212" : "#807E7E", fontSize: 14 }}
+      >
+        {value ?? label}
+        <Image src="/icons/admin/filter-arrow-down.svg" alt="" width={16} height={16} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} aria-hidden="true" />
+          <div
+            className="absolute left-0 top-14 z-20 bg-white rounded-[12px] border border-[#F6F6F6] overflow-hidden flex flex-col py-2"
+            style={{ minWidth: 180, maxHeight: 320, overflowY: "auto", boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}
+          >
+            {["All", ...options].map((opt) => {
+              const isAll = opt === "All";
+              const active = isAll ? value === null : value === opt;
+              return (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => { onChange(isAll ? null : opt); setOpen(false); }}
+                  className="flex items-center w-full px-4 text-left hover:bg-[#fafafa]"
+                  style={{ height: 40, fontSize: 13, fontWeight: 500, color: active ? "#305E82" : "#807E7E", background: active ? "rgba(48,94,130,0.06)" : "transparent" }}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
     </div>
   );
 }

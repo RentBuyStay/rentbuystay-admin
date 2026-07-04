@@ -15,21 +15,9 @@ import {
 } from "@/services/adminApi";
 import { useGetAgentsQuery } from "@/services/agentApi";
 import type { AgentListItem } from "@/services/types";
-import { Badge, ROLE_STYLE, VerificationCell, pageItems, toRow, type UserRow } from "@/components/admin/userRows";
+import { Badge, FilterDropdown, ROLE_STYLE, VerificationCell, pageItems, toRow, type UserRow } from "@/components/admin/userRows";
 
 const PAGE_SIZE = 20;
-
-function FilterPill({ label }: { label: string }) {
-  return (
-    <button
-      type="button"
-      className="flex items-center justify-between gap-2 bg-[#F6F6F6] rounded-[12px] h-12 px-4 text-[14px] text-[#807e7e] hover:bg-[#ededed] transition-colors shrink-0"
-    >
-      {label}
-      <Image src="/icons/admin/filter-arrow-down.svg" alt="" width={16} height={16} />
-    </button>
-  );
-}
 
 export default function UsersPage() {
   const router = useRouter();
@@ -37,6 +25,9 @@ export default function UsersPage() {
   const [query, setQuery] = useState("");
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [locationFilter, setLocationFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [verificationFilter, setVerificationFilter] = useState<string | null>(null);
 
   const { data: usersPage } = useGetAdminUsersQuery({ page, size: PAGE_SIZE });
   const { data: stats } = useGetPlatformStatsQuery();
@@ -67,11 +58,28 @@ export default function UsersPage() {
     { key: "Agency", label: "Agencies", count: stats?.usersByType?.agencies ?? 0 },
   ];
 
+  const allRows = useMemo(
+    () => (usersPage?.content ?? []).map((u) => toRow(u, agentsById, prosById)),
+    [usersPage, agentsById, prosById],
+  );
+
+  // Location options from the data actually on screen (only enriched rows carry one).
+  const locationOptions = useMemo(
+    () => [...new Set(allRows.map((r) => r.location).filter((l) => l !== "—"))].sort(),
+    [allRows],
+  );
+
   const rows = useMemo(() => {
-    const all = (usersPage?.content ?? []).map((u) => toRow(u, agentsById, prosById));
     const q = query.trim().toLowerCase();
-    return all.filter((r) => (tab === "All" || r.role === tab) && (!q || r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q)));
-  }, [usersPage, agentsById, prosById, tab, query]);
+    return allRows.filter(
+      (r) =>
+        (tab === "All" || r.role === tab) &&
+        (!locationFilter || r.location === locationFilter) &&
+        (!statusFilter || r.status === statusFilter) &&
+        (!verificationFilter || (verificationFilter === "Verified") === r.verified) &&
+        (!q || r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q)),
+    );
+  }, [allRows, tab, query, locationFilter, statusFilter, verificationFilter]);
 
   const totalPages = usersPage?.totalPages ?? 1;
 
@@ -122,9 +130,9 @@ export default function UsersPage() {
       {/* Filter row */}
       <div className="flex items-center gap-4 flex-wrap">
         <span className="text-[16px] font-medium text-[#121212]">Filter:</span>
-        <FilterPill label="Location" />
-        <FilterPill label="Status" />
-        <FilterPill label="Verification" />
+        <FilterDropdown label="Location" options={locationOptions} value={locationFilter} onChange={setLocationFilter} />
+        <FilterDropdown label="Status" options={["Active", "Suspended"]} value={statusFilter} onChange={setStatusFilter} minWidth={133} />
+        <FilterDropdown label="Verification" options={["Verified", "Unverified"]} value={verificationFilter} onChange={setVerificationFilter} minWidth={133} />
         <div className="flex items-center gap-2 bg-[#F6F6F6] rounded-[12px] h-12 px-4 flex-1 min-w-[220px] lg:max-w-[394px] lg:ml-auto">
           <Image src="/icons/admin/search-normal.svg" alt="" width={20} height={20} className="shrink-0" />
           <input

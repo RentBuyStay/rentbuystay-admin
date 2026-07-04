@@ -5,16 +5,16 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import AdminPropertyCard from "@/components/AdminPropertyCard";
 import { toAdminPropertyFromApi } from "@/lib/property";
-import { EmptyState } from "@/components/admin/userRows";
+import { EmptyState, FilterDropdown } from "@/components/admin/userRows";
 import { useGetAdminPropertiesQuery, useRemovePropertyMutation } from "@/services/adminApi";
-
-const FILTERS = ["Location", "Status"];
 
 type TabKey = "All" | "Active" | "Archived" | "Removed";
 
 export default function PropertyManagementPage() {
   const [tab, setTab] = useState<TabKey>("All");
   const [query, setQuery] = useState("");
+  const [locationFilter, setLocationFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   const { data: propPage, isLoading } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
   const [removeProperty] = useRemovePropertyMutation();
@@ -28,14 +28,21 @@ export default function PropertyManagementPage() {
     { key: "Removed", label: "Removed", count: all.filter((p) => p.status === "Removed").length },
   ];
 
+  const locationOptions = useMemo(
+    () => [...new Set(all.map((p) => p.location).filter((l) => l !== "—"))].sort(),
+    [all],
+  );
+
   const properties = useMemo(() => {
     const q = query.trim().toLowerCase();
     return all.filter(
       (p) =>
         (tab === "All" || p.status === tab) &&
+        (!locationFilter || p.location === locationFilter) &&
+        (!statusFilter || p.status === statusFilter) &&
         (!q || p.title.toLowerCase().includes(q) || p.location.toLowerCase().includes(q) || p.lister.name.toLowerCase().includes(q)),
     );
-  }, [all, tab, query]);
+  }, [all, tab, query, locationFilter, statusFilter]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -81,17 +88,8 @@ export default function PropertyManagementPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-4 flex-wrap">
           <span style={{ fontSize: 16, fontWeight: 500, lineHeight: "24px", letterSpacing: "-0.02em", color: "#121212" }}>Filter:</span>
-          {FILTERS.map((f) => (
-            <button
-              key={f}
-              type="button"
-              className="flex items-center justify-between bg-[#F6F6F6] rounded-[12px] hover:bg-[#ededed]"
-              style={{ height: 48, padding: "8px 16px", gap: 16, minWidth: f === "Status" ? 133 : 109, color: "#807E7E", fontSize: 14 }}
-            >
-              {f}
-              <Image src="/icons/admin/filter-arrow-down.svg" alt="" width={16} height={16} />
-            </button>
-          ))}
+          <FilterDropdown label="Location" options={locationOptions} value={locationFilter} onChange={setLocationFilter} />
+          <FilterDropdown label="Status" options={["Active", "Archived", "Removed", "Awaiting Approval", "Rejected"]} value={statusFilter} onChange={setStatusFilter} minWidth={133} />
         </div>
         <div className="flex items-center gap-2 bg-[#F6F6F6] rounded-[12px] h-12 px-4 flex-1 min-w-[220px] lg:max-w-[394px] lg:ml-auto">
           <Image src="/icons/admin/search-normal.svg" alt="" width={20} height={20} />

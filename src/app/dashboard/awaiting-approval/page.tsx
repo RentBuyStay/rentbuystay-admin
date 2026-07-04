@@ -4,12 +4,13 @@ import Image from "next/image";
 import { useMemo, useState } from "react";
 import AdminPropertyCard from "@/components/AdminPropertyCard";
 import { toAdminPropertyFromApi } from "@/lib/property";
-import { EmptyState } from "@/components/admin/userRows";
+import { EmptyState, FilterDropdown } from "@/components/admin/userRows";
 import { useGetAdminPropertiesQuery, useGetAwaitingPropertiesQuery } from "@/services/adminApi";
 
 export default function AwaitingApprovalPage() {
   const [tab, setTab] = useState<"Awaiting Approval" | "Rejected">("Awaiting Approval");
   const [query, setQuery] = useState("");
+  const [locationFilter, setLocationFilter] = useState<string | null>(null);
 
   const { data: awaitingPage, isLoading: loadingAwaiting } = useGetAwaitingPropertiesQuery({ page: 0, size: 100 });
   // Rejected listings come from the full platform list (no dedicated endpoint).
@@ -27,12 +28,19 @@ export default function AwaitingApprovalPage() {
     { key: "Rejected", count: rejected.length },
   ];
 
+  const locationOptions = useMemo(
+    () => [...new Set([...awaiting, ...rejected].map((p) => p.location).filter((l) => l !== "—"))].sort(),
+    [awaiting, rejected],
+  );
+
   const properties = useMemo(() => {
     const q = query.trim().toLowerCase();
     return (tab === "Awaiting Approval" ? awaiting : rejected).filter(
-      (p) => !q || p.title.toLowerCase().includes(q) || p.location.toLowerCase().includes(q) || p.lister.name.toLowerCase().includes(q),
+      (p) =>
+        (!locationFilter || p.location === locationFilter) &&
+        (!q || p.title.toLowerCase().includes(q) || p.location.toLowerCase().includes(q) || p.lister.name.toLowerCase().includes(q)),
     );
-  }, [awaiting, rejected, tab, query]);
+  }, [awaiting, rejected, tab, query, locationFilter]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -58,14 +66,7 @@ export default function AwaitingApprovalPage() {
           })}
         </div>
         <div className="flex items-center gap-4 flex-wrap">
-          <button
-            type="button"
-            className="flex items-center justify-between bg-[#F6F6F6] rounded-[12px] hover:bg-[#ededed]"
-            style={{ height: 48, padding: "8px 16px", gap: 16, minWidth: 109, color: "#807E7E", fontSize: 14 }}
-          >
-            Location
-            <Image src="/icons/admin/filter-arrow-down.svg" alt="" width={16} height={16} />
-          </button>
+          <FilterDropdown label="Location" options={locationOptions} value={locationFilter} onChange={setLocationFilter} />
           <div className="flex items-center gap-2 bg-[#F6F6F6] rounded-[12px] h-12 px-4 flex-1 min-w-[220px] lg:max-w-[394px]">
             <Image src="/icons/admin/search-normal.svg" alt="" width={20} height={20} />
             <input
