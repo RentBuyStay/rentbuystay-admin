@@ -10,6 +10,7 @@ import {
   useUpdateAdminPlanMutation,
   useDeleteAdminPlanMutation,
   useGetAdminUserSubscriptionsQuery,
+  useGetRevenueStatsQuery,
   useCancelUserSubscriptionMutation,
   useExtendUserSubscriptionMutation,
   useGetAdminUsersQuery,
@@ -95,6 +96,9 @@ export default function SubscriptionManagementPage() {
   const { data: apiPlans = [], isLoading: loadingPlans } = useGetAdminPlansQuery();
   const { data: frequencies = [] } = useGetPlanFrequenciesQuery();
   const { data: subsPageData, isLoading: loadingSubs } = useGetAdminUserSubscriptionsQuery({ page: subsPage, size: SUBS_PAGE_SIZE });
+  // Aggregate fetch (all subs) + revenue breakdown for the MRR / churn stat cards.
+  const { data: allSubsData } = useGetAdminUserSubscriptionsQuery({ page: 0, size: 500 });
+  const { data: revenue } = useGetRevenueStatsQuery();
   const { data: usersPage } = useGetAdminUsersQuery({ page: 0, size: 200 });
   const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
   const { data: prosPage } = useGetProfessionalsQuery({ size: 200 });
@@ -174,12 +178,26 @@ export default function SubscriptionManagementPage() {
   const pagedPlans = plans.slice(planPage * PLANS_PAGE_SIZE, (planPage + 1) * PLANS_PAGE_SIZE);
 
   const subsTotalPages = subsPageData?.totalPages ?? 1;
-  const activeCount = subs.filter((sv) => sv.status === "Active").length;
-  const expiringSoon = subs.filter((sv) => {
-    if (sv.status !== "Active" || !sv.endsAtIso) return false;
-    const diff = new Date(sv.endsAtIso).getTime() - Date.now();
+  const expiringSoon = (allSubsData?.content ?? []).filter((s) => {
+    if (s.status !== "ACTIVE" || !s.endsAt) return false;
+    const diff = new Date(s.endsAt).getTime() - Date.now();
     return diff > 0 && diff <= 7 * 86400000;
   }).length;
+
+  // ── MRR: sum of each plan's monthly-normalised price × its active subscribers ──
+  const monthlyPrice = (planId: string): number => {
+    const p = plansById.get(planId)?.raw;
+    if (!p) return 0;
+    const days = p.durationDays ?? p.frequency?.days ?? 30;
+    return days > 0 ? p.price * (30 / days) : p.price;
+  };
+  const mrr = (revenue?.byPlan ?? []).reduce((sum, bp) => sum + monthlyPrice(bp.planId) * bp.subscribers, 0);
+  const mrrValue = revenue ? `₦${Math.round(mrr).toLocaleString("en-NG")}` : "—";
+
+  // ── Churn: share of all subscriptions that have cancelled or lapsed ──
+  const allSubs = allSubsData?.content ?? [];
+  const churnedCount = allSubs.filter((s) => s.status === "CANCELLED" || s.status === "EXPIRED").length;
+  const churnValue = allSubs.length ? `${((churnedCount / allSubs.length) * 100).toFixed(1)}%` : "—";
 
   const frequencyNames = frequencies.map((f) => f.name);
   const roleOptions = [...new Set(allPlans.map((p) => p.targetRole).filter((r): r is string => !!r))];
@@ -253,9 +271,9 @@ export default function SubscriptionManagementPage() {
     <div className="flex flex-col gap-6">
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard gradient icon="/icons/admin/sub-mrr.svg" label="MRR" value="—" delta="Awaiting revenue data" deltaColor="#FFFFFF" />
-        <StatCard icon="/icons/admin/sub-active.svg" label="Active Subs" value={String(activeCount)} delta="On this page" deltaColor="#027B2A" />
-        <StatCard icon="/icons/admin/sub-churn.svg" label="Churn Rate" value="—" delta="Awaiting revenue data" deltaColor="#807E7E" />
+        <StatCard gradient icon="/icons/admin/sub-mrr.svg" label="MRR" value={mrrValue} delta="Monthly recurring revenue" deltaColor="#FFFFFF" />
+        <StatCard icon="/icons/admin/sub-active.svg" label="Active Subs" value={String(revenue?.totalSubscribers ?? (allSubsData?.content ?? []).filter((s) => s.status === "ACTIVE").length)} delta="Currently active" deltaColor="#027B2A" />
+        <StatCard icon="/icons/admin/sub-churn.svg" label="Churn Rate" value={churnValue} delta="Cancelled or lapsed" deltaColor="#807E7E" />
         <StatCard icon="/icons/admin/sub-expiring.svg" label="Expiring (7 Days)" value={String(expiringSoon)} delta="Try to send reminders" deltaColor="#807E7E" />
       </div>
 
