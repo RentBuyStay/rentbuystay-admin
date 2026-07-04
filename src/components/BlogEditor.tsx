@@ -49,13 +49,22 @@ export default function BlogEditor({ post }: { post?: AdminBlogPost }) {
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const [createPost] = useCreateBlogPostMutation();
   const [updatePost] = useUpdateBlogPostMutation();
   const [uploadFile] = useUploadFileMutation();
 
+  const MAX_COVER_BYTES = 5 * 1024 * 1024; // keep uploads reasonable
+
   const onFile = (f?: File) => {
-    if (!f || !f.type.startsWith("image/")) return;
+    if (!f) return;
+    if (!f.type.startsWith("image/")) { setError("Please choose an image file for the cover."); return; }
+    if (f.size > MAX_COVER_BYTES) {
+      setError(`That image is ${(f.size / 1024 / 1024).toFixed(1)} MB — please use one under 5 MB (try compressing it).`);
+      return;
+    }
+    setError(null);
     setCoverName(f.name);
     setCoverFile(f);
     const r = new FileReader();
@@ -73,10 +82,29 @@ export default function BlogEditor({ post }: { post?: AdminBlogPost }) {
   };
 
   const save = async (mode: "publish" | "schedule" | "draft") => {
-    if (busy || !title.trim() || !bodyHtmlValue.trim()) return;
+    if (busy) return;
+    if (!title.trim() || !bodyHtmlValue.trim()) {
+      setError("Please add a title and body before saving.");
+      return;
+    }
     setBusy(true);
+    setError(null);
+
+    let cover: string | null;
     try {
-      const cover = await resolveCoverUrl();
+      cover = await resolveCoverUrl();
+    } catch (e) {
+      const status = (e as { status?: number })?.status;
+      setError(
+        status === 413
+          ? "That cover image is too large for the server to accept. Please use a smaller/compressed image and try again."
+          : "Couldn't upload the cover image. Please try a different image or remove it.",
+      );
+      setBusy(false);
+      return;
+    }
+
+    try {
       const scheduledAt =
         mode === "schedule" && date
           ? new Date(`${date}T${TIME_24H[time] ?? "09:00"}:00`).toISOString()
@@ -101,7 +129,7 @@ export default function BlogEditor({ post }: { post?: AdminBlogPost }) {
         setSuccess(editing ? UPDATE_SUCCESS : PUBLISH_SUCCESS);
       }
     } catch {
-      // stay on the editor; nothing is lost
+      setError("Couldn't save the post. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -138,6 +166,12 @@ export default function BlogEditor({ post }: { post?: AdminBlogPost }) {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div style={{ background: "rgba(217,45,32,0.06)", border: "1px solid rgba(217,45,32,0.3)", borderRadius: 12, padding: "12px 16px" }}>
+          <span style={{ fontSize: 14, fontWeight: 500, color: "#D92D20" }}>{error}</span>
+        </div>
+      )}
 
       {/* Bog Title */}
       <div className="flex flex-col gap-2">
