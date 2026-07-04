@@ -662,6 +662,13 @@ export const adminApi = api.injectEndpoints({
       query: (body) => ({ url: endpoints.adminCreateAdmin, method: "POST", body }),
       invalidatesTags: [{ type: "AdminUsers" as const, id: "LIST" }],
     }),
+    createNewUser: builder.mutation<
+      unknown,
+      { userType: string; firstName: string; lastName: string; email: string; phoneNumber: string }
+    >({
+      query: (body) => ({ url: endpoints.adminUserCreate, method: "POST", body }),
+      invalidatesTags: [{ type: "AdminUsers" as const, id: "LIST" }],
+    }),
     getSettingsGroup: builder.query<Record<string, string>, string>({
       query: (group) => ({ url: endpoints.adminSettingsGroup(group), method: "GET" }),
       transformResponse: (res: ApiEnvelope<Record<string, string>>) => res.data,
@@ -782,6 +789,7 @@ export const {
   useUpdateAdminRoleMutation,
   useDeleteAdminRoleMutation,
   useAddNewAdminMutation,
+  useCreateNewUserMutation,
   useGetSettingsGroupQuery,
   useUpdateSettingsGroupMutation,
 } = adminApi;

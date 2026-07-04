@@ -60,6 +60,66 @@ function Overlay({ maxWidth, onClose, children }: { maxWidth: number; onClose: (
   );
 }
 
+export type CreateUserValues = {
+  userType: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+};
+
+/** User-type label → backend UserType for the Create User flow. */
+export const USER_TYPE_MAP: Record<string, string> = {
+  "Property Seeker": "PROPERTY_SEEKER",
+  "Property Owner": "PROPERTY_OWNER",
+  "Property Agent": "PROPERTY_AGENT",
+  "Real Estate Agency": "PROPERTY_AGENCY",
+};
+
+export function CreateUserModal({ busy, error, onClose, onSubmit }: { busy?: boolean; error?: string | null; onClose: () => void; onSubmit: (v: CreateUserValues) => void }) {
+  const NG = COUNTRIES.find((c) => c.iso2 === "NG") ?? COUNTRIES[0];
+  const [country, setCountry] = useState<Country>(NG);
+  const [phone, setPhone] = useState("");
+  const [userType, setUserType] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+
+  return (
+    <Overlay maxWidth={720} onClose={onClose}>
+      <h2 className="pr-8" style={{ fontSize: 20, fontWeight: 600, lineHeight: "24px", color: "#121212" }}>Create User</h2>
+      <p className="mt-2" style={{ fontSize: 14, color: "#807E7E", lineHeight: "22px" }}>
+        Creates the account in pending status and emails an onboarding link to set their password.
+      </p>
+      <form
+        className="flex flex-col gap-5 mt-8"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit({
+            userType: USER_TYPE_MAP[userType] ?? "",
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            email: email.trim(),
+            phoneNumber: `${country.dial}${phone.replace(/\D/g, "")}`,
+          });
+        }}
+      >
+        {error && <p style={{ fontSize: 14, color: "#D92D20", fontWeight: 500, margin: 0 }}>{error}</p>}
+        <SelectField label="Account Type" placeholder="Select account type" value={userType} onChange={setUserType} options={Object.keys(USER_TYPE_MAP)} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="First Name"><input className={`${fieldBase} h-12 px-4`} placeholder="Enter first name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required /></Field>
+          <Field label="Last name"><input className={`${fieldBase} h-12 px-4`} placeholder="Enter last name" value={lastName} onChange={(e) => setLastName(e.target.value)} required /></Field>
+        </div>
+        <Field label="Email"><input type="email" className={`${fieldBase} h-12 px-4`} placeholder="Enter email address here" value={email} onChange={(e) => setEmail(e.target.value)} required /></Field>
+        <Field label="Phone Number">
+          <PhoneNumberInput country={country} onCountryChange={setCountry} value={phone} onChange={setPhone} />
+        </Field>
+        <button type="submit" disabled={busy || !userType} className="flex items-center justify-center text-white hover:opacity-90 mt-2 disabled:opacity-60" style={gradientBtn}>{busy ? "Creating…" : "Create User"}</button>
+      </form>
+    </Overlay>
+  );
+}
+
 export type AddAdminValues = {
   firstName: string;
   lastName: string;

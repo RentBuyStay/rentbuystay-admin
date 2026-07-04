@@ -10,9 +10,12 @@ import {
   useGetPlatformStatsQuery,
   useSuspendUserMutation,
   useUnsuspendUserMutation,
+  useCreateNewUserMutation,
 } from "@/services/adminApi";
 import { Badge, FilterDropdown, ROLE_STYLE, VerificationCell, pageItems, toRow, type UserRow } from "@/components/admin/userRows";
 import NotifyUserModal from "@/components/admin/NotifyUserModal";
+import { CreateUserModal, type CreateUserValues } from "@/components/AdminModals";
+import { SuccessModal } from "@/components/PlanModals";
 
 const PAGE_SIZE = 20;
 
@@ -34,6 +37,9 @@ export default function UsersPage() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [verificationFilter, setVerificationFilter] = useState<string | null>(null);
   const [notifyFor, setNotifyFor] = useState<UserRow | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createdMsg, setCreatedMsg] = useState<string | null>(null);
 
   // Server-side filters: tab → user type, status pill → account status, search → q.
   const { data: usersPage } = useGetAdminUsersQuery({
@@ -46,6 +52,23 @@ export default function UsersPage() {
   const { data: stats } = useGetPlatformStatsQuery();
   const [suspendUser] = useSuspendUserMutation();
   const [unsuspendUser] = useUnsuspendUserMutation();
+  const [createNewUser, { isLoading: creatingUser }] = useCreateNewUserMutation();
+
+  const handleCreateUser = async (v: CreateUserValues) => {
+    setCreateError(null);
+    if (!v.userType || !v.firstName || !v.lastName || !v.email || v.phoneNumber.replace(/\D/g, "").length < 7) {
+      setCreateError("Please fill in all fields.");
+      return;
+    }
+    try {
+      await createNewUser(v).unwrap();
+      setCreateOpen(false);
+      setCreatedMsg(`An onboarding link has been emailed to ${v.email}. The account is pending until they set their password.`);
+    } catch (e) {
+      const msg = (e as { data?: { message?: string } })?.data?.message;
+      setCreateError(msg || "Couldn't create the user. Please check the details and try again.");
+    }
+  };
 
   // Live per-type counts from /admin/stats; fall back to page total while loading.
   const TABS: { key: "All" | Role; label: string; count: number }[] = [
@@ -115,6 +138,7 @@ export default function UsersPage() {
         </div>
         <button
           type="button"
+          onClick={() => { setCreateError(null); setCreateOpen(true); }}
           className="flex items-center gap-2 text-white rounded-[12px] h-12 px-6 text-[14px] font-medium hover:opacity-90 transition-opacity"
           style={{ background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
         >
@@ -273,6 +297,17 @@ export default function UsersPage() {
           userName={notifyFor.name !== "—" ? notifyFor.name : notifyFor.email}
           onClose={() => setNotifyFor(null)}
         />
+      )}
+      {createOpen && (
+        <CreateUserModal
+          busy={creatingUser}
+          error={createError}
+          onClose={() => setCreateOpen(false)}
+          onSubmit={handleCreateUser}
+        />
+      )}
+      {createdMsg && (
+        <SuccessModal title="User Created" body={createdMsg} onClose={() => setCreatedMsg(null)} />
       )}
     </div>
   );
