@@ -15,10 +15,10 @@ import {
 } from "@/services/propertyApi";
 import { useOpenDirectConversationMutation } from "@/services/conversationApi";
 import { toSeekerListing } from "@/lib/property";
-import { DEMO_PROPERTIES, getDemoProperty } from "@/lib/demoProperties";
 import { unwrapApiError } from "@/services/api";
 import { useToast } from "@/components/Toast";
 import ScheduleInspectionModal from "@/components/ScheduleInspectionModal";
+import { EmptyState } from "@/components/admin/userRows";
 
 const FALLBACK_GALLERY = [
   "/images/prop1.jpg",
@@ -35,7 +35,7 @@ export default function BrowsePropertyDetailPage({
 }) {
   const router = useRouter();
   const { id } = use(params);
-  const { data } = useGetPropertyQuery(id);
+  const { data, isLoading } = useGetPropertyQuery(id);
   const { data: savedPage } = useGetSavedPropertiesQuery({ page: 0, size: 100 });
   const [saveProperty] = useSavePropertyMutation();
   const [unsaveProperty] = useUnsavePropertyMutation();
@@ -55,10 +55,22 @@ export default function BrowsePropertyDetailPage({
     }
   }
 
-  // UI-first: fall back to a static demo property so the full detail UI renders
-  // without backend data. Real data takes over once integration is wired.
-  const property = data ?? getDemoProperty(id);
+  if (isLoading) {
+    return (
+      <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
+        Loading property…
+      </div>
+    );
+  }
+  if (!data) {
+    return (
+      <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+        <EmptyState title="Property not found" subtitle="This listing may have been removed, or it hasn't loaded yet. Go back and try again." />
+      </div>
+    );
+  }
 
+  const property = data;
   const listing = toSeekerListing(property);
   const isSaved = (savedPage?.content ?? []).some((p) => p.id === id);
   const galleryImages = property.photos?.length ? property.photos.map((ph) => ph.url) : undefined;
@@ -800,9 +812,7 @@ function ListedByCard({ listing }: { listing: SeekerListing }) {
 
 function RelatedListings({ currentId }: { currentId: string }) {
   const { data: propPage } = useGetActivePropertiesQuery({ page: 0, size: 12 });
-  // UI-first: fall back to demo listings when there's no backend data yet.
-  const source = propPage?.content?.length ? propPage.content : DEMO_PROPERTIES;
-  const others = source
+  const others = (propPage?.content ?? [])
     .filter((p) => p.id !== currentId)
     .slice(0, 3)
     .map(toSeekerListing);
