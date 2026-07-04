@@ -5,12 +5,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   useGetAdminUsersQuery,
-  useGetProfessionalsQuery,
   useUnsuspendUserMutation,
-  type ProfessionalListItem,
 } from "@/services/adminApi";
-import { useGetAgentsQuery } from "@/services/agentApi";
-import type { AgentListItem } from "@/services/types";
 import { Badge, EmptyState, ROLE_STYLE, VerificationCell, toRow } from "@/components/admin/userRows";
 
 export default function SuspendedUsersPage() {
@@ -18,24 +14,19 @@ export default function SuspendedUsersPage() {
   const [query, setQuery] = useState("");
   const [menuFor, setMenuFor] = useState<string | null>(null);
 
-  // No server-side status filter exists yet (issue #7) — pull a large page and
-  // keep only SUSPENDED locally.
-  const { data: usersPage, isLoading } = useGetAdminUsersQuery({ page: 0, size: 200 });
-  const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
-  const { data: prosPage } = useGetProfessionalsQuery({ size: 200 });
+  // Server-side status filter + search.
+  const { data: usersPage, isLoading } = useGetAdminUsersQuery({
+    page: 0,
+    size: 200,
+    status: "SUSPENDED",
+    q: query.trim() || undefined,
+  });
   const [unsuspendUser] = useUnsuspendUserMutation();
 
-  const rows = useMemo(() => {
-    const agentsById = new Map<string, AgentListItem>();
-    (agentsPage?.content ?? []).forEach((a) => a.userId && agentsById.set(a.userId, a));
-    const prosById = new Map<string, ProfessionalListItem>();
-    (prosPage?.content ?? []).forEach((p) => p.id && prosById.set(p.id, p));
-    const q = query.trim().toLowerCase();
-    return (usersPage?.content ?? [])
-      .filter((u) => u.status === "SUSPENDED")
-      .map((u) => toRow(u, agentsById, prosById))
-      .filter((r) => !q || r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q));
-  }, [usersPage, agentsPage, prosPage, query]);
+  const rows = useMemo(
+    () => (usersPage?.content ?? []).filter((u) => u.status === "SUSPENDED").map((u) => toRow(u)),
+    [usersPage],
+  );
 
   const handleReactivate = async (id: string) => {
     setMenuFor(null);
@@ -134,7 +125,7 @@ export default function SuspendedUsersPage() {
                     <Badge bg="rgba(227,0,69,0.08)" color="#E30045">Suspended</Badge>
                   </td>
                   <td style={{ padding: "16px 24px" }}>
-                    <VerificationCell userId={r.id} fallback={r.verified} />
+                    <VerificationCell verified={r.verified} />
                   </td>
                   <td style={{ padding: "16px 24px", position: "relative" }}>
                     <button

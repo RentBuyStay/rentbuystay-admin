@@ -8,17 +8,16 @@ import { Bell, UserX, Star, ChevronDown } from "lucide-react";
 import SeekerPropertyCard, { type SeekerListing } from "@/components/SeekerPropertyCard";
 import { type Agent } from "@/components/AgentCard";
 import {
-  useGetAdminUsersQuery,
+  useGetAdminUserQuery,
   useGetAdminPropertiesQuery,
-  useGetProfessionalsQuery,
   useGetSubjectReviewsQuery,
-  useGetUserKycStatusQuery,
   useSuspendUserMutation,
   useUnsuspendUserMutation,
 } from "@/services/adminApi";
 import { useGetAgentsQuery } from "@/services/agentApi";
 import { toSeekerListing } from "@/lib/property";
 import { EmptyState as RichEmptyState } from "@/components/admin/userRows";
+import NotifyUserModal from "@/components/admin/NotifyUserModal";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%), from the Figma detail variants. */
 const ROLE_BADGE: Record<string, { bg: string; color: string }> = {
@@ -78,31 +77,27 @@ export default function UserDetailPage() {
   const params = useParams();
   const userId = String(params?.id ?? "");
 
-  // Composed from what the backend exposes today: the admin user list (base
-  // record), public directories (profile), KYC (verified), platform properties
-  // (listings) and reviews. A proper GET /admin/users/{id} is issue #7.
-  const { data: usersPage, isLoading: loadingUsers } = useGetAdminUsersQuery({ page: 0, size: 200 });
+  // Authoritative single-user record; listings/agents/reviews come from their
+  // own endpoints (they're not part of the user payload).
+  const { data: detail, isLoading: loadingUser } = useGetAdminUserQuery(userId);
   const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
-  const { data: prosPage } = useGetProfessionalsQuery({ size: 200 });
-  const { data: kyc } = useGetUserKycStatusQuery(userId);
   const { data: propsPage } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
   const [suspendUser, { isLoading: suspending }] = useSuspendUserMutation();
   const [unsuspendUser, { isLoading: unsuspending }] = useUnsuspendUserMutation();
+  const [notifyOpen, setNotifyOpen] = useState(false);
 
-  const base = (usersPage?.content ?? []).find((u) => u.id === userId);
-  const agentInfo = (agentsPage?.content ?? []).find((a) => a.userId === userId);
-  const proInfo =
-    (prosPage?.content ?? []).find((p) => p.id === userId) ??
-    (base?.organizationId ? (prosPage?.content ?? []).find((p) => p.id === base.organizationId) : undefined);
+  const base = detail;
+  const org = detail?.organization;
 
   const role = base ? ROLE_BY_TYPE[base.userType] ?? "Seeker" : "Seeker";
   const isAgency = role === "Agency";
   const isAgent = role === "Agent";
 
   const name =
-    [agentInfo?.firstName, agentInfo?.lastName].filter(Boolean).join(" ") ||
-    proInfo?.name ||
-    proInfo?.organizationName ||
+    (base?.fullName && base.fullName.trim()) ||
+    [base?.firstName, base?.lastName].filter(Boolean).join(" ") ||
+    base?.organizationName ||
+    base?.companyName ||
     base?.email?.split("@")[0] ||
     "—";
   const joinedDate = base?.createdAt ? new Date(base.createdAt) : null;
@@ -111,25 +106,25 @@ export default function UserDetailPage() {
     name,
     email: base?.email ?? "—",
     role,
-    verified: kyc ? kyc.identity?.status === "VERIFIED" || kyc.business?.status === "VERIFIED" : (agentInfo?.identityVerified ?? proInfo?.verified ?? false),
+    verified: Boolean(base?.identityVerified || base?.businessVerified),
     joined: joinedDate && !Number.isNaN(joinedDate.getTime())
       ? joinedDate.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })
       : "—",
-    firstName: agentInfo?.firstName ?? "",
-    lastName: agentInfo?.lastName ?? "",
-    phone: proInfo?.phoneNumber ?? "",
-    state: agentInfo?.state ?? "",
-    city: agentInfo?.city ?? "",
-    bio: agentInfo?.bio || NSDASH,
-    whatsapp: "",
-    website: "",
-    officeAddress: "",
-    companyRegNo: "",
+    firstName: base?.firstName ?? "",
+    lastName: base?.lastName ?? "",
+    phone: base?.phoneNumber ?? "",
+    state: base?.state ?? org?.state ?? "",
+    city: base?.city ?? org?.city ?? "",
+    bio: base?.bio || org?.bio || NSDASH,
+    whatsapp: base?.whatsappNumber ?? "",
+    website: org?.website ?? "",
+    officeAddress: org?.officeAddress ?? "",
+    companyRegNo: org?.registrationNumber ?? "",
     esvarbonLicence: "",
-    yearEstablished: "",
-    affiliatedWith: agentInfo?.organizationName ?? "",
-    logoUrl: undefined as string | undefined,
-    avatarUrl: agentInfo?.avatarUrl ?? proInfo?.avatarUrl ?? undefined,
+    yearEstablished: org?.yearEstablished ? String(org.yearEstablished) : "",
+    affiliatedWith: base?.organizationName ?? "",
+    logoUrl: org?.logoUrl ?? undefined,
+    avatarUrl: base?.avatarUrl ?? undefined,
   };
 
   const tabs = isAgency
@@ -187,7 +182,7 @@ export default function UserDetailPage() {
     }
   };
 
-  if (loadingUsers) {
+  if (loadingUser) {
     return (
       <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
         Loading user…
@@ -245,6 +240,7 @@ export default function UserDetailPage() {
             <UserX size={20} /> {isSuspended ? "Reactivate User" : "Suspend User"}
           </button>
           <button
+            onClick={() => setNotifyOpen(true)}
             className="flex items-center gap-2 text-white hover:opacity-90"
             style={{ height: 48, padding: "8px 24px", fontSize: 14, fontWeight: 500, borderRadius: 12, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
           >
@@ -252,6 +248,10 @@ export default function UserDetailPage() {
           </button>
         </div>
       </div>
+
+      {notifyOpen && (
+        <NotifyUserModal userId={userId} userName={user.name !== "—" ? user.name : user.email} onClose={() => setNotifyOpen(false)} />
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-4 -mt-4">

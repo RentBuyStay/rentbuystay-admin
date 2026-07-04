@@ -10,7 +10,8 @@ import { EmptyState } from "@/components/admin/userRows";
 import { fmtRoleDate } from "@/lib/adminRoles";
 import {
   useGetAdminRolesQuery,
-  useGetAdminUsersQuery,
+  useGetAdminUserQuery,
+  useChangeUserRoleMutation,
   useSuspendUserMutation,
 } from "@/services/adminApi";
 
@@ -30,26 +31,26 @@ const fieldValue: React.CSSProperties = { fontSize: 16, fontWeight: 400, color: 
 export default function Page() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { data: usersPage, isLoading } = useGetAdminUsersQuery({ page: 0, size: 200 });
+  const { data: base, isLoading } = useGetAdminUserQuery(params.id);
   const { data: roles = [] } = useGetAdminRolesQuery();
   const [suspendUser] = useSuspendUserMutation();
+  const [changeUserRole, { isLoading: changingRole }] = useChangeUserRoleMutation();
   const [changeOpen, setChangeOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
 
-  const base = (usersPage?.content ?? []).find((u) => u.id === params.id);
   const admin = base
     ? {
         id: base.id,
-        name: base.email.split("@")[0],
-        firstName: "—",
-        lastName: "—",
+        name: (base.fullName && base.fullName.trim()) || base.email.split("@")[0],
+        firstName: base.firstName || "—",
+        lastName: base.lastName || "—",
         email: base.email,
-        phone: "—",
+        phone: base.phoneNumber || "—",
         added: fmtRoleDate(base.createdAt),
       }
     : null;
-  const role = base?.adminRole?.name ?? (base?.userType === "SUPER_ADMIN" ? "Super Admin" : "Admin");
+  const role = base?.roleName ?? (base?.userType === "SUPER_ADMIN" ? "Super Admin" : "Admin");
 
   if (isLoading) {
     return (
@@ -124,11 +125,18 @@ export default function Page() {
         <ChangeRoleModal
           currentRole={role}
           roleOptions={roles.map((r) => r.name)}
+          busy={changingRole}
           onClose={() => setChangeOpen(false)}
-          onSave={() => {
-            setChangeOpen(false);
-            // No endpoint exists to change an existing admin's role (issue filed).
-            setSuccess({ title: "Role Change Isn't Available Yet", body: "The backend has no endpoint to change an existing admin's role — the request has been filed. To move this admin now, remove them and re-add with the new role." });
+          onSave={async (roleName: string) => {
+            const target = roles.find((r) => r.name === roleName);
+            if (!target) return;
+            try {
+              await changeUserRole({ id: params.id, roleId: target.id }).unwrap();
+              setChangeOpen(false);
+              setSuccess({ title: "Role Updated Successfully", body: `Done! This admin's role has been changed to ${roleName}. The new permissions take effect the next time they sign in.` });
+            } catch {
+              // keep the modal open on failure
+            }
           }}
         />
       )}

@@ -8,16 +8,21 @@ import type { Role } from "@/lib/demoUsers";
 import {
   useGetAdminUsersQuery,
   useGetPlatformStatsQuery,
-  useGetProfessionalsQuery,
   useSuspendUserMutation,
   useUnsuspendUserMutation,
-  type ProfessionalListItem,
 } from "@/services/adminApi";
-import { useGetAgentsQuery } from "@/services/agentApi";
-import type { AgentListItem } from "@/services/types";
 import { Badge, FilterDropdown, ROLE_STYLE, VerificationCell, pageItems, toRow, type UserRow } from "@/components/admin/userRows";
+import NotifyUserModal from "@/components/admin/NotifyUserModal";
 
 const PAGE_SIZE = 20;
+
+// Display role (tab) → backend user type param for the server-side filter.
+const TYPE_BY_ROLE: Record<string, string> = {
+  Seeker: "PROPERTY_SEEKER",
+  Owner: "PROPERTY_OWNER",
+  Agent: "PROPERTY_AGENT",
+  Agency: "PROPERTY_AGENCY",
+};
 
 export default function UsersPage() {
   const router = useRouter();
@@ -28,26 +33,19 @@ export default function UsersPage() {
   const [locationFilter, setLocationFilter] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [verificationFilter, setVerificationFilter] = useState<string | null>(null);
+  const [notifyFor, setNotifyFor] = useState<UserRow | null>(null);
 
-  const { data: usersPage } = useGetAdminUsersQuery({ page, size: PAGE_SIZE });
+  // Server-side filters: tab → user type, status pill → account status, search → q.
+  const { data: usersPage } = useGetAdminUsersQuery({
+    page,
+    size: PAGE_SIZE,
+    type: tab === "All" ? undefined : TYPE_BY_ROLE[tab],
+    status: statusFilter ? (statusFilter === "Suspended" ? "SUSPENDED" : "ACTIVE") : undefined,
+    q: query.trim() || undefined,
+  });
   const { data: stats } = useGetPlatformStatsQuery();
-  // Directory lookups used to enrich rows with names/locations/listing counts.
-  const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
-  const { data: prosPage } = useGetProfessionalsQuery({ size: 200 });
   const [suspendUser] = useSuspendUserMutation();
   const [unsuspendUser] = useUnsuspendUserMutation();
-
-  const agentsById = useMemo(() => {
-    const m = new Map<string, AgentListItem>();
-    (agentsPage?.content ?? []).forEach((a) => a.userId && m.set(a.userId, a));
-    return m;
-  }, [agentsPage]);
-
-  const prosById = useMemo(() => {
-    const m = new Map<string, ProfessionalListItem>();
-    (prosPage?.content ?? []).forEach((p) => p.id && m.set(p.id, p));
-    return m;
-  }, [prosPage]);
 
   // Live per-type counts from /admin/stats; fall back to page total while loading.
   const TABS: { key: "All" | Role; label: string; count: number }[] = [
@@ -59,8 +57,8 @@ export default function UsersPage() {
   ];
 
   const allRows = useMemo(
-    () => (usersPage?.content ?? []).map((u) => toRow(u, agentsById, prosById)),
-    [usersPage, agentsById, prosById],
+    () => (usersPage?.content ?? []).map((u) => toRow(u)),
+    [usersPage],
   );
 
   // Location options from the data actually on screen (only enriched rows carry one).
@@ -69,17 +67,14 @@ export default function UsersPage() {
     [allRows],
   );
 
+  // Type/status/search are applied server-side; location + verification refine on-page.
   const rows = useMemo(() => {
-    const q = query.trim().toLowerCase();
     return allRows.filter(
       (r) =>
-        (tab === "All" || r.role === tab) &&
         (!locationFilter || r.location === locationFilter) &&
-        (!statusFilter || r.status === statusFilter) &&
-        (!verificationFilter || (verificationFilter === "Verified") === r.verified) &&
-        (!q || r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q)),
+        (!verificationFilter || (verificationFilter === "Verified") === r.verified),
     );
-  }, [allRows, tab, query, locationFilter, statusFilter, verificationFilter]);
+  }, [allRows, locationFilter, verificationFilter]);
 
   const totalPages = usersPage?.totalPages ?? 1;
 
@@ -103,7 +98,7 @@ export default function UsersPage() {
             return (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key)}
+                onClick={() => { setTab(t.key); setPage(0); }}
                 className="whitespace-nowrap pb-2 transition-colors"
                 style={{
                   fontSize: 12,
@@ -131,13 +126,13 @@ export default function UsersPage() {
       <div className="flex items-center gap-4 flex-wrap">
         <span className="text-[16px] font-medium text-[#121212]">Filter:</span>
         <FilterDropdown label="Location" options={locationOptions} value={locationFilter} onChange={setLocationFilter} />
-        <FilterDropdown label="Status" options={["Active", "Suspended"]} value={statusFilter} onChange={setStatusFilter} minWidth={133} />
+        <FilterDropdown label="Status" options={["Active", "Suspended"]} value={statusFilter} onChange={(v) => { setStatusFilter(v); setPage(0); }} minWidth={133} />
         <FilterDropdown label="Verification" options={["Verified", "Unverified"]} value={verificationFilter} onChange={setVerificationFilter} minWidth={133} />
         <div className="flex items-center gap-2 bg-[#F6F6F6] rounded-[12px] h-12 px-4 flex-1 min-w-[220px] lg:max-w-[394px] lg:ml-auto">
           <Image src="/icons/admin/search-normal.svg" alt="" width={20} height={20} className="shrink-0" />
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => { setQuery(e.target.value); setPage(0); }}
             placeholder="Enter name, email or phone..."
             className="flex-1 min-w-0 bg-transparent outline-none text-[14px] text-[#121212] placeholder:text-[rgba(128,126,126,0.75)] placeholder:text-[12px]"
           />
@@ -202,7 +197,7 @@ export default function UsersPage() {
                     )}
                   </td>
                   <td style={{ padding: "16px 24px" }}>
-                    <VerificationCell userId={r.id} fallback={r.verified} />
+                    <VerificationCell verified={r.verified} />
                   </td>
                   <td style={{ padding: "16px 24px", position: "relative" }}>
                     <button
@@ -222,7 +217,7 @@ export default function UsersPage() {
                         <button onClick={() => router.push(`/dashboard/users/${r.id}`)} className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium text-[#807e7e] hover:bg-[#fafafa]">
                           <Image src="/icons/admin/menu-eye.svg" alt="" width={16} height={16} /> View Profile
                         </button>
-                        <button className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium text-[#807e7e] hover:bg-[#fafafa]">
+                        <button onClick={() => { setMenuFor(null); setNotifyFor(r); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium text-[#807e7e] hover:bg-[#fafafa]">
                           <Image src="/icons/admin/menu-notification.svg" alt="" width={16} height={16} /> Send Notification
                         </button>
                         <button onClick={() => handleSuspendToggle(r)} className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium hover:bg-[#fafafa]" style={{ color: "#E30045" }}>
@@ -271,6 +266,14 @@ export default function UsersPage() {
           </button>
         </div>
       </div>
+
+      {notifyFor && (
+        <NotifyUserModal
+          userId={notifyFor.id}
+          userName={notifyFor.name !== "—" ? notifyFor.name : notifyFor.email}
+          onClose={() => setNotifyFor(null)}
+        />
+      )}
     </div>
   );
 }

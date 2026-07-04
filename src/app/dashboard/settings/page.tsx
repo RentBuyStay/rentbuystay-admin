@@ -58,8 +58,8 @@ export default function Page() {
     return ROLE_PILL_COLORS[idx % ROLE_PILL_COLORS.length];
   };
   const roleUserCount = (roleId: string) => {
-    const counts = admins.filter((a) => a.adminRole?.id === roleId).length;
-    return admins.some((a) => a.adminRole) ? String(counts) : "—";
+    const counts = admins.filter((a) => a.roleId === roleId).length;
+    return admins.some((a) => a.roleId) ? String(counts) : "—";
   };
   const fmtDate = fmtRoleDate;
 
@@ -168,8 +168,8 @@ export default function Page() {
             </thead>
             <tbody>
               {admins.map((a) => {
-                const roleName = a.adminRole?.name ?? (a.userType === "SUPER_ADMIN" ? "Super Admin" : "Admin");
-                const color = a.userType === "SUPER_ADMIN" ? "#305E82" : roleColor(a.adminRole?.name);
+                const roleName = a.roleName ?? (a.userType === "SUPER_ADMIN" ? "Super Admin" : "Admin");
+                const color = a.userType === "SUPER_ADMIN" ? "#305E82" : roleColor(a.roleName);
                 return (
                 <tr key={a.id} onClick={() => router.push(`/dashboard/settings/${a.id}`)} className="cursor-pointer hover:bg-[#fafafa]">
                   <td style={{ ...cell, paddingLeft: 24 }}>
@@ -178,7 +178,7 @@ export default function Page() {
                       <span style={{ fontSize: 12, fontWeight: 400, color: "#807E7E" }}>{a.email}</span>
                     </div>
                   </td>
-                  <td style={cell}><span style={{ fontSize: 14, fontWeight: 400, color: "#121212" }}>—</span></td>
+                  <td style={cell}><span style={{ fontSize: 14, fontWeight: 400, color: "#121212" }}>{a.phoneNumber || "—"}</span></td>
                   <td style={cell}>
                     <span className="inline-flex items-center rounded-[16px] whitespace-nowrap" style={{ background: hexA(color, 0.08), color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{roleName}</span>
                   </td>

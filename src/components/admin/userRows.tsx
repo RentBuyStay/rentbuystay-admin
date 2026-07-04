@@ -3,12 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import type { Role } from "@/lib/demoUsers";
-import {
-  useGetUserKycStatusQuery,
-  type AdminUser,
-  type ProfessionalListItem,
-} from "@/services/adminApi";
-import type { AgentListItem } from "@/services/types";
+import type { AdminUser } from "@/services/adminApi";
 
 /** Row shape shared by the User Management and Suspended Users tables. */
 export type UserRow = {
@@ -44,23 +39,14 @@ export const ROLE_STYLE: Record<UserRow["role"], { bg: string; color: string }> 
   Staff: { bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
 };
 
-export function toRow(
-  u: AdminUser,
-  agentsById: Map<string, AgentListItem>,
-  prosById: Map<string, ProfessionalListItem>,
-): UserRow {
+export function toRow(u: AdminUser): UserRow {
   const joined = new Date(u.createdAt);
-  // Enrich from the public directories: /agents covers agents (name, state/city,
-  // listing count); /professionals covers agencies. Seekers/owners have no
-  // profile endpoint yet, so their name/location/listings stay "—" (issue #7).
-  const agent = agentsById.get(u.id);
-  const pro = prosById.get(u.id) ?? (u.organizationId ? prosById.get(u.organizationId) : undefined);
   const name =
-    [agent?.firstName, agent?.lastName].filter(Boolean).join(" ") ||
-    pro?.name ||
-    pro?.organizationName ||
+    (u.fullName && u.fullName.trim()) ||
+    [u.firstName, u.lastName].filter(Boolean).join(" ") ||
+    u.organizationName ||
     "—";
-  const location = [agent?.city, agent?.state].filter(Boolean).join(", ") || "—";
+  const location = [u.city, u.state].filter(Boolean).join(", ") || "—";
   return {
     id: u.id,
     name,
@@ -70,11 +56,10 @@ export function toRow(
     joined: Number.isNaN(joined.getTime())
       ? "—"
       : joined.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }),
-    listings: agent?.listingCount !== undefined ? String(agent.listingCount) : "—",
+    listings: u.listingsCount !== undefined ? String(u.listingsCount) : "—",
     status: u.status === "SUSPENDED" ? "Suspended" : "Active",
-    // Identity (KYC) verification only — email verification is NOT what the
-    // Verification column claims. VerificationCell refines this per row.
-    verified: agent?.identityVerified ?? pro?.verified ?? false,
+    // Identity OR business KYC verified — from the enriched admin list row.
+    verified: Boolean(u.identityVerified || u.businessVerified),
   };
 }
 
@@ -90,15 +75,10 @@ export function Badge({ bg, color, children }: { bg: string; color: string; chil
 }
 
 /**
- * Verification badge backed by the authoritative KYC endpoint. Identity OR
- * business VERIFIED → Verified; while loading (or on error) it falls back to
- * the directory-derived flag so the cell never flickers wrong-then-right.
+ * Verification badge — identity OR business KYC verified, sourced from the
+ * enriched admin user list row (authoritative, no extra per-row request).
  */
-export function VerificationCell({ userId, fallback }: { userId: string; fallback: boolean }) {
-  const { data: kyc } = useGetUserKycStatusQuery(userId);
-  const verified = kyc
-    ? kyc.identity?.status === "VERIFIED" || kyc.business?.status === "VERIFIED"
-    : fallback;
+export function VerificationCell({ verified }: { verified: boolean }) {
   return verified ? (
     <span className="inline-flex items-center gap-2 rounded-[16px] whitespace-nowrap" style={{ background: "rgba(0,157,53,0.08)", color: "#009D35", fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>
       <Image src="/icons/admin/shield-tick.svg" alt="" width={16} height={16} /> Verified

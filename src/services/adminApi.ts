@@ -86,18 +86,56 @@ export type AdminUserType =
 
 export type AdminUserStatus = "PENDING" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
 
+/** Enriched row from GET /admin/users (AdminUserRow) — profile, org, listings + KYC flags. */
 export type AdminUser = {
   id: string;
   email: string;
-  adminRole?: { id: string; name: string } | null;
   userType: AdminUserType;
   status: AdminUserStatus;
+  fullName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  phoneNumber?: string | null;
   organizationId?: string | null;
+  organizationName?: string | null;
+  state?: string | null;
+  city?: string | null;
+  listingsCount?: number;
+  identityVerified?: boolean;
+  businessVerified?: boolean;
+  roleId?: string | null;
+  roleName?: string | null;
   emailVerifiedAt?: string | null;
   createdAt: string;
-  updatedAt?: string;
-  lastSeenAt?: string | null;
+};
+
+/** Full record from GET /admin/users/{id} (AdminUserDetail). */
+export type AdminOrgInfo = {
+  id: string;
+  name: string;
+  email?: string | null;
+  phoneNumber?: string | null;
+  registrationNumber?: string | null;
+  state?: string | null;
+  city?: string | null;
+  officeAddress?: string | null;
+  website?: string | null;
+  bio?: string | null;
+  logoUrl?: string | null;
+  status?: string | null;
+  yearEstablished?: number | null;
+};
+export type AdminUserDetail = AdminUser & {
+  whatsappNumber?: string | null;
+  bio?: string | null;
+  companyName?: string | null;
+  avatarUrl?: string | null;
+  organization?: AdminOrgInfo | null;
+  roleId?: string | null;
+  roleName?: string | null;
   suspendReason?: string | null;
+  lastLoginAt?: string | null;
+  updatedAt?: string | null;
 };
 
 /** Spring Data page envelope. */
@@ -308,14 +346,46 @@ export const adminApi = api.injectEndpoints({
       }),
       transformResponse: (res: ApiEnvelope<ActivityItem[]>) => res.data,
     }),
-    getAdminUsers: builder.query<PageResponse<AdminUser>, { page?: number; size?: number }>({
-      query: ({ page = 0, size = 20 } = {}) => ({
+    getAdminUsers: builder.query<
+      PageResponse<AdminUser>,
+      { page?: number; size?: number; type?: string; status?: string; q?: string }
+    >({
+      query: ({ page = 0, size = 20, type, status, q } = {}) => ({
         url: endpoints.adminUsers,
         method: "GET",
-        params: { page, size, sort: "createdAt,desc" },
+        params: {
+          page, size, sort: "createdAt,desc",
+          ...(type ? { type } : {}),
+          ...(status ? { status } : {}),
+          ...(q ? { q } : {}),
+        },
       }),
       transformResponse: (res: ApiEnvelope<PageResponse<AdminUser>>) => res.data,
       providesTags: [{ type: "AdminUsers" as const, id: "LIST" }],
+    }),
+    getAdminUser: builder.query<AdminUserDetail, string>({
+      query: (id) => ({ url: `${endpoints.adminUsers}/${id}`, method: "GET" }),
+      transformResponse: (res: ApiEnvelope<AdminUserDetail>) => res.data,
+      providesTags: (r, e, id) => [{ type: "AdminUsers" as const, id }],
+    }),
+    changeUserRole: builder.mutation<AdminUserDetail, { id: string; roleId: string }>({
+      query: ({ id, roleId }) => ({
+        url: `${endpoints.adminUsers}/${id}/role`,
+        method: "PATCH",
+        body: { roleId },
+      }),
+      transformResponse: (res: ApiEnvelope<AdminUserDetail>) => res.data,
+      invalidatesTags: (r, e, { id }) => [{ type: "AdminUsers" as const, id }, { type: "AdminUsers" as const, id: "LIST" }],
+    }),
+    notifyUser: builder.mutation<
+      void,
+      { id: string; subject: string; bodyHtml: string; channels: ("EMAIL" | "PUSH")[] }
+    >({
+      query: ({ id, subject, bodyHtml, channels }) => ({
+        url: `${endpoints.adminUsers}/${id}/notify`,
+        method: "POST",
+        body: { subject, bodyHtml, channels },
+      }),
     }),
     suspendUser: builder.mutation<void, { id: string; reason?: string; notifyUser?: boolean }>({
       query: ({ id, reason = "", notifyUser = true }) => ({
@@ -589,6 +659,9 @@ export const {
   useGetRevenueStatsQuery,
   useGetRecentActivityQuery,
   useGetAdminUsersQuery,
+  useGetAdminUserQuery,
+  useChangeUserRoleMutation,
+  useNotifyUserMutation,
   useSuspendUserMutation,
   useUnsuspendUserMutation,
   useGetProfessionalsQuery,

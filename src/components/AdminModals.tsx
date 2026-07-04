@@ -129,14 +129,14 @@ export function EditRoleNameModal({ currentName, onClose, onSave }: { currentNam
   );
 }
 
-export function ChangeRoleModal({ currentRole, roleOptions, onClose, onSave }: { currentRole: string; roleOptions: string[]; onClose: () => void; onSave: (role: string) => void }) {
+export function ChangeRoleModal({ currentRole, roleOptions, busy, onClose, onSave }: { currentRole: string; roleOptions: string[]; busy?: boolean; onClose: () => void; onSave: (role: string) => void }) {
   const [role, setRole] = useState<string>(currentRole);
   return (
     <Overlay maxWidth={636} onClose={onClose}>
       <h2 className="pr-8" style={{ fontSize: 20, fontWeight: 600, lineHeight: "24px", color: "#121212" }}>Change Admin Role</h2>
       <div className="flex flex-col gap-6 mt-8">
         <SelectField label="Role" placeholder="Select role" value={role} onChange={setRole} options={roleOptions} />
-        <button type="button" onClick={() => onSave(role)} className="flex items-center justify-center text-white hover:opacity-90" style={gradientBtn}>Save Changes</button>
+        <button type="button" disabled={busy} onClick={() => onSave(role)} className="flex items-center justify-center text-white hover:opacity-90 disabled:opacity-60" style={gradientBtn}>{busy ? "Saving…" : "Save Changes"}</button>
       </div>
     </Overlay>
   );
