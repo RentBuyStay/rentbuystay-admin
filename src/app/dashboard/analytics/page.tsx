@@ -197,20 +197,35 @@ export default function Page() {
     const listingsTotal = Math.max(1, regions.reduce((a, r) => a + r.count, 0));
     const topState = regions[0];
 
-    // Last-7-day series for the platform-overview charts (real halves only).
+    // Platform-overview time series (real halves only). Longer ranges are
+    // bucketed (weekly for 90d, ~3-day for 30d) so the bars stay in-bounds.
     const WD = ["Sun", "Mon", "Tue", "Wed", "Thur", "Fri", "Sat"];
-    const reg7 = registrations ?? [];
-    const day7Labels = reg7.map((r) => {
-      const dt = new Date(`${r.date}T00:00:00`);
-      return Number.isNaN(dt.getTime()) ? r.date : WD[dt.getDay()];
-    });
-    const newUsersByDay = reg7.map((r) => r.total ?? 0);
+    const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const listingsPerDate = new Map<string, number>();
     props.forEach((pr) => {
       const iso = (pr.createdAt ?? "").slice(0, 10);
       if (iso) listingsPerDate.set(iso, (listingsPerDate.get(iso) ?? 0) + 1);
     });
-    const listingsByDay = reg7.map((r) => listingsPerDate.get(r.date) ?? 0);
+    const daily = (registrations ?? []).map((r) => ({
+      date: r.date,
+      newUsers: r.total ?? 0,
+      listings: listingsPerDate.get(r.date) ?? 0,
+    }));
+    const bucketSize = daily.length > 45 ? 7 : daily.length > 14 ? 3 : 1;
+    const day7Labels: string[] = [];
+    const newUsersByDay: number[] = [];
+    const listingsByDay: number[] = [];
+    for (let i = 0; i < daily.length; i += bucketSize) {
+      const slice = daily.slice(i, i + bucketSize);
+      const d0 = new Date(`${slice[0].date}T00:00:00`);
+      day7Labels.push(
+        Number.isNaN(d0.getTime())
+          ? slice[0].date
+          : bucketSize === 1 ? WD[d0.getDay()] : `${d0.getDate()} ${MON[d0.getMonth()]}`,
+      );
+      newUsersByDay.push(slice.reduce((a, x) => a + x.newUsers, 0));
+      listingsByDay.push(slice.reduce((a, x) => a + x.listings, 0));
+    }
 
     return {
       stats,
@@ -365,6 +380,12 @@ const kLabel = (v: number): string => (v >= 1000 ? `${v / 1000}k` : `${v}`);
 
 function ChartPlot({ labels, series, plotH = 237, barW = 16 }: { labels: string[]; series: Series[]; plotH?: number; barW?: number }) {
   const { top, ticks } = chartScale(Math.max(1, ...series.flatMap((s) => s.values)));
+  // Shrink bars + gaps as the group count grows so nothing spills past the card.
+  const n = Math.max(1, labels.length);
+  const w = n > 20 ? 6 : n > 12 ? 8 : n > 9 ? 12 : barW;
+  const colGap = n > 12 ? 6 : 12;
+  const barGap = series.length > 1 ? (n > 12 ? 3 : 6) : 6;
+  const labelEvery = n > 16 ? Math.ceil(n / 10) : 1;
   return (
     <div className="flex gap-4">
       <div className="flex flex-col justify-between shrink-0" style={{ height: plotH }}>
@@ -372,17 +393,17 @@ function ChartPlot({ labels, series, plotH = 237, barW = 16 }: { labels: string[
           <span key={i} style={{ fontSize: 10, fontWeight: 500, lineHeight: "10px", letterSpacing: "-0.005em", color: "#121212" }}>{kLabel(t)}</span>
         ))}
       </div>
-      <div className="flex-1 flex justify-between" style={{ gap: 12 }}>
+      <div className="flex-1 flex justify-between min-w-0 overflow-hidden" style={{ gap: colGap }}>
         {labels.map((d, i) => (
-          <div key={d + i} className="flex flex-col items-center" style={{ gap: 12 }}>
-            <div className="flex items-end" style={{ height: plotH, gap: 6 }}>
+          <div key={d + i} className="flex flex-col items-center min-w-0" style={{ gap: 12 }}>
+            <div className="flex items-end" style={{ height: plotH, gap: barGap }}>
               {series.map((s, si) => {
                 const v = s.values[i] ?? 0;
                 const h = v <= 0 ? 0 : Math.max(6, Math.min(plotH, (v / top) * plotH));
-                return <Bar key={si} h={h} grad={s.grad} w={barW} plotH={plotH} />;
+                return <Bar key={si} h={h} grad={s.grad} w={w} plotH={plotH} />;
               })}
             </div>
-            <span style={{ fontSize: 10, fontWeight: 400, lineHeight: "10px", letterSpacing: "-0.005em", color: "#807E7E" }}>{d}</span>
+            <span style={{ fontSize: 10, fontWeight: 400, lineHeight: "10px", letterSpacing: "-0.005em", color: "#807E7E", whiteSpace: "nowrap" }}>{i % labelEvery === 0 ? d : ""}</span>
           </div>
         ))}
       </div>
