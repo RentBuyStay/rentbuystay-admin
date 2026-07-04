@@ -3,35 +3,48 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { SUSPENDED_USERS, type Role } from "@/lib/demoUsers";
-
-const ROLE_STYLE: Record<Role, { bg: string; color: string }> = {
-  Owner: { bg: "rgba(220,142,29,0.08)", color: "#DC8E1D" },
-  Agent: { bg: "rgba(48,94,130,0.08)", color: "#305E82" },
-  Agency: { bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
-  Seeker: { bg: "rgba(20,174,92,0.08)", color: "#14AE5C" },
-};
-
-function Badge({ bg, color, children }: { bg: string; color: string; children: React.ReactNode }) {
-  return (
-    <span
-      className="inline-flex items-center rounded-full whitespace-nowrap"
-      style={{ background: bg, color, fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}
-    >
-      {children}
-    </span>
-  );
-}
+import {
+  useGetAdminUsersQuery,
+  useGetProfessionalsQuery,
+  useUnsuspendUserMutation,
+  type ProfessionalListItem,
+} from "@/services/adminApi";
+import { useGetAgentsQuery } from "@/services/agentApi";
+import type { AgentListItem } from "@/services/types";
+import { Badge, ROLE_STYLE, VerificationCell, toRow } from "@/components/admin/userRows";
 
 export default function SuspendedUsersPage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [menuFor, setMenuFor] = useState<string | null>(null);
 
+  // No server-side status filter exists yet (issue #7) — pull a large page and
+  // keep only SUSPENDED locally.
+  const { data: usersPage } = useGetAdminUsersQuery({ page: 0, size: 200 });
+  const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
+  const { data: prosPage } = useGetProfessionalsQuery({ size: 200 });
+  const [unsuspendUser] = useUnsuspendUserMutation();
+
   const rows = useMemo(() => {
+    const agentsById = new Map<string, AgentListItem>();
+    (agentsPage?.content ?? []).forEach((a) => a.userId && agentsById.set(a.userId, a));
+    const prosById = new Map<string, ProfessionalListItem>();
+    (prosPage?.content ?? []).forEach((p) => p.id && prosById.set(p.id, p));
     const q = query.trim().toLowerCase();
-    return SUSPENDED_USERS.filter((r) => !q || r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q));
-  }, [query]);
+    return (usersPage?.content ?? [])
+      .filter((u) => u.status === "SUSPENDED")
+      .map((u) => toRow(u, agentsById, prosById))
+      .filter((r) => !q || r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q));
+  }, [usersPage, agentsPage, prosPage, query]);
+
+  const handleReactivate = async (id: string) => {
+    setMenuFor(null);
+    try {
+      await unsuspendUser(id).unwrap();
+    } catch {
+      // list re-fetches via tag invalidation; row stays if the call failed
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -102,13 +115,7 @@ export default function SuspendedUsersPage() {
                     <Badge bg="rgba(227,0,69,0.08)" color="#E30045">Suspended</Badge>
                   </td>
                   <td style={{ padding: "16px 24px" }}>
-                    {r.verified ? (
-                      <span className="inline-flex items-center gap-2 rounded-[16px] whitespace-nowrap" style={{ background: "rgba(0,157,53,0.08)", color: "#009D35", fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>
-                        <Image src="/icons/admin/shield-tick.svg" alt="" width={16} height={16} /> Verified
-                      </span>
-                    ) : (
-                      <Badge bg="rgba(227,0,69,0.08)" color="#E30045">Unverified</Badge>
-                    )}
+                    <VerificationCell userId={r.id} fallback={r.verified} />
                   </td>
                   <td style={{ padding: "16px 24px", position: "relative" }}>
                     <button
@@ -127,7 +134,7 @@ export default function SuspendedUsersPage() {
                           className="absolute right-6 top-12 z-20 bg-white rounded-[12px] border border-[#F6F6F6] overflow-hidden flex flex-col"
                           style={{ width: 160, gap: 8, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}
                         >
-                          <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
+                          <button type="button" onClick={() => handleReactivate(r.id)} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
                             <Image src="/icons/admin/menu-reactivate.svg" alt="" width={16} height={16} /> Reactivate User
                           </button>
                           <button type="button" className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>

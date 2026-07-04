@@ -16,15 +16,10 @@ type Stat = {
   Icon: LucideIcon; highlight?: boolean; deltaColor?: string;
 };
 
-const REG_DATA = [
-  { day: "Mon", owners: 3200, seekers: 5100, agents: 1800, agencies: 900 },
-  { day: "Tue", owners: 4100, seekers: 4400, agents: 2600, agencies: 1200 },
-  { day: "Wed", owners: 2800, seekers: 6200, agents: 1500, agencies: 700 },
-  { day: "Thur", owners: 5300, seekers: 6900, agents: 3100, agencies: 1600 },
-  { day: "Fri", owners: 3700, seekers: 5800, agents: 2200, agencies: 1100 },
-  { day: "Sat", owners: 2100, seekers: 3600, agents: 1300, agencies: 600 },
-  { day: "Sun", owners: 2900, seekers: 4700, agents: 1900, agencies: 1000 },
-];
+// Awaiting a registrations time-series endpoint (backend issue #6) — zeros, not mock data.
+const REG_DATA = ["Mon", "Tue", "Wed", "Thur", "Fri", "Sat", "Sun"].map((day) => ({
+  day, owners: 0, seekers: 0, agents: 0, agencies: 0,
+}));
 const SERIES = [
   { key: "owners", name: "Property Owners", color: "#305E82" },
   { key: "seekers", name: "Property Seekers", color: "#75A3C7" },
@@ -32,37 +27,33 @@ const SERIES = [
   { key: "agencies", name: "Agencies", color: "#C9A8F0" },
 ] as const;
 
+// Awaiting a revenue-by-plan endpoint (backend issue #6) — zeros, not mock data.
 const PLANS = [
-  { name: "Agent Pro", value: 28.9, color: "#305E82" },
-  { name: "Agency", value: 23.2, color: "#75A3C7" },
-  { name: "RBS Owner", value: 21.3, color: "#FFAE00" },
-  { name: "Agency Premium", value: 10.8, color: "#8A38F5" },
-  { name: "Agent Enterprise", value: 8.6, color: "#027B2A" },
-  { name: "Other", value: 7.2, color: "#E3E8EE" },
+  { name: "Agent Pro", value: 0, color: "#305E82" },
+  { name: "Agency", value: 0, color: "#75A3C7" },
+  { name: "RBS Owner", value: 0, color: "#FFAE00" },
+  { name: "Agency Premium", value: 0, color: "#8A38F5" },
+  { name: "Agent Enterprise", value: 0, color: "#027B2A" },
+  { name: "Other", value: 0, color: "#E3E8EE" },
 ];
 
 const BANNER_STYLES = [
   {
     icon: "/icons/admin/alert-clip.svg",
-    sub: "4 have been flagged for possible duplicate of existing approved listing. Review immediately.",
+    sub: "Review and approve or reject newly submitted listings.",
     cta: "Review now", href: "/dashboard/awaiting-approval",
     bg: "rgba(234, 101, 26, 0.05)", border: "#EA651A", badgeBg: "rgba(234, 101, 26, 0.1)", color: "#EA651A",
   },
   {
     icon: "/icons/admin/alert-shield.svg",
-    sub: "Oldest: 36 hours ago.",
+    sub: "Manual review required.",
     cta: "Verify Users", href: "/dashboard/verifications",
     bg: "rgba(138, 56, 245, 0.05)", border: "#8A38F5", badgeBg: "rgba(138, 56, 245, 0.1)", color: "#8A38F5",
   },
 ];
 
-const ACTIVITY = [
-  { icon: "/icons/admin/act-users.svg", title: "142 new users registered today", time: "5 min ago" },
-  { icon: "/icons/admin/act-listing.svg", title: "4 new listings submitted for approval", time: "15 min ago" },
-  { icon: "/icons/admin/act-email.svg", title: "Email blast sent to 2,284 users", time: "10 min ago" },
-  { icon: "/icons/admin/act-verify.svg", title: "Verification batch of 8 users approved", time: "1 hour ago" },
-  { icon: "/icons/admin/act-uptime.svg", title: "System uptime recorded at 99.9% this week", time: "3 hours ago" },
-];
+// Awaiting an activity-feed endpoint (backend issue #6) — empty, not mock data.
+const ACTIVITY: { icon: string; title: string; time: string }[] = [];
 
 const fmt = (n: number | undefined, fallback: string): string =>
   n === undefined ? fallback : n.toLocaleString("en-NG");
@@ -73,17 +64,17 @@ export default function AdminDashboardPage() {
   // Live values where /admin/stats provides them; original placeholders otherwise
   // (revenue + subscriber totals aren't exposed by the backend yet).
   const STATS: Stat[] = [
-    { label: "Total Users", value: fmt(stats?.totalUsers, "2,385"), deltaNum: "+32%", deltaPeriod: "this week", Icon: Users, highlight: true },
-    { label: "Total Listings", value: fmt(stats?.totalProperties, "847"), deltaNum: "+63", deltaPeriod: "this month", Icon: Home, deltaColor: "#027B2A" },
-    { label: "Revenue", value: "₦18.4m", deltaNum: "+31%", deltaPeriod: "vs last month", Icon: CircleDollarSign, deltaColor: "#027B2A" },
-    { label: "Total Subscribers", value: "1,723", deltaNum: "+12%", deltaPeriod: "this month", Icon: Users, deltaColor: "#027B2A" },
-    { label: "Daily Page Views", value: fmt(stats?.totalViewCount, "9,347"), deltaNum: "+13%", deltaPeriod: "today", Icon: Eye, deltaColor: "#027B2A" },
-    { label: "Listings Awaiting Approval", value: fmt(stats?.awaitingApproval, "28"), deltaNum: "5%", deltaPeriod: "this week", Icon: Building2, deltaColor: "#CF3801" },
+    { label: "Total Users", value: fmt(stats?.totalUsers, "—"), deltaNum: "", deltaPeriod: "", Icon: Users, highlight: true },
+    { label: "Total Listings", value: fmt(stats?.totalProperties, "—"), deltaNum: "", deltaPeriod: "", Icon: Home, deltaColor: "#027B2A" },
+    { label: "Revenue", value: "—", deltaNum: "", deltaPeriod: "", Icon: CircleDollarSign, deltaColor: "#027B2A" },
+    { label: "Total Subscribers", value: "—", deltaNum: "", deltaPeriod: "", Icon: Users, deltaColor: "#027B2A" },
+    { label: "Daily Page Views", value: fmt(stats?.totalViewCount, "—"), deltaNum: "", deltaPeriod: "", Icon: Eye, deltaColor: "#027B2A" },
+    { label: "Listings Awaiting Approval", value: fmt(stats?.awaitingApproval, "—"), deltaNum: "", deltaPeriod: "", Icon: Building2, deltaColor: "#CF3801" },
   ];
 
   const BANNERS = [
-    { ...BANNER_STYLES[0], title: `${fmt(stats?.awaitingApproval, "28")} listings awaiting approval` },
-    { ...BANNER_STYLES[1], title: `${fmt(stats?.identityKyc?.pending, "18")} identity verifications pending Qore ID manual review` },
+    { ...BANNER_STYLES[0], title: `${fmt(stats?.awaitingApproval, "0")} listings awaiting approval` },
+    { ...BANNER_STYLES[1], title: `${fmt(stats?.identityKyc?.pending, "0")} identity verifications pending Qore ID manual review` },
   ];
 
   return (
@@ -118,11 +109,15 @@ export default function AdminDashboardPage() {
             </div>
             <div className="flex flex-col gap-2">
               <span className="text-[32px] font-semibold leading-none" style={{ color: s.highlight ? "#fff" : "#121212" }}>{s.value}</span>
-              <span className="flex items-center gap-1 text-[12px]">
-                <ArrowUp size={14} color={s.highlight ? "#F6F6F6" : s.deltaColor} />
-                <span style={{ color: s.highlight ? "#F6F6F6" : s.deltaColor, fontWeight: 500 }}>{s.deltaNum} </span>
-                <span style={{ color: s.highlight ? "rgba(255,255,255,0.8)" : "#807E7E" }}>{s.deltaPeriod}</span>
-              </span>
+              {s.deltaNum ? (
+                <span className="flex items-center gap-1 text-[12px]">
+                  <ArrowUp size={14} color={s.highlight ? "#F6F6F6" : s.deltaColor} />
+                  <span style={{ color: s.highlight ? "#F6F6F6" : s.deltaColor, fontWeight: 500 }}>{s.deltaNum} </span>
+                  <span style={{ color: s.highlight ? "rgba(255,255,255,0.8)" : "#807E7E" }}>{s.deltaPeriod}</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-[12px]" style={{ color: s.highlight ? "rgba(255,255,255,0.8)" : "#807E7E" }}>&nbsp;</span>
+              )}
             </div>
           </div>
         ))}
@@ -196,6 +191,9 @@ export default function AdminDashboardPage() {
       {/* ── Recent Activity ── */}
       <div className="rounded-[16px] bg-white p-6 flex flex-col gap-6" style={{ border: "1px solid #F6F6F6" }}>
         <h3 className="text-[16px] font-semibold" style={{ color: "#16192C" }}>Recent Activity</h3>
+        {ACTIVITY.length === 0 && (
+          <p className="text-[14px] text-[#807e7e]">No recent activity yet.</p>
+        )}
         <ul className="flex flex-col gap-4">
           {ACTIVITY.map((a) => (
             <li key={a.title} className="flex items-center gap-3">

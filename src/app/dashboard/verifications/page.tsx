@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUp } from "lucide-react";
 import { type Role } from "@/lib/demoUsers";
 import {
   useDecideKycMutation,
@@ -113,21 +112,21 @@ export default function VerificationManagementPage() {
           icon={<Image src="/icons/admin/verify/stat-pending.svg" alt="" width={16} height={16} />}
           label="Pending Review"
           value={String(pending)}
-          delta={<><ArrowUp size={16} color="#FFFFFF" /><span style={{ color: "#FFFFFF" }}>+32% </span><span style={{ color: "#FFFFFF" }}>this week</span></>}
+          delta={<span style={{ color: "#FFFFFF" }}>Awaiting manual review</span>}
         />
         <StatCard
           icon={<Image src="/icons/admin/verify/stat-approved.svg" alt="" width={16} height={16} />}
           label="Approved"
           labelColor="#027B2A"
           value={String(approved)}
-          delta={<><ArrowUp size={16} color="#027B2A" /><span style={{ color: "#027B2A" }}>+63 </span><span style={{ color: "#807E7E" }}>this week</span></>}
+          delta={<span style={{ color: "#807E7E" }}>All time</span>}
         />
         <StatCard
           icon={<Image src="/icons/admin/verify/stat-rejected.svg" alt="" width={16} height={16} />}
           label="Rejected"
           labelColor="#E30045"
           value={String(rejected)}
-          delta={<span style={{ color: "#807E7E" }}>Suspicious Documents</span>}
+          delta={<span style={{ color: "#807E7E" }}>All time</span>}
         />
       </div>
 
