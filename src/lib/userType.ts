@@ -30,6 +30,16 @@ const ROLE_TO_TYPE: Record<AccountRole, UserType> = {
   "Real Estate Agency or Developer": "PROPERTY_AGENCY",
 };
 
+/**
+ * Only ADMIN and SUPER_ADMIN may access the admin panel. Regular platform users
+ * (seekers, owners, agents, agencies, agency staff) are blocked at login — the
+ * backend already 403s them on every /admin/* endpoint; this stops them ever
+ * reaching the (broken) dashboard shell in the first place.
+ */
+export function isAdminType(t?: UserType | null): boolean {
+  return t === "ADMIN" || t === "SUPER_ADMIN";
+}
+
 export function userTypeToRole(t: UserType): AccountRole {
   return TYPE_TO_ROLE[t];
 }

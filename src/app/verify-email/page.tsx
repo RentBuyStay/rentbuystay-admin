@@ -12,7 +12,8 @@ import {
 } from "@/services/authApi";
 import { useLazyGetMeQuery } from "@/services/meApi";
 import { useAppDispatch } from "@/store/hooks";
-import { setCredentials } from "@/features/auth/authSlice";
+import { setCredentials, logOut } from "@/features/auth/authSlice";
+import { isAdminType } from "@/lib/userType";
 import { unwrapApiError } from "@/services/api";
 import {
   getOnboarding,
@@ -70,7 +71,14 @@ export default function VerifyEmailPage() {
         // Trust this device and receive tokens, then resolve the user + role.
         const tokens = await verifyDevice({ email: onboarding.email, code }).unwrap();
         dispatch(setCredentials(tokens));
-        await getMe().unwrap();
+        const me = await getMe().unwrap();
+        // Admin panel is admin-only — block regular users at this entry too.
+        if (!isAdminType(me.userType)) {
+          dispatch(logOut());
+          clearOnboarding();
+          setError("This account doesn't have admin access. Please sign in with an administrator account.");
+          return;
+        }
         clearOnboarding();
         router.push("/dashboard");
       } else {

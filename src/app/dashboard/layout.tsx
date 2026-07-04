@@ -7,7 +7,10 @@ import DashboardTopbar from "@/components/DashboardTopbar";
 import ToastProvider from "@/components/Toast";
 import GlobalSocket from "@/components/GlobalSocket";
 import { getRole, type AccountRole } from "@/lib/role";
+import { isAdminType } from "@/lib/userType";
 import { useGetMeQuery } from "@/services/meApi";
+import { useAppDispatch } from "@/store/hooks";
+import { logOut } from "@/features/auth/authSlice";
 
 const USER_NAME_BY_ROLE: Partial<Record<AccountRole, string>> = {
   "Real Estate Agency or Developer": "Urban Nest Realty",
@@ -25,6 +28,7 @@ function initialsFrom(first?: string, last?: string): string {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [role, setRole] = useState<AccountRole | null>(null);
   const [checked, setChecked] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -42,7 +46,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setChecked(true);
   }, [router]);
 
+  // Defense-in-depth: once GET /me resolves, eject any non-admin who reached the
+  // dashboard directly (deep link, stale session). Backend already 403s them.
+  useEffect(() => {
+    if (me && !isAdminType(me.userType)) {
+      dispatch(logOut());
+      router.replace("/log-in");
+    }
+  }, [me, dispatch, router]);
+
   if (!checked || !role) return null;
+  if (me && !isAdminType(me.userType)) return null;
 
   // Prefer the real user from GET /me; fall back to role-based defaults.
   const fullName = [me?.profile?.firstName, me?.profile?.lastName]

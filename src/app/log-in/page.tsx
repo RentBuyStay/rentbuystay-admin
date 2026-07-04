@@ -8,8 +8,9 @@ import OnboardingShell from "@/components/OnboardingShell";
 import { useLoginMutation } from "@/services/authApi";
 import { useLazyGetMeQuery } from "@/services/meApi";
 import { useAppDispatch } from "@/store/hooks";
-import { setCredentials } from "@/features/auth/authSlice";
+import { setCredentials, logOut } from "@/features/auth/authSlice";
 import { unwrapApiError } from "@/services/api";
+import { isAdminType } from "@/lib/userType";
 import { NEW_DEVICE_REQUIRES_OTP } from "@/services/types";
 import { getOnboarding, setOnboarding, clearOnboarding } from "@/lib/onboarding";
 
@@ -43,7 +44,14 @@ export default function LogInPage() {
       const tokens = await login({ email: trimmedEmail, password }).unwrap();
       // Ensure the token is in the store before GET /me reads it for its header.
       dispatch(setCredentials(tokens));
-      await getMe().unwrap(); // resolves role + user; sets the dashboard role
+      const me = await getMe().unwrap(); // resolves role + user; sets the dashboard role
+      // Admin panel is admin-only. Reject regular platform users (seeker/owner/
+      // agent/agency) even with valid credentials — the backend 403s them anyway.
+      if (!isAdminType(me.userType)) {
+        dispatch(logOut());
+        setError("This account doesn't have admin access. Please sign in with an administrator account.");
+        return;
+      }
       clearOnboarding();
       router.push("/dashboard");
     } catch (err) {
