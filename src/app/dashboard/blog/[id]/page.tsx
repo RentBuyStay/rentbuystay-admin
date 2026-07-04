@@ -5,13 +5,36 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { ConfirmModal, SuccessModal } from "@/components/PlanModals";
-import { getBlogPost, BLOG_POSTS, BLOG_BODY, BLOG_COVER } from "@/lib/demoBlog";
+import { BLOG_COVER } from "@/lib/demoBlog";
+import { EmptyState } from "@/components/admin/userRows";
+import { useGetBlogPostQuery } from "@/services/adminApi";
+
+const fmtDate = (iso?: string | null): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-NG", { day: "2-digit", month: "short", year: "numeric" });
+};
 
 export default function Page() {
   const params = useParams<{ id: string }>();
-  const post = getBlogPost(params.id) ?? BLOG_POSTS[3];
+  const { data: post, isLoading } = useGetBlogPostQuery(params.id);
   const [confirm, setConfirm] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
+        Loading post…
+      </div>
+    );
+  }
+  if (!post) {
+    return (
+      <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+        <EmptyState title="Post not found" subtitle="This post may have been deleted. Go back to Blog Management." />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -26,10 +49,10 @@ export default function Page() {
         <div className="flex flex-col gap-2 min-w-0">
           <h2 style={{ fontSize: 20, fontWeight: 600, lineHeight: "32px", color: "#121212" }}>{post.title}</h2>
           <div className="flex items-center" style={{ gap: 10 }}>
-            <span style={{ fontSize: 14, fontWeight: 400, color: "#807E7E" }}>Published {post.added}</span>
+            <span style={{ fontSize: 14, fontWeight: 400, color: "#807E7E" }}>{post.status === "PUBLISHED" ? `Published ${fmtDate(post.publishedAt)}` : post.status === "SCHEDULED" ? `Scheduled for ${fmtDate(post.scheduledAt)}` : `Draft · created ${fmtDate(post.createdAt)}`}</span>
             <span className="flex items-center" style={{ gap: 8 }}>
               <Image src="/icons/admin/blog/blog-eye.svg" alt="" width={16} height={16} />
-              <span style={{ fontSize: 14, fontWeight: 400, color: "#807E7E" }}>{post.views} views</span>
+              <span style={{ fontSize: 14, fontWeight: 400, color: "#807E7E" }}>{post.viewCount.toLocaleString("en-NG")} views</span>
             </span>
           </div>
         </div>
@@ -50,15 +73,15 @@ export default function Page() {
 
       {/* Cover image */}
       <div className="relative w-full overflow-hidden" style={{ borderRadius: 20, aspectRatio: "1088 / 510" }}>
-        <Image src={BLOG_COVER} alt={post.title} fill sizes="(max-width: 1024px) 100vw, 1088px" className="object-cover" />
+        <Image src={post.coverImageUrl || BLOG_COVER} alt={post.title} fill sizes="(max-width: 1024px) 100vw, 1088px" className="object-cover" unoptimized={!!post.coverImageUrl} />
       </div>
 
-      {/* Body */}
-      <div className="flex flex-col gap-4">
-        {BLOG_BODY.map((p, i) => (
-          <p key={i} style={{ fontSize: 18, fontWeight: 400, lineHeight: "40px", color: "#121212" }}>{p}</p>
-        ))}
-      </div>
+      {/* Body — the editor stores HTML */}
+      <div
+        className="flex flex-col gap-4 [&_p]:m-0"
+        style={{ fontSize: 18, fontWeight: 400, lineHeight: "40px", color: "#121212" }}
+        dangerouslySetInnerHTML={{ __html: post.body ?? "" }}
+      />
 
       {confirm && (
         <ConfirmModal
@@ -71,8 +94,8 @@ export default function Page() {
       )}
       {success && (
         <SuccessModal
-          title="Post Unpublished"
-          body="The post has been successfully unpublished and is no longer visible to users. It has been saved as a draft and can be found in your drafts section whenever you're ready to review or republish it."
+          title="Unpublish Isn't Available Yet"
+          body="The backend doesn't support unpublishing a live post yet (only publish and schedule transitions exist — request filed). The post is still published. You can edit it, or delete it from Blog Management."
           onClose={() => setSuccess(false)}
         />
       )}

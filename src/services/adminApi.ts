@@ -178,6 +178,44 @@ export type NotificationTemplate = {
   updatedAt?: string;
 };
 
+/** Blog post from /admin/blog. */
+export type BlogPostStatusApi = "DRAFT" | "PUBLISHED" | "SCHEDULED";
+
+export type AdminBlogPost = {
+  id: string;
+  title: string;
+  body?: string | null;
+  coverImageUrl?: string | null;
+  status: BlogPostStatusApi;
+  scheduledAt?: string | null;
+  publishedAt?: string | null;
+  viewCount: number;
+  authorId?: string;
+  authorName?: string | null;
+  slug?: string;
+  onPageViews?: number;
+  offPageViews?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type BlogStats = {
+  totalBlogPosts: number;
+  totalViews: number;
+  activePosts: number;
+  inactivePosts: number;
+  onPageViews: number;
+  offPageViews: number;
+};
+
+export type BlogPostPayload = {
+  title: string;
+  body: string;
+  coverImageUrl?: string | null;
+  publishNow?: boolean;
+  scheduledAt?: string | null;
+};
+
 export const adminApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStats, void>({
@@ -345,6 +383,48 @@ export const adminApi = api.injectEndpoints({
       query: ({ id, body }) => ({ url: endpoints.adminNotificationTemplate(id), method: "PUT", body }),
       invalidatesTags: [{ type: "Notifications" as const, id: "TEMPLATES" }],
     }),
+    // ── Blog (admin) ──
+    getBlogStats: builder.query<BlogStats, void>({
+      query: () => ({ url: endpoints.adminBlogStats, method: "GET" }),
+      transformResponse: (res: ApiEnvelope<BlogStats>) => res.data,
+      providesTags: [{ type: "Notifications" as const, id: "BLOG_STATS" }],
+    }),
+    getBlogPosts: builder.query<PageResponse<AdminBlogPost>, { status?: BlogPostStatusApi; page?: number; size?: number }>({
+      query: ({ status, page = 0, size = 50 } = {}) => ({
+        url: endpoints.adminBlog,
+        method: "GET",
+        params: { page, size, ...(status ? { status } : {}) },
+      }),
+      transformResponse: (res: ApiEnvelope<PageResponse<AdminBlogPost>>) => res.data,
+      providesTags: [{ type: "Notifications" as const, id: "BLOG_LIST" }],
+    }),
+    getBlogPost: builder.query<AdminBlogPost, string>({
+      query: (id) => ({ url: endpoints.adminBlogPost(id), method: "GET" }),
+      transformResponse: (res: ApiEnvelope<AdminBlogPost>) => res.data,
+      providesTags: (r, e, id) => [{ type: "Notifications" as const, id: `BLOG_${id}` }],
+    }),
+    createBlogPost: builder.mutation<AdminBlogPost, BlogPostPayload>({
+      query: (body) => ({ url: endpoints.adminBlog, method: "POST", body }),
+      invalidatesTags: [
+        { type: "Notifications" as const, id: "BLOG_LIST" },
+        { type: "Notifications" as const, id: "BLOG_STATS" },
+      ],
+    }),
+    updateBlogPost: builder.mutation<AdminBlogPost, { id: string; body: Partial<BlogPostPayload> }>({
+      query: ({ id, body }) => ({ url: endpoints.adminBlogPost(id), method: "PUT", body }),
+      invalidatesTags: (r, e, { id }) => [
+        { type: "Notifications" as const, id: "BLOG_LIST" },
+        { type: "Notifications" as const, id: "BLOG_STATS" },
+        { type: "Notifications" as const, id: `BLOG_${id}` },
+      ],
+    }),
+    deleteBlogPost: builder.mutation<void, string>({
+      query: (id) => ({ url: endpoints.adminBlogPost(id), method: "DELETE" }),
+      invalidatesTags: [
+        { type: "Notifications" as const, id: "BLOG_LIST" },
+        { type: "Notifications" as const, id: "BLOG_STATS" },
+      ],
+    }),
     getUserKycStatus: builder.query<KycStatus, string>({
       query: (userId) => ({ url: endpoints.adminUserKyc(userId), method: "GET" }),
       transformResponse: (res: ApiEnvelope<KycStatus>) => res.data,
@@ -414,4 +494,10 @@ export const {
   useGetNotificationTemplatesQuery,
   useCreateNotificationTemplateMutation,
   useUpdateNotificationTemplateMutation,
+  useGetBlogStatsQuery,
+  useGetBlogPostsQuery,
+  useGetBlogPostQuery,
+  useCreateBlogPostMutation,
+  useUpdateBlogPostMutation,
+  useDeleteBlogPostMutation,
 } = adminApi;

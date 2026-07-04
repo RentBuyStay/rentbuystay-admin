@@ -4,17 +4,40 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { BLOG_POSTS, STATUS_COLOR, type BlogStatus } from "@/lib/demoBlog";
+import { STATUS_COLOR, type BlogStatus } from "@/lib/demoBlog";
+import { ConfirmModal, SuccessModal } from "@/components/PlanModals";
+import { EmptyState } from "@/components/admin/userRows";
+import {
+  useDeleteBlogPostMutation,
+  useGetBlogPostsQuery,
+  useGetBlogStatsQuery,
+  type AdminBlogPost,
+  type BlogPostStatusApi,
+} from "@/services/adminApi";
 
 const TABS = ["All Posts", "Published", "Scheduled", "Drafts", "Unpublished"] as const;
 type Tab = (typeof TABS)[number];
 
-const TAB_FILTER: Record<Tab, BlogStatus | null> = {
-  "All Posts": null,
-  Published: "Published",
-  Scheduled: "Scheduled",
-  Drafts: "Draft",
-  Unpublished: "Unpublished",
+/* Server statuses: DRAFT | PUBLISHED | SCHEDULED. Unpublished posts are saved
+   as drafts (there is no separate status), so that tab maps to DRAFT too. */
+const TAB_FILTER: Record<Tab, BlogPostStatusApi | undefined> = {
+  "All Posts": undefined,
+  Published: "PUBLISHED",
+  Scheduled: "SCHEDULED",
+  Drafts: "DRAFT",
+  Unpublished: "DRAFT",
+};
+
+const STATUS_DISPLAY: Record<BlogPostStatusApi, BlogStatus> = {
+  PUBLISHED: "Published",
+  SCHEDULED: "Scheduled",
+  DRAFT: "Draft",
+};
+
+const fmtDate = (iso?: string | null): string => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-NG", { day: "2-digit", month: "short", year: "numeric" });
 };
 
 function hexA(hex: string, a: number) {
@@ -28,8 +51,25 @@ const cell: React.CSSProperties = { height: 72, padding: "0 16px", borderBottom:
 export default function Page() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("All Posts");
+  const [toDelete, setToDelete] = useState<AdminBlogPost | null>(null);
+  const [deleted, setDeleted] = useState(false);
   const filter = TAB_FILTER[tab];
-  const rows = filter ? BLOG_POSTS.filter((p) => p.status === filter) : BLOG_POSTS;
+
+  const { data: stats } = useGetBlogStatsQuery();
+  const { data: postsPage, isLoading } = useGetBlogPostsQuery({ status: filter });
+  const [deletePost, { isLoading: deleting }] = useDeleteBlogPostMutation();
+  const rows = postsPage?.content ?? [];
+
+  const handleDelete = async () => {
+    if (!toDelete) return;
+    try {
+      await deletePost(toDelete.id).unwrap();
+      setToDelete(null);
+      setDeleted(true);
+    } catch {
+      // keep the confirm open on failure
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -42,10 +82,10 @@ export default function Page() {
             <span style={{ fontSize: 12, fontWeight: 500, color: "#FFFFFF" }}>Total Blog Post</span>
           </span>
           <div className="flex flex-col" style={{ gap: 8 }}>
-            <span style={{ fontSize: 32, fontWeight: 600, lineHeight: "40px", color: "#FFFFFF" }}>7</span>
+            <span style={{ fontSize: 32, fontWeight: 600, lineHeight: "40px", color: "#FFFFFF" }}>{(stats?.totalBlogPosts ?? 0).toLocaleString("en-NG")}</span>
             <div className="flex flex-col" style={{ gap: 8 }}>
-              <span style={{ fontSize: 12, color: "#FFFFFF" }}>Active Post: 5</span>
-              <span style={{ fontSize: 12, color: "#FFFFFF" }}>Inactive Post: 2</span>
+              <span style={{ fontSize: 12, color: "#FFFFFF" }}>Active Post: {stats?.activePosts ?? 0}</span>
+              <span style={{ fontSize: 12, color: "#FFFFFF" }}>Inactive Post: {stats?.inactivePosts ?? 0}</span>
             </div>
           </div>
         </div>
@@ -56,10 +96,10 @@ export default function Page() {
             <span style={{ fontSize: 12, fontWeight: 500, color: "#807E7E" }}>Total Views</span>
           </span>
           <div className="flex flex-col" style={{ gap: 8 }}>
-            <span style={{ fontSize: 32, fontWeight: 600, lineHeight: "40px", color: "#121212" }}>4,183</span>
+            <span style={{ fontSize: 32, fontWeight: 600, lineHeight: "40px", color: "#121212" }}>{(stats?.totalViews ?? 0).toLocaleString("en-NG")}</span>
             <div className="flex flex-col" style={{ gap: 8 }}>
-              <span style={{ fontSize: 12, color: "#807E7E" }}>On-page: <span style={{ fontSize: 12, color: "#121212" }}>3,753 </span></span>
-              <span style={{ fontSize: 12, color: "#807E7E" }}>Off-page (Backlinks):<span style={{ fontSize: 12, color: "#121212" }}> 638</span> </span>
+              <span style={{ fontSize: 12, color: "#807E7E" }}>On-page: <span style={{ fontSize: 12, color: "#121212" }}>{(stats?.onPageViews ?? 0).toLocaleString("en-NG")} </span></span>
+              <span style={{ fontSize: 12, color: "#807E7E" }}>Off-page (Backlinks):<span style={{ fontSize: 12, color: "#121212" }}> {(stats?.offPageViews ?? 0).toLocaleString("en-NG")}</span> </span>
             </div>
           </div>
         </div>
@@ -109,28 +149,49 @@ export default function Page() {
                 <td style={{ ...cell, paddingLeft: 24 }}>
                   <div className="flex items-center" style={{ gap: 12 }}>
                     <Image src="/icons/admin/blog/blog-avatar.png" alt="" width={40} height={40} className="rounded-full shrink-0 object-cover" style={{ width: 40, height: 40 }} />
-                    <span className="truncate" style={{ fontSize: 14, fontWeight: 500, color: "#101828" }}>{p.short}</span>
+                    <span className="truncate" style={{ fontSize: 14, fontWeight: 500, color: "#101828" }}>{p.title}</span>
                   </div>
                 </td>
-                <td style={cell}><span style={{ fontSize: 14, fontWeight: 400, color: "#121212" }}>{p.added}</span></td>
+                <td style={cell}><span style={{ fontSize: 14, fontWeight: 400, color: "#121212" }}>{fmtDate(p.createdAt)}</span></td>
                 <td style={cell}>
-                  <span className="inline-flex items-center rounded-[16px] whitespace-nowrap" style={{ background: hexA(STATUS_COLOR[p.status], 0.08), color: STATUS_COLOR[p.status], fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{p.status}</span>
+                  <span className="inline-flex items-center rounded-[16px] whitespace-nowrap" style={{ background: hexA(STATUS_COLOR[STATUS_DISPLAY[p.status]], 0.08), color: STATUS_COLOR[STATUS_DISPLAY[p.status]], fontSize: 12, fontWeight: 500, lineHeight: "18px", padding: "2px 12px" }}>{STATUS_DISPLAY[p.status]}</span>
                 </td>
-                <td style={cell}><span style={{ fontSize: 14, fontWeight: 400, color: "#121212" }}>{p.views}</span></td>
+                <td style={cell}><span style={{ fontSize: 14, fontWeight: 400, color: "#121212" }}>{p.viewCount.toLocaleString("en-NG")}</span></td>
                 <td style={cell}>
                   <div className="flex items-center" style={{ gap: 24 }}>
                     <button type="button" aria-label="Edit post" onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/blog/${p.id}/edit`); }} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-edit.svg" alt="" width={20} height={20} /></button>
-                    <button type="button" aria-label="Delete post" onClick={(e) => e.stopPropagation()} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-trash.svg" alt="" width={20} height={20} /></button>
+                    <button type="button" aria-label="Delete post" onClick={(e) => { e.stopPropagation(); setToDelete(p); }} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-trash.svg" alt="" width={20} height={20} /></button>
                   </div>
                 </td>
               </tr>
             ))}
-            {rows.length === 0 && (
-              <tr><td colSpan={5} style={{ ...cell, paddingLeft: 24, color: "#807E7E", fontSize: 14 }}>No posts in this category yet.</td></tr>
+            {isLoading && (
+              <tr><td colSpan={5} style={{ ...cell, paddingLeft: 24, color: "#807E7E", fontSize: 14 }}>Loading posts…</td></tr>
+            )}
+            {!isLoading && rows.length === 0 && (
+              <tr><td colSpan={5} style={{ ...cell, paddingLeft: 24, color: "#807E7E", fontSize: 14 }}>{tab === "Unpublished" ? "Unpublished posts are saved as drafts — check the Drafts tab." : "No posts in this category yet."}</td></tr>
             )}
           </tbody>
         </table>
       </section>
+
+      {toDelete && (
+        <ConfirmModal
+          title="Delete Blog Post"
+          body={`You're about to permanently delete “${toDelete.title}”. This action cannot be undone.`}
+          confirmLabel="Delete Post"
+          busy={deleting}
+          onConfirm={handleDelete}
+          onClose={() => setToDelete(null)}
+        />
+      )}
+      {deleted && (
+        <SuccessModal
+          title="Post Deleted"
+          body="The blog post has been removed and is no longer visible on the platform."
+          onClose={() => setDeleted(false)}
+        />
+      )}
     </div>
   );
 }

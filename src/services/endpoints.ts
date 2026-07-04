@@ -130,6 +130,9 @@ export const endpoints = {
   adminUserSubscriptionExtend: (id: string) => `/admin/user-subscriptions/${id}/extend`,
   adminNotificationTemplates: "/admin/notifications/templates",
   adminNotificationTemplate: (id: string) => `/admin/notifications/templates/${id}`,
+  adminBlog: "/admin/blog",
+  adminBlogPost: (id: string) => `/admin/blog/${id}`,
+  adminBlogStats: "/admin/blog/stats",
 
   // Add more resource paths here as you integrate them.
 } as const;

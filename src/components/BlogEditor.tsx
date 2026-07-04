@@ -4,9 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { SuccessModal } from "@/components/PlanModals";
 import RichTextEditor from "@/components/RichTextEditor";
-import { BLOG_BODY, BLOG_COVER, type BlogPost } from "@/lib/demoBlog";
+import { useUploadFileMutation } from "@/services/fileApi";
+import {
+  useCreateBlogPostMutation,
+  useUpdateBlogPostMutation,
+  type AdminBlogPost,
+} from "@/services/adminApi";
 
 const fieldBase = "w-full bg-[#F6F6F6] rounded-[12px] outline-none text-[14px] text-[#121212] placeholder:text-[#807E7E]";
 const labelStyle: React.CSSProperties = { fontSize: 14, fontWeight: 500, lineHeight: "24px", letterSpacing: "-0.02em", color: "#121212" };
@@ -22,39 +28,88 @@ function formatDate(iso: string) {
   return `${wd}., ${mo} ${d.getDate()}, ${d.getFullYear()}`;
 }
 
-export default function BlogEditor({ post }: { post?: BlogPost }) {
+const TIME_24H: Record<string, string> = {
+  "08:00AM": "08:00", "10:00AM": "10:00", "12:00PM": "12:00",
+  "03:00PM": "15:00", "06:00PM": "18:00", "09:00PM": "21:00",
+};
+
+export default function BlogEditor({ post }: { post?: AdminBlogPost }) {
+  const router = useRouter();
   const editing = !!post;
-  const [scheduled, setScheduled] = useState(false);
-  const [date, setDate] = useState("2026-06-25");
+  const [scheduled, setScheduled] = useState(post?.status === "SCHEDULED");
+  const [date, setDate] = useState(post?.scheduledAt ? post.scheduledAt.slice(0, 10) : "");
   const [time, setTime] = useState("");
   const dateRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [coverUrl, setCoverUrl] = useState<string | null>(editing ? BLOG_COVER : null);
-  const [coverName, setCoverName] = useState(editing ? "cover.png" : "");
+  const [title, setTitle] = useState(post?.title ?? "");
+  const [bodyHtmlValue, setBodyHtmlValue] = useState(post?.body ?? "");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(post?.coverImageUrl ?? null);
+  const [coverName, setCoverName] = useState(post?.coverImageUrl ? "current cover" : "");
   const [dragging, setDragging] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
+
+  const [createPost] = useCreateBlogPostMutation();
+  const [updatePost] = useUpdateBlogPostMutation();
+  const [uploadFile] = useUploadFileMutation();
 
   const onFile = (f?: File) => {
     if (!f || !f.type.startsWith("image/")) return;
     setCoverName(f.name);
+    setCoverFile(f);
     const r = new FileReader();
     r.onload = () => setCoverUrl(r.result as string);
     r.readAsDataURL(f);
   };
 
-  const submit = () => {
-    if (scheduled) {
-      setSuccess({
-        title: "Post Scheduled Successfully",
-        body: `Your blog post has been scheduled and will be published on ${formatDate(date)}${time ? ` ${time}` : ""}. You can now keep track of it on the Blog Management page.`,
-      });
-    } else {
-      setSuccess(editing ? UPDATE_SUCCESS : PUBLISH_SUCCESS);
+  // Uploads the newly chosen cover (if any) and returns its hosted URL.
+  const resolveCoverUrl = async (): Promise<string | null> => {
+    if (!coverFile) return post?.coverImageUrl ?? null;
+    const fd = new FormData();
+    fd.append("file", coverFile);
+    const res = await uploadFile(fd).unwrap();
+    return res.url;
+  };
+
+  const save = async (mode: "publish" | "schedule" | "draft") => {
+    if (busy || !title.trim() || !bodyHtmlValue.trim()) return;
+    setBusy(true);
+    try {
+      const cover = await resolveCoverUrl();
+      const scheduledAt =
+        mode === "schedule" && date
+          ? new Date(`${date}T${TIME_24H[time] ?? "09:00"}:00`).toISOString()
+          : null;
+      const payload = {
+        title: title.trim(),
+        body: bodyHtmlValue,
+        coverImageUrl: cover,
+        publishNow: mode === "publish",
+        scheduledAt,
+      };
+      if (editing) await updatePost({ id: post!.id, body: payload }).unwrap();
+      else await createPost(payload).unwrap();
+      if (mode === "schedule") {
+        setSuccess({
+          title: "Post Scheduled Successfully",
+          body: `Your blog post has been scheduled and will be published on ${formatDate(date)}${time ? ` ${time}` : ""}. You can now keep track of it on the Blog Management page.`,
+        });
+      } else if (mode === "draft") {
+        setSuccess({ title: "Draft Saved", body: "Your post has been saved as a draft. You can find it in the Drafts tab on the Blog Management page." });
+      } else {
+        setSuccess(editing ? UPDATE_SUCCESS : PUBLISH_SUCCESS);
+      }
+    } catch {
+      // stay on the editor; nothing is lost
+    } finally {
+      setBusy(false);
     }
   };
 
-  const primaryLabel = scheduled ? "Schedule Now" : editing ? "Save Changes" : "Publish Now";
-  const bodyHtml = editing ? BLOG_BODY.map((p) => `<p>${p}</p>`).join("") : undefined;
+  const submit = () => save(scheduled ? "schedule" : "publish");
+
+  const primaryLabel = busy ? "Saving…" : scheduled ? "Schedule Now" : editing ? "Save Changes" : "Publish Now";
 
   return (
     <div className="flex flex-col gap-6">
@@ -71,11 +126,12 @@ export default function BlogEditor({ post }: { post?: BlogPost }) {
           <p style={{ fontSize: 16, fontWeight: 400, lineHeight: "24px", color: "#807E7E" }}>{editing ? "Update the details below and save your changes" : "Fill the details below to create a new post"}</p>
         </div>
         <div className="flex items-center gap-6">
-          <button type="button" className="hover:opacity-70" style={{ fontSize: 14, fontWeight: 500, color: "#305E82" }}>Save to Draft</button>
+          <button type="button" disabled={busy} onClick={() => save("draft")} className="hover:opacity-70 disabled:opacity-60" style={{ fontSize: 14, fontWeight: 500, color: "#305E82" }}>Save to Draft</button>
           <button
             type="button"
             onClick={submit}
-            className="flex items-center justify-center text-white hover:opacity-90"
+            disabled={busy}
+            className="flex items-center justify-center text-white hover:opacity-90 disabled:opacity-60"
             style={{ height: 48, padding: "0 24px", borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}
           >
             {primaryLabel}
@@ -86,13 +142,13 @@ export default function BlogEditor({ post }: { post?: BlogPost }) {
       {/* Bog Title */}
       <div className="flex flex-col gap-2">
         <label style={labelStyle}>Bog Title</label>
-        <input className={`${fieldBase} h-12 px-4`} placeholder="Enter blog title here" defaultValue={post?.title ?? ""} />
+        <input className={`${fieldBase} h-12 px-4`} placeholder="Enter blog title here" value={title} onChange={(e) => setTitle(e.target.value)} />
       </div>
 
       {/* Body */}
       <div className="flex flex-col gap-2">
         <label style={labelStyle}>Body</label>
-        <RichTextEditor placeholder="Start writing here..." minHeight={258} defaultHtml={bodyHtml} />
+        <RichTextEditor placeholder="Start writing here..." minHeight={258} defaultHtml={post?.body ?? undefined} onHtmlChange={setBodyHtmlValue} />
       </div>
 
       {/* Cover Image/Thumbnail */}
@@ -182,7 +238,7 @@ export default function BlogEditor({ post }: { post?: BlogPost }) {
         </div>
       )}
 
-      {success && <SuccessModal title={success.title} body={success.body} onClose={() => setSuccess(null)} />}
+      {success && <SuccessModal title={success.title} body={success.body} onClose={() => { setSuccess(null); router.push("/dashboard/blog"); }} />}
     </div>
   );
 }
