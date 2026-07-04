@@ -13,6 +13,7 @@ import {
   type BusinessKycEntry,
   type KycVerificationEntry,
 } from "@/services/adminApi";
+import { EmptyState } from "@/components/admin/userRows";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%). */
 const ROLE_BADGE: Record<Role, { bg: string; color: string }> = {
@@ -153,7 +154,16 @@ export default function VerificationManagementPage() {
       {/* List — the backend only exposes the awaiting queue; approved/rejected
           have real counts (tabs/cards) but no list endpoint yet. */}
       {tab !== "Pending" || list.length === 0 ? (
-        <EmptyState>No {tab.toLowerCase()} verifications.</EmptyState>
+        <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+          <EmptyState
+            title={`No ${tab.toLowerCase()} verifications`}
+            subtitle={
+              tab === "Pending"
+                ? "You're all caught up. New identity and business submissions will appear here for review."
+                : `${tab} verifications will appear here.`
+            }
+          />
+        </div>
       ) : (
         <div className="flex flex-col gap-4">
           {list.map((v) => (
@@ -274,13 +284,3 @@ function VerificationCard({
   );
 }
 
-function EmptyState({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      className="bg-white flex items-center justify-center text-center"
-      style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}
-    >
-      {children}
-    </div>
-  );
-}

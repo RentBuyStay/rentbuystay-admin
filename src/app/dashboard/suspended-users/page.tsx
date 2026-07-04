@@ -11,7 +11,7 @@ import {
 } from "@/services/adminApi";
 import { useGetAgentsQuery } from "@/services/agentApi";
 import type { AgentListItem } from "@/services/types";
-import { Badge, ROLE_STYLE, VerificationCell, toRow } from "@/components/admin/userRows";
+import { Badge, EmptyState, ROLE_STYLE, VerificationCell, toRow } from "@/components/admin/userRows";
 
 export default function SuspendedUsersPage() {
   const router = useRouter();
@@ -70,13 +70,15 @@ export default function SuspendedUsersPage() {
           Loading suspended users…
         </div>
       ) : rows.length === 0 ? (
-        <div
-          className="bg-white flex items-center justify-center text-center"
-          style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}
-        >
-          {query.trim()
-            ? "No suspended users match your search."
-            : "No suspended users. Users you suspend from User Management will appear here."}
+        <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+          <EmptyState
+            title={query.trim() ? "No results found" : "No suspended users"}
+            subtitle={
+              query.trim()
+                ? "No suspended users match your search. Try a different name, email or phone."
+                : "All accounts are in good standing. Users you suspend from User Management will appear here."
+            }
+          />
         </div>
       ) : (
       <div className="rounded-[20px] border border-[#F6F6F6] overflow-hidden bg-white">

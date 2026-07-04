@@ -107,6 +107,32 @@ export function VerificationCell({ userId, fallback }: { userId: string; fallbac
   );
 }
 
+/**
+ * Rich empty state used across the app (dashboard "Nothing to show yet"):
+ * centered illustration + bold title + muted subtitle.
+ */
+export function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center" style={{ padding: "48px 24px", gap: "24px" }}>
+      <Image
+        src="/icons/dash/empty-state.svg"
+        alt=""
+        width={180}
+        height={180}
+        className="w-[120px] h-[120px] md:w-[180px] md:h-[180px]"
+      />
+      <div className="flex flex-col items-center" style={{ gap: "8px", maxWidth: "520px" }}>
+        <h3 style={{ fontSize: "20px", lineHeight: "28px", fontWeight: 600, color: "#121212", textAlign: "center" }}>
+          {title}
+        </h3>
+        <p style={{ fontSize: "14px", lineHeight: "20px", fontWeight: 400, color: "#807E7E", textAlign: "center" }}>
+          {subtitle}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 /** Page buttons like the design: 1 2 3 … 8 9 10 (collapses when few pages). */
 export function pageItems(page: number, totalPages: number): (number | string)[] {
   if (totalPages <= 7) return Array.from({ length: Math.max(totalPages, 1) }, (_, i) => i + 1);
