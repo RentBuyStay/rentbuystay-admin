@@ -35,6 +35,26 @@ const num: React.CSSProperties = { fontSize: 14, fontWeight: 500, color: "#12121
 
 const GEO_PALETTE = ["#FF8800", "#37B26E", "#8A38F5", "#578AF0", "#44CFE4", "#EE46BC"];
 
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thur", "Fri", "Sat"];
+const MONTHS_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** Bucket a daily series (weekly >45d, ~3-day >14d, else daily) → chart labels + values. */
+function bucketSeries(daily: { date: string; value: number }[]): { labels: string[]; values: number[] } {
+  const bucketSize = daily.length > 45 ? 7 : daily.length > 14 ? 3 : 1;
+  const labels: string[] = [];
+  const values: number[] = [];
+  for (let i = 0; i < daily.length; i += bucketSize) {
+    const slice = daily.slice(i, i + bucketSize);
+    const d0 = new Date(`${slice[0].date}T00:00:00`);
+    labels.push(
+      Number.isNaN(d0.getTime())
+        ? slice[0].date
+        : bucketSize === 1 ? WEEKDAYS[d0.getDay()] : `${d0.getDate()} ${MONTHS_ABBR[d0.getMonth()]}`,
+    );
+    values.push(slice.reduce((a, x) => a + x.value, 0));
+  }
+  return { labels, values };
+}
+
 type PageData = {
   stats?: import("@/services/adminApi").PlatformStats;
   regByRole: { role: string; pct: string; value: string; barPct: number }[];
@@ -55,17 +75,19 @@ type PageData = {
   topState?: { state: string; count: number };
   topStatePct: string;
   activeStates: number;
-  day7Labels: string[];
+  newUsersLabels: string[];
   newUsersByDay: number[];
+  listingsLabels: string[];
   listingsByDay: number[];
 };
 
 export default function Page() {
   const [tab, setTab] = useState<Tab>("Platform Overview");
-  const [poRange, setPoRange] = useState<number>(7);
+  const [usersRange, setUsersRange] = useState<number>(7);
+  const [listingsRange, setListingsRange] = useState<number>(7);
 
   const { data: stats } = useGetPlatformStatsQuery();
-  const { data: registrations } = useGetRegistrationStatsQuery({ days: poRange });
+  const { data: registrations } = useGetRegistrationStatsQuery({ days: usersRange });
   const { data: usersPage } = useGetAdminUsersQuery({ page: 0, size: 200 });
   const { data: propsPage } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
   const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
@@ -197,35 +219,28 @@ export default function Page() {
     const listingsTotal = Math.max(1, regions.reduce((a, r) => a + r.count, 0));
     const topState = regions[0];
 
-    // Platform-overview time series (real halves only). Longer ranges are
-    // bucketed (weekly for 90d, ~3-day for 30d) so the bars stay in-bounds.
-    const WD = ["Sun", "Mon", "Tue", "Wed", "Thur", "Fri", "Sat"];
-    const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    // Platform-overview time series (real halves only), each with its own range.
+    // New Users comes from the registrations endpoint (windowed by usersRange);
+    // Listings Posted is windowed client-side over the last listingsRange days.
+    const newUsers = bucketSeries((registrations ?? []).map((r) => ({ date: r.date, value: r.total ?? 0 })));
+    const newUsersLabels = newUsers.labels;
+    const newUsersByDay = newUsers.values;
+
     const listingsPerDate = new Map<string, number>();
     props.forEach((pr) => {
       const iso = (pr.createdAt ?? "").slice(0, 10);
       if (iso) listingsPerDate.set(iso, (listingsPerDate.get(iso) ?? 0) + 1);
     });
-    const daily = (registrations ?? []).map((r) => ({
-      date: r.date,
-      newUsers: r.total ?? 0,
-      listings: listingsPerDate.get(r.date) ?? 0,
-    }));
-    const bucketSize = daily.length > 45 ? 7 : daily.length > 14 ? 3 : 1;
-    const day7Labels: string[] = [];
-    const newUsersByDay: number[] = [];
-    const listingsByDay: number[] = [];
-    for (let i = 0; i < daily.length; i += bucketSize) {
-      const slice = daily.slice(i, i + bucketSize);
-      const d0 = new Date(`${slice[0].date}T00:00:00`);
-      day7Labels.push(
-        Number.isNaN(d0.getTime())
-          ? slice[0].date
-          : bucketSize === 1 ? WD[d0.getDay()] : `${d0.getDate()} ${MON[d0.getMonth()]}`,
-      );
-      newUsersByDay.push(slice.reduce((a, x) => a + x.newUsers, 0));
-      listingsByDay.push(slice.reduce((a, x) => a + x.listings, 0));
+    const listingDaily: { date: string; value: number }[] = [];
+    const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+    for (let i = listingsRange - 1; i >= 0; i--) {
+      const dt = new Date(midnight); dt.setDate(midnight.getDate() - i);
+      const iso = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+      listingDaily.push({ date: iso, value: listingsPerDate.get(iso) ?? 0 });
     }
+    const listings = bucketSeries(listingDaily);
+    const listingsLabels = listings.labels;
+    const listingsByDay = listings.values;
 
     return {
       stats,
@@ -247,11 +262,12 @@ export default function Page() {
       topState,
       topStatePct: topState ? `${Math.round((topState.count / listingsTotal) * 100)}% of listings` : "—",
       activeStates: regions.length,
-      day7Labels,
+      newUsersLabels,
       newUsersByDay,
+      listingsLabels,
       listingsByDay,
     };
-  }, [stats, registrations, usersPage, propsPage, agentsPage]);
+  }, [stats, registrations, usersPage, propsPage, agentsPage, listingsRange]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -276,7 +292,9 @@ export default function Page() {
         })}
       </div>
 
-      {tab === "Platform Overview" && <PlatformOverview d={data} range={poRange} onRange={setPoRange} />}
+      {tab === "Platform Overview" && (
+        <PlatformOverview d={data} usersRange={usersRange} onUsersRange={setUsersRange} listingsRange={listingsRange} onListingsRange={setListingsRange} />
+      )}
       {tab === "User Analytics" && <UserAnalytics d={data} />}
       {tab === "Listing Analytics" && <ListingAnalytics d={data} />}
       {tab === "Geographic" && <GeographicTab d={data} />}
@@ -498,30 +516,30 @@ function GeoMapCard({ title, subtitle, legend, fills }: { title: string; subtitl
   );
 }
 
-function PlatformOverview({ d, range, onRange }: { d: PageData; range: number; onRange: (days: number) => void }) {
+function PlatformOverview({ d, usersRange, onUsersRange, listingsRange, onListingsRange }: { d: PageData; usersRange: number; onUsersRange: (days: number) => void; listingsRange: number; onListingsRange: (days: number) => void }) {
   return (
     <>
       <StatCards stats={PLATFORM_STATS} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="flex flex-col bg-white" style={cardStyle}>
           <div className="flex flex-col gap-4">
-            <ChartHeader title="New Users vs Active Users" right={<RangeDropdown value={range} options={RANGE_OPTIONS} onChange={onRange} />} />
+            <ChartHeader title="New Users vs Active Users" right={<RangeDropdown value={usersRange} options={RANGE_OPTIONS} onChange={onUsersRange} />} />
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-2.5"><span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: CYAN }} /><span style={{ fontSize: 11, color: "#807E7E" }}>New Users</span></span>
               <span className="flex items-center gap-2.5"><span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: BLUE }} /><span style={{ fontSize: 11, color: "#807E7E" }}>Active Users</span></span>
             </div>
           </div>
-          <ChartPlot labels={d.day7Labels.length ? d.day7Labels : DAYS} series={[{ values: d.newUsersByDay, grad: CYAN }, { values: d.newUsersByDay.map(() => 0), grad: BLUE }]} />
+          <ChartPlot labels={d.newUsersLabels.length ? d.newUsersLabels : DAYS} series={[{ values: d.newUsersByDay, grad: CYAN }, { values: d.newUsersByDay.map(() => 0), grad: BLUE }]} />
         </div>
         <div className="flex flex-col bg-white" style={cardStyle}>
           <div className="flex flex-col gap-4">
-            <ChartHeader title="Listings Posted vs Leads Generated" right={<RangeDropdown value={range} options={RANGE_OPTIONS} onChange={onRange} />} />
+            <ChartHeader title="Listings Posted vs Leads Generated" right={<RangeDropdown value={listingsRange} options={RANGE_OPTIONS} onChange={onListingsRange} />} />
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-2.5"><span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: GOLD }} /><span style={{ fontSize: 11, color: "#807E7E" }}>Listings Posted</span></span>
               <span className="flex items-center gap-2.5"><span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: BLUE }} /><span style={{ fontSize: 11, color: "#807E7E" }}>Leads Generated</span></span>
             </div>
           </div>
-          <ChartPlot labels={d.day7Labels.length ? d.day7Labels : DAYS} series={[{ values: d.listingsByDay, grad: GOLD }, { values: d.listingsByDay.map(() => 0), grad: BLUE }]} />
+          <ChartPlot labels={d.listingsLabels.length ? d.listingsLabels : DAYS} series={[{ values: d.listingsByDay, grad: GOLD }, { values: d.listingsByDay.map(() => 0), grad: BLUE }]} />
         </div>
       </div>
       {/* Geographic distribution — map + table in one card */}
