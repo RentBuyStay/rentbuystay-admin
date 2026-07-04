@@ -6,6 +6,7 @@ import NigeriaMap from "@/components/NigeriaMap";
 import { useMemo } from "react";
 import {
   useGetPlatformStatsQuery,
+  useGetRegistrationStatsQuery,
   useGetAdminUsersQuery,
   useGetAdminPropertiesQuery,
 } from "@/services/adminApi";
@@ -20,7 +21,6 @@ const BLUE = "linear-gradient(180deg, #75A3C7 0%, #305E82 100%)";
 const GOLD = "linear-gradient(180deg, #FFEF5E 0%, #F7936F 100%)";
 const CARD_GRADIENT = "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)";
 
-const Y_AXIS = ["5k", "4k", "3k", "2k", "1k", "500", "200"];
 
 function hexA(hex: string, a: number) {
   const n = parseInt(hex.slice(1), 16);
@@ -45,7 +45,7 @@ type PageData = {
   topUsers: { name: string; email: string; role: string; listings: string; views: string; leads: string; since: string }[];
   listingTypes: { label: string; pct: string; value: string; barPct: number }[];
   propertyTypes: { label: string; value: string }[];
-  newListingsHeights: number[];
+  newListingsByMonth: number[];
   approvalRate: string;
   topListings: { id: string; title: string; loc: string; type: string; views: string; inq: string; conv: string; status: string }[];
   avgViews: string;
@@ -55,12 +55,16 @@ type PageData = {
   topState?: { state: string; count: number };
   topStatePct: string;
   activeStates: number;
+  day7Labels: string[];
+  newUsersByDay: number[];
+  listingsByDay: number[];
 };
 
 export default function Page() {
   const [tab, setTab] = useState<Tab>("Platform Overview");
 
   const { data: stats } = useGetPlatformStatsQuery();
+  const { data: registrations } = useGetRegistrationStatsQuery({ days: 7 });
   const { data: usersPage } = useGetAdminUsersQuery({ page: 0, size: 200 });
   const { data: propsPage } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
   const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
@@ -155,8 +159,6 @@ export default function Page() {
       const d = new Date(pr.createdAt ?? "");
       if (!Number.isNaN(d.getTime()) && d.getFullYear() === now.getFullYear()) monthly[d.getMonth()] += 1;
     });
-    const monthlyMax = Math.max(1, ...monthly);
-    const newListingsHeights = monthly.map((n) => Math.round((n / monthlyMax) * 200));
 
     const approvedish = (stats?.activeListings ?? 0);
     const rejectedish = (stats?.rejectedListings ?? 0);
@@ -194,6 +196,21 @@ export default function Page() {
     const listingsTotal = Math.max(1, regions.reduce((a, r) => a + r.count, 0));
     const topState = regions[0];
 
+    // Last-7-day series for the platform-overview charts (real halves only).
+    const WD = ["Sun", "Mon", "Tue", "Wed", "Thur", "Fri", "Sat"];
+    const reg7 = registrations ?? [];
+    const day7Labels = reg7.map((r) => {
+      const dt = new Date(`${r.date}T00:00:00`);
+      return Number.isNaN(dt.getTime()) ? r.date : WD[dt.getDay()];
+    });
+    const newUsersByDay = reg7.map((r) => r.total ?? 0);
+    const listingsPerDate = new Map<string, number>();
+    props.forEach((pr) => {
+      const iso = (pr.createdAt ?? "").slice(0, 10);
+      if (iso) listingsPerDate.set(iso, (listingsPerDate.get(iso) ?? 0) + 1);
+    });
+    const listingsByDay = reg7.map((r) => listingsPerDate.get(r.date) ?? 0);
+
     return {
       stats,
       regByRole,
@@ -204,7 +221,7 @@ export default function Page() {
       topUsers,
       listingTypes,
       propertyTypes,
-      newListingsHeights,
+      newListingsByMonth: monthly,
       approvalRate,
       topListings,
       avgViews,
@@ -214,8 +231,11 @@ export default function Page() {
       topState,
       topStatePct: topState ? `${Math.round((topState.count / listingsTotal) * 100)}% of listings` : "—",
       activeStates: regions.length,
+      day7Labels,
+      newUsersByDay,
+      listingsByDay,
     };
-  }, [stats, usersPage, propsPage, agentsPage]);
+  }, [stats, registrations, usersPage, propsPage, agentsPage]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -296,20 +316,39 @@ function Bar({ h, grad, w = 16, plotH }: { h: number; grad: string; w?: number; 
   );
 }
 
-type Series = { heights: number[]; grad: string };
+type Series = { values: number[]; grad: string };
+// Nice integer y-axis: min top of 4, ~5 descending ticks.
+function chartScale(max: number): { top: number; ticks: number[] } {
+  const m = Math.max(1, max);
+  let top: number;
+  if (m <= 4) top = 4;
+  else if (m <= 10) top = Math.ceil(m / 2) * 2;
+  else { const pow = Math.pow(10, Math.floor(Math.log10(m))); const n = m / pow; top = (n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow; }
+  const step = top / 4;
+  const ticks: number[] = [];
+  for (let v = top; v >= 0; v -= step) ticks.push(Math.round(v));
+  return { top, ticks };
+}
+const kLabel = (v: number): string => (v >= 1000 ? `${v / 1000}k` : `${v}`);
+
 function ChartPlot({ labels, series, plotH = 237, barW = 16 }: { labels: string[]; series: Series[]; plotH?: number; barW?: number }) {
+  const { top, ticks } = chartScale(Math.max(1, ...series.flatMap((s) => s.values)));
   return (
     <div className="flex gap-4">
       <div className="flex flex-col justify-between shrink-0" style={{ height: plotH }}>
-        {Y_AXIS.map((y) => (
-          <span key={y} style={{ fontSize: 10, fontWeight: 500, lineHeight: "10px", letterSpacing: "-0.005em", color: "#121212" }}>{y}</span>
+        {ticks.map((t, i) => (
+          <span key={i} style={{ fontSize: 10, fontWeight: 500, lineHeight: "10px", letterSpacing: "-0.005em", color: "#121212" }}>{kLabel(t)}</span>
         ))}
       </div>
       <div className="flex-1 flex justify-between" style={{ gap: 12 }}>
         {labels.map((d, i) => (
           <div key={d + i} className="flex flex-col items-center" style={{ gap: 12 }}>
             <div className="flex items-end" style={{ height: plotH, gap: 6 }}>
-              {series.map((s, si) => <Bar key={si} h={s.heights[i]} grad={s.grad} w={barW} plotH={plotH} />)}
+              {series.map((s, si) => {
+                const v = s.values[i] ?? 0;
+                const h = v <= 0 ? 0 : Math.max(6, Math.min(plotH, (v / top) * plotH));
+                return <Bar key={si} h={h} grad={s.grad} w={barW} plotH={plotH} />;
+              })}
             </div>
             <span style={{ fontSize: 10, fontWeight: 400, lineHeight: "10px", letterSpacing: "-0.005em", color: "#807E7E" }}>{d}</span>
           </div>
@@ -419,7 +458,7 @@ function PlatformOverview({ d }: { d: PageData }) {
               <span className="flex items-center gap-2.5"><span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: BLUE }} /><span style={{ fontSize: 11, color: "#807E7E" }}>Active Users</span></span>
             </div>
           </div>
-          <ChartPlot labels={DAYS} series={[{ heights: [0, 0, 0, 0, 0, 0, 0], grad: CYAN }, { heights: [0, 0, 0, 0, 0, 0, 0], grad: BLUE }]} />
+          <ChartPlot labels={d.day7Labels.length ? d.day7Labels : DAYS} series={[{ values: d.newUsersByDay, grad: CYAN }, { values: d.newUsersByDay.map(() => 0), grad: BLUE }]} />
         </div>
         <div className="flex flex-col bg-white" style={cardStyle}>
           <div className="flex flex-col gap-4">
@@ -429,7 +468,7 @@ function PlatformOverview({ d }: { d: PageData }) {
               <span className="flex items-center gap-2.5"><span className="rounded-full shrink-0" style={{ width: 8, height: 8, background: BLUE }} /><span style={{ fontSize: 11, color: "#807E7E" }}>Leads Generated</span></span>
             </div>
           </div>
-          <ChartPlot labels={DAYS} series={[{ heights: [0, 0, 0, 0, 0, 0, 0], grad: GOLD }, { heights: [0, 0, 0, 0, 0, 0, 0], grad: BLUE }]} />
+          <ChartPlot labels={d.day7Labels.length ? d.day7Labels : DAYS} series={[{ values: d.listingsByDay, grad: GOLD }, { values: d.listingsByDay.map(() => 0), grad: BLUE }]} />
         </div>
       </div>
       {/* Geographic distribution — map + table in one card */}
@@ -565,7 +604,7 @@ function ListingAnalytics({ d }: { d: PageData }) {
               <span style={{ fontSize: 10, color: "#807E7E" }}>Avg. Review Time</span>
             </div>
           </div>
-          <ChartPlot labels={MONTHS} series={[{ heights: d.newListingsHeights, grad: BLUE }]} plotH={237} barW={16} />
+          <ChartPlot labels={MONTHS} series={[{ values: d.newListingsByMonth, grad: BLUE }]} plotH={237} barW={16} />
         </div>
       </div>
       <TableCard title="Top Performing Listings" head={["Property ID", "Property", "Type", "Total Views", "Inquiries", "Conversion", "Status"]} minWidth={980}>
