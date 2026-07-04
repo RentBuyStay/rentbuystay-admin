@@ -120,6 +120,7 @@ export const endpoints = {
   adminProperty: (id: string) => `/admin/properties/${id}`,
   adminPropertyApprove: (id: string) => `/admin/properties/${id}/approve`,
   adminPropertyReject: (id: string) => `/admin/properties/${id}/reject`,
+  adminPropertyArchive: (id: string) => `/admin/properties/${id}/archive`,
 
   // Add more resource paths here as you integrate them.
 } as const;

@@ -195,6 +195,18 @@ export const adminApi = api.injectEndpoints({
         "Property" as const,
       ],
     }),
+    archiveAdminProperty: builder.mutation<void, { id: string; reason?: string }>({
+      query: ({ id, reason = "OTHER" }) => ({
+        url: endpoints.adminPropertyArchive(id),
+        method: "POST",
+        body: { reason },
+      }),
+      invalidatesTags: [
+        { type: "Properties" as const, id: "ADMIN_LIST" },
+        { type: "Properties" as const, id: "ADMIN_AWAITING" },
+        "Property" as const,
+      ],
+    }),
     removeProperty: builder.mutation<void, string>({
       query: (id) => ({ url: endpoints.adminProperty(id), method: "DELETE" }),
       invalidatesTags: [
@@ -258,4 +270,5 @@ export const {
   useApprovePropertyMutation,
   useRejectPropertyMutation,
   useRemovePropertyMutation,
+  useArchiveAdminPropertyMutation,
 } = adminApi;

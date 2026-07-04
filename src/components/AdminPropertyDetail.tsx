@@ -10,6 +10,7 @@ import type { Role } from "@/lib/demoUsers";
 import { EmptyState } from "@/components/admin/userRows";
 import {
   useApprovePropertyMutation,
+  useArchiveAdminPropertyMutation,
   useGetAdminPropertiesQuery,
   useGetAwaitingPropertiesQuery,
   useRejectPropertyMutation,
@@ -71,6 +72,7 @@ export default function AdminPropertyDetail({ propertyId }: { propertyId: string
   const [approveProperty, { isLoading: approving }] = useApprovePropertyMutation();
   const [rejectProperty, { isLoading: rejecting }] = useRejectPropertyMutation();
   const [removeProperty, { isLoading: removing }] = useRemovePropertyMutation();
+  const [archiveProperty, { isLoading: archiving }] = useArchiveAdminPropertyMutation();
 
   const property =
     (awaitingPage?.content ?? []).find((p) => p.id === propertyId) ??
@@ -101,11 +103,12 @@ export default function AdminPropertyDetail({ propertyId }: { propertyId: string
         // stay on the page if removal failed
       }
     },
-    busy: approving || rejecting || removing,
+    archive: () => archiveProperty({ id: propertyId }).unwrap().catch(() => {}),
+    busy: approving || rejecting || removing || archiving,
   }} />;
 }
 
-type DetailActions = { approve: () => void; reject: () => void; remove: () => void; busy: boolean };
+type DetailActions = { approve: () => void; reject: () => void; remove: () => void; archive: () => void; busy: boolean };
 
 function DetailBody({
   property,
@@ -194,18 +197,30 @@ function DetailBody({
                       className="absolute left-16 top-9 z-20 bg-white rounded-[12px] border border-[#F6F6F6] overflow-hidden flex flex-col py-2"
                       style={{ minWidth: 180, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}
                     >
-                      {/* The backend's only transition for a published listing is removal
-                          (approve/reject apply to pending listings via the header buttons). */}
+                      {/* Available admin transitions: archive + remove for published
+                          listings (approve/reject apply to pending listings via the
+                          header buttons; no restore path exists for archived ones). */}
                       {property.status === "ACTIVE" ? (
-                        <button
-                          type="button"
-                          disabled={actions.busy}
-                          onClick={() => { setStatusMenuOpen(false); actions.remove(); }}
-                          className="flex items-center w-full px-4 text-left hover:bg-[#fafafa] disabled:opacity-50"
-                          style={{ height: 40, fontSize: 13, fontWeight: 500, color: "#E30045" }}
-                        >
-                          Removed
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            disabled={actions.busy}
+                            onClick={() => { setStatusMenuOpen(false); actions.archive(); }}
+                            className="flex items-center w-full px-4 text-left hover:bg-[#fafafa] disabled:opacity-50"
+                            style={{ height: 40, fontSize: 13, fontWeight: 500, color: "#8A38F5" }}
+                          >
+                            Archived
+                          </button>
+                          <button
+                            type="button"
+                            disabled={actions.busy}
+                            onClick={() => { setStatusMenuOpen(false); actions.remove(); }}
+                            className="flex items-center w-full px-4 text-left hover:bg-[#fafafa] disabled:opacity-50"
+                            style={{ height: 40, fontSize: 13, fontWeight: 500, color: "#E30045" }}
+                          >
+                            Removed
+                          </button>
+                        </>
                       ) : (
                         <span className="flex items-center px-4" style={{ height: 40, fontSize: 13, color: "#807E7E" }}>
                           No status change available
