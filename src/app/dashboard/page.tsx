@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Users, Home, CircleDollarSign, Eye, Building2, ArrowUp, ChevronDown, type LucideIcon } from "lucide-react";
@@ -59,10 +60,19 @@ const fmt = (n: number | undefined, fallback: string): string =>
   n === undefined ? fallback : n.toLocaleString("en-NG");
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thur", "Fri", "Sat"];
-const dayLabel = (iso: string): string => {
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// Weekday label for a short (≤7d) window; "d MMM" for longer windows.
+const dayLabel = (iso: string, days: number): string => {
   const d = new Date(`${iso}T00:00:00`);
-  return Number.isNaN(d.getTime()) ? iso : WEEKDAYS[d.getDay()];
+  if (Number.isNaN(d.getTime())) return iso;
+  return days <= 7 ? WEEKDAYS[d.getDay()] : `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 };
+
+const RANGE_OPTIONS = [
+  { days: 7, label: "Last 7 Days" },
+  { days: 30, label: "Last 30 Days" },
+  { days: 90, label: "Last 90 Days" },
+] as const;
 
 const relativeTime = (iso: string): string => {
   const then = new Date(iso).getTime();
@@ -76,16 +86,23 @@ const relativeTime = (iso: string): string => {
 };
 
 export default function AdminDashboardPage() {
+  const [rangeDays, setRangeDays] = useState<number>(7);
+  const [rangeOpen, setRangeOpen] = useState(false);
+  const rangeLabel = RANGE_OPTIONS.find((r) => r.days === rangeDays)?.label ?? "Last 7 Days";
+
   const { data: stats } = useGetPlatformStatsQuery();
-  const { data: registrations } = useGetRegistrationStatsQuery({ days: 7 });
+  const { data: registrations } = useGetRegistrationStatsQuery({ days: rangeDays });
   const { data: revenue } = useGetRevenueStatsQuery();
   const { data: activity } = useGetRecentActivityQuery({ size: 10 });
 
-  // User-registrations bar chart — real per-day counts, weekday-labelled.
+  // User-registrations bar chart — real per-day counts.
   const REG_DATA = (registrations ?? []).map((d) => ({
-    day: dayLabel(d.date),
+    day: dayLabel(d.date, rangeDays),
     owners: d.owners, seekers: d.seekers, agents: d.agents, agencies: d.agencies,
   }));
+  const regTotal = (registrations ?? []).reduce((sum, d) => sum + (d.total ?? 0), 0);
+  // Thin the x-axis ticks so long ranges stay readable.
+  const xTickInterval = rangeDays <= 7 ? 0 : Math.ceil(REG_DATA.length / 8);
 
   // Revenue-by-plan pie — real plans as a share of realised revenue.
   const revenueTotal = revenue?.total ?? 0;
@@ -170,7 +187,33 @@ export default function AdminDashboardPage() {
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <h3 className="text-[16px] font-semibold" style={{ color: "#16192C" }}>User Registrations</h3>
-              <span className="flex items-center gap-1 text-[14px] text-[#000]">Last 7 Days <ChevronDown size={16} className="text-[#807e7e]" /></span>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setRangeOpen((v) => !v)}
+                  className="flex items-center gap-1 text-[14px] text-[#000] hover:opacity-80"
+                >
+                  {rangeLabel} <ChevronDown size={16} className="text-[#807e7e]" style={{ transform: rangeOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+                </button>
+                {rangeOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setRangeOpen(false)} aria-hidden="true" />
+                    <div className="absolute right-0 top-8 z-20 bg-white rounded-[12px] border border-[#F6F6F6] overflow-hidden flex flex-col py-1" style={{ minWidth: 150, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}>
+                      {RANGE_OPTIONS.map((r) => (
+                        <button
+                          key={r.days}
+                          type="button"
+                          onClick={() => { setRangeDays(r.days); setRangeOpen(false); }}
+                          className="flex items-center w-full px-4 text-left hover:bg-[#fafafa]"
+                          style={{ height: 38, fontSize: 13, fontWeight: 500, color: r.days === rangeDays ? "#305E82" : "#807E7E", background: r.days === rangeDays ? "rgba(48,94,130,0.06)" : "transparent" }}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-2">
               {SERIES.map((s) => (
@@ -181,18 +224,24 @@ export default function AdminDashboardPage() {
               ))}
             </div>
           </div>
-          <div style={{ width: "100%", height: 259 }}>
+          <div style={{ width: "100%", height: 259 }} className="relative">
             <ResponsiveContainer>
               <BarChart data={REG_DATA} barGap={2} barCategoryGap="22%">
                 <CartesianGrid vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#807e7e" }} />
+                <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#807e7e" }} interval={xTickInterval} minTickGap={4} />
                 <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: "#121212" }} width={28} allowDecimals={false} />
                 <Tooltip cursor={{ fill: "rgba(48,94,130,0.05)" }} contentStyle={{ borderRadius: 12, border: "1px solid #ededed", fontSize: 12 }} />
                 {SERIES.map((s) => (
-                  <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} radius={[4, 4, 0, 0]} maxBarSize={10} />
+                  <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} radius={[4, 4, 0, 0]} maxBarSize={rangeDays <= 7 ? 10 : 6} />
                 ))}
               </BarChart>
             </ResponsiveContainer>
+            {registrations && regTotal === 0 && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none" style={{ gap: 6 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "#121212" }}>No new registrations</span>
+                <span style={{ fontSize: 12, color: "#807E7E" }}>No sign-ups in the {rangeLabel.toLowerCase()}. Try a wider range.</span>
+              </div>
+            )}
           </div>
         </div>
 
