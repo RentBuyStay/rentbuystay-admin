@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/admin/userRows";
 import {
   useApprovePropertyMutation,
   useArchiveAdminPropertyMutation,
+  useRestoreAdminPropertyMutation,
   useGetAdminPropertiesQuery,
   useGetAwaitingPropertiesQuery,
   useRejectPropertyMutation,
@@ -73,6 +74,7 @@ export default function AdminPropertyDetail({ propertyId }: { propertyId: string
   const [rejectProperty, { isLoading: rejecting }] = useRejectPropertyMutation();
   const [removeProperty, { isLoading: removing }] = useRemovePropertyMutation();
   const [archiveProperty, { isLoading: archiving }] = useArchiveAdminPropertyMutation();
+  const [restoreProperty, { isLoading: restoring }] = useRestoreAdminPropertyMutation();
 
   const property =
     (awaitingPage?.content ?? []).find((p) => p.id === propertyId) ??
@@ -104,11 +106,12 @@ export default function AdminPropertyDetail({ propertyId }: { propertyId: string
       }
     },
     archive: () => archiveProperty({ id: propertyId }).unwrap().catch(() => {}),
-    busy: approving || rejecting || removing || archiving,
+    restore: () => restoreProperty(propertyId).unwrap().catch(() => {}),
+    busy: approving || rejecting || removing || archiving || restoring,
   }} />;
 }
 
-type DetailActions = { approve: () => void; reject: () => void; remove: () => void; archive: () => void; busy: boolean };
+type DetailActions = { approve: () => void; reject: () => void; remove: () => void; archive: () => void; restore: () => void; busy: boolean };
 
 function DetailBody({
   property,
@@ -198,8 +201,8 @@ function DetailBody({
                       style={{ minWidth: 180, boxShadow: "0px 15px 40px rgba(165,165,165,0.25)" }}
                     >
                       {/* Available admin transitions: archive + remove for published
-                          listings (approve/reject apply to pending listings via the
-                          header buttons; no restore path exists for archived ones). */}
+                          listings; restore-to-active for archived ones (approve/reject
+                          apply to pending listings via the header buttons). */}
                       {property.status === "ACTIVE" ? (
                         <>
                           <button
@@ -221,6 +224,16 @@ function DetailBody({
                             Removed
                           </button>
                         </>
+                      ) : property.status === "ARCHIVED" ? (
+                        <button
+                          type="button"
+                          disabled={actions.busy}
+                          onClick={() => { setStatusMenuOpen(false); actions.restore(); }}
+                          className="flex items-center w-full px-4 text-left hover:bg-[#fafafa] disabled:opacity-50"
+                          style={{ height: 40, fontSize: 13, fontWeight: 500, color: "#009D35" }}
+                        >
+                          Active
+                        </button>
                       ) : (
                         <span className="flex items-center px-4" style={{ height: 40, fontSize: 13, color: "#807E7E" }}>
                           No status change available

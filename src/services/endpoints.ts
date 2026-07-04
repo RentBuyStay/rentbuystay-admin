@@ -126,6 +126,7 @@ export const endpoints = {
   adminPropertyApprove: (id: string) => `/admin/properties/${id}/approve`,
   adminPropertyReject: (id: string) => `/admin/properties/${id}/reject`,
   adminPropertyArchive: (id: string) => `/admin/properties/${id}/archive`,
+  adminPropertyRestore: (id: string) => `/admin/properties/${id}/restore`,
   reviewsFor: (subjectType: string, subjectId: string) => `/reviews/${subjectType}/${subjectId}`,
   adminSubscriptionPlans: "/admin/subscription-plans",
   adminSubscriptionPlan: (id: string) => `/admin/subscription-plans/${id}`,
