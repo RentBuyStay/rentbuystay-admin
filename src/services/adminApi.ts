@@ -166,6 +166,18 @@ export type AdminUserSubscription = {
   createdAt?: string;
 };
 
+/** NotificationTemplate entity from /admin/notifications/templates. */
+export type NotificationTemplate = {
+  id: string;
+  name: string;
+  type?: string | null; // e.g. EMAIL, PUSH
+  subject?: string | null;
+  bodyHtml?: string | null;
+  variables?: string[] | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export const adminApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStats, void>({
@@ -316,6 +328,23 @@ export const adminApi = api.injectEndpoints({
       }),
       invalidatesTags: [{ type: "Subscription" as const, id: "ADMIN_SUBS" }],
     }),
+    getNotificationTemplates: builder.query<PageResponse<NotificationTemplate>, { page?: number; size?: number }>({
+      query: ({ page = 0, size = 50 } = {}) => ({
+        url: endpoints.adminNotificationTemplates,
+        method: "GET",
+        params: { page, size },
+      }),
+      transformResponse: (res: ApiEnvelope<PageResponse<NotificationTemplate>>) => res.data,
+      providesTags: [{ type: "Notifications" as const, id: "TEMPLATES" }],
+    }),
+    createNotificationTemplate: builder.mutation<NotificationTemplate, Partial<NotificationTemplate>>({
+      query: (body) => ({ url: endpoints.adminNotificationTemplates, method: "POST", body }),
+      invalidatesTags: [{ type: "Notifications" as const, id: "TEMPLATES" }],
+    }),
+    updateNotificationTemplate: builder.mutation<NotificationTemplate, { id: string; body: Partial<NotificationTemplate> }>({
+      query: ({ id, body }) => ({ url: endpoints.adminNotificationTemplate(id), method: "PUT", body }),
+      invalidatesTags: [{ type: "Notifications" as const, id: "TEMPLATES" }],
+    }),
     getUserKycStatus: builder.query<KycStatus, string>({
       query: (userId) => ({ url: endpoints.adminUserKyc(userId), method: "GET" }),
       transformResponse: (res: ApiEnvelope<KycStatus>) => res.data,
@@ -382,4 +411,7 @@ export const {
   useGetAdminUserSubscriptionsQuery,
   useCancelUserSubscriptionMutation,
   useExtendUserSubscriptionMutation,
+  useGetNotificationTemplatesQuery,
+  useCreateNotificationTemplateMutation,
+  useUpdateNotificationTemplateMutation,
 } = adminApi;

@@ -2,8 +2,15 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { NotificationFormModal } from "@/components/NotificationModals";
+import { NotificationFormModal, type NotificationFormValues } from "@/components/NotificationModals";
 import { SuccessModal } from "@/components/PlanModals";
+import { EmptyState } from "@/components/admin/userRows";
+import {
+  useCreateNotificationTemplateMutation,
+  useGetNotificationTemplatesQuery,
+  useUpdateNotificationTemplateMutation,
+  type NotificationTemplate,
+} from "@/services/adminApi";
 
 const SUCCESS_COPY = {
   send: { title: "Notification Sent", body: "Done! Your message has been successfully broadcast to the selected audience. Sit back — delivery is in progress. Check the Sent History tab to monitor open rates and engagement." },
@@ -17,22 +24,17 @@ const FORM_COPY = {
   edit: { title: "Edit Template", subtitle: "Make changes to the notification template", submitLabel: "Save Changes", showSaveAsTemplate: false },
 };
 
-/* Email templates (swap for admin GET /admin/notification-templates). */
-const TEMPLATES = [
-  { title: "Welcome Email", sub: "New user onboarding · Email", icon: "tmpl-doc-blue.svg", accent: "#509CF5" },
-  { title: "New Listing Alert", sub: "Notify seekers of matching listings · Push + Email", icon: "tmpl-doc-purple.svg", accent: "#8A38F5" },
-  { title: "Subscription Reminder", sub: "7-day renewal reminder · Email + SMS", icon: "tmpl-doc-orange.svg", accent: "#EA651A" },
-  { title: "Listing Expiry Warning", sub: "3 days before listing expires · Push + Email", icon: "tmpl-doc-green.svg", accent: "#009D35" },
+/* Card icon/accent palette cycled per template row. */
+const TEMPLATE_LOOKS = [
+  { icon: "tmpl-doc-blue.svg", accent: "#509CF5" },
+  { icon: "tmpl-doc-purple.svg", accent: "#8A38F5" },
+  { icon: "tmpl-doc-orange.svg", accent: "#EA651A" },
+  { icon: "tmpl-doc-green.svg", accent: "#009D35" },
 ];
 
-/* Notification history (swap for admin GET /admin/notifications). */
-const HISTORY = [
-  { subject: "New Verified Listings Added!🏠", type: "Email + Push", recipients: "2,616", open: "52%", sent: "Today, 8am" },
-  { subject: "Your subscription renews in 7 days", type: "Email + SMS", recipients: "58", open: "89%", sent: "Yesterday" },
-  { subject: "Verify your identity to list properties", type: "Email", recipients: "1,812", open: "74%", sent: "2 days ago" },
-  { subject: "Welcome to RentBuyStay!", type: "Email", recipients: "3,492", open: "91%", sent: "3 days ago" },
-  { subject: "Your listing expires in 3 days⚠️", type: "Push + Email", recipients: "1,052", open: "78%", sent: "5 days ago" },
-];
+/* Sending broadcasts + history need backend endpoints that don't exist yet. */
+const SEND_UNAVAILABLE =
+  "Broadcast sending isn't available yet — the backend has no send endpoint. You can still save this as a template.";
 
 function hexA(hex: string, a: number) {
   const n = parseInt(hex.slice(1), 16);
@@ -45,6 +47,51 @@ const cell: React.CSSProperties = { height: 72, padding: "0 16px", borderBottom:
 export default function Page() {
   const [modal, setModal] = useState<"send" | "new" | "edit" | null>(null);
   const [success, setSuccess] = useState<{ title: string; body: string } | null>(null);
+  const [editing, setEditing] = useState<NotificationTemplate | null>(null);
+  const [sendNotice, setSendNotice] = useState<string | undefined>(undefined);
+
+  const { data: templatesPage, isLoading } = useGetNotificationTemplatesQuery({});
+  const [createTemplate, { isLoading: creating }] = useCreateNotificationTemplateMutation();
+  const [updateTemplate, { isLoading: updating }] = useUpdateNotificationTemplateMutation();
+  const templates = templatesPage?.content ?? [];
+
+  const toBody = (v: NotificationFormValues) => ({
+    name: v.subject,
+    type: [v.type, v.audience].filter(Boolean).join(" · ") || null,
+    subject: v.subject,
+    bodyHtml: v.bodyHtml,
+    variables: [],
+  });
+
+  const handleSubmit = async (v: NotificationFormValues) => {
+    if (modal === "send") {
+      // No broadcast endpoint exists (see backend issue) — refuse honestly.
+      setSendNotice(SEND_UNAVAILABLE);
+      return;
+    }
+    try {
+      if (modal === "edit" && editing) await updateTemplate({ id: editing.id, body: { ...editing, ...toBody(v) } }).unwrap();
+      else await createTemplate(toBody(v)).unwrap();
+      const copy = modal === "edit" ? { title: "Changes Saved", body: "The template has been updated." } : SUCCESS_COPY.new;
+      setModal(null);
+      setEditing(null);
+      setSuccess(copy);
+    } catch {
+      // keep the modal open on failure
+    }
+  };
+
+  const handleSaveAsTemplate = async (v: NotificationFormValues) => {
+    try {
+      await createTemplate(toBody(v)).unwrap();
+      setModal(null);
+      setEditing(null);
+      setSendNotice(undefined);
+      setSuccess(SUCCESS_COPY.new);
+    } catch {
+      // keep the modal open on failure
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,9 +115,26 @@ export default function Page() {
       </div>
 
       {/* Template cards */}
+      {isLoading ? (
+        <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
+          Loading templates…
+        </div>
+      ) : templates.length === 0 ? (
+        <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+          <EmptyState title="No templates yet" subtitle="Create your first template with the New Template button above." />
+        </div>
+      ) : (
       <div className="flex flex-col gap-4">
-        {TEMPLATES.map((t) => (
-          <div key={t.title} className="flex items-center justify-between gap-3 bg-white" style={{ padding: 24, borderRadius: 20, border: "1px solid #F6F6F6" }}>
+        {templates.map((tpl, i) => {
+          const look = TEMPLATE_LOOKS[i % TEMPLATE_LOOKS.length];
+          const t = {
+            title: tpl.name,
+            sub: [tpl.subject && tpl.subject !== tpl.name ? tpl.subject : null, tpl.type].filter(Boolean).join(" · ") || "—",
+            icon: look.icon,
+            accent: look.accent,
+          };
+          return (
+          <div key={tpl.id} className="flex items-center justify-between gap-3 bg-white" style={{ padding: 24, borderRadius: 20, border: "1px solid #F6F6F6" }}>
             <div className="flex items-center min-w-0" style={{ gap: 16 }}>
               <span className="flex items-center justify-center shrink-0" style={{ width: 48, height: 48, borderRadius: 8, background: hexA(t.accent, 0.05) }}>
                 <Image src={`/icons/admin/notif/${t.icon}`} alt="" width={20} height={20} />
@@ -81,57 +145,47 @@ export default function Page() {
               </div>
             </div>
             <div className="flex items-center shrink-0" style={{ gap: 8 }}>
-              <button type="button" onClick={() => setModal("edit")} aria-label="Edit template" className="flex items-center justify-center hover:bg-[#fafafa]" style={{ width: 48, height: 48, borderRadius: 12 }}>
+              <button type="button" onClick={() => { setEditing(tpl); setModal("edit"); }} aria-label="Edit template" className="flex items-center justify-center hover:bg-[#fafafa]" style={{ width: 48, height: 48, borderRadius: 12 }}>
                 <Image src="/icons/admin/notif/notif-edit.svg" alt="" width={20} height={20} />
               </button>
-              <button type="button" onClick={() => setModal("send")} aria-label="Send template" className="flex items-center justify-center hover:bg-[#fafafa]" style={{ width: 48, height: 48, borderRadius: 12 }}>
+              <button type="button" onClick={() => { setEditing(tpl); setSendNotice(undefined); setModal("send"); }} aria-label="Send template" className="flex items-center justify-center hover:bg-[#fafafa]" style={{ width: 48, height: 48, borderRadius: 12 }}>
                 <Image src="/icons/admin/notif/notif-send.svg" alt="" width={24} height={24} />
               </button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
+      )}
 
       {/* Notification History */}
       <section className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
         <div className="p-6">
           <h2 style={{ fontSize: 16, fontWeight: 600, lineHeight: "24px", color: "#16192C" }}>Notification History</h2>
         </div>
-        <div className="mx-6 mb-6 overflow-x-auto">
-          <table className="w-full" style={{ minWidth: 880, borderCollapse: "collapse" }}>
-            <thead>
-              <tr>
-                <th style={{ ...th, textAlign: "left", paddingLeft: 24 }}>Subject</th>
-                <th style={{ ...th, textAlign: "center" }}>Type</th>
-                <th style={{ ...th, textAlign: "center" }}>Recipients</th>
-                <th style={{ ...th, textAlign: "center" }}>Open Rate</th>
-                <th style={{ ...th, textAlign: "center" }}>Sent</th>
-              </tr>
-            </thead>
-            <tbody>
-              {HISTORY.map((h) => (
-                <tr key={h.subject}>
-                  <td style={{ ...cell, paddingLeft: 24 }}><span style={{ fontSize: 14, fontWeight: 500, color: "#101828" }}>{h.subject}</span></td>
-                  <td style={cell} className="text-center"><Pill label={h.type} color="#305E82" /></td>
-                  <td style={cell} className="text-center"><span style={{ fontSize: 14, fontWeight: 500, color: "#121212" }}>{h.recipients}</span></td>
-                  <td style={cell} className="text-center"><Pill label={h.open} color="#009D35" /></td>
-                  <td style={cell} className="text-center"><span style={{ fontSize: 14, fontWeight: 400, color: "#807E7E" }}>{h.sent}</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="mx-6 mb-6">
+          {/* No sent-history endpoint exists yet (backend issue) — no fake rows. */}
+          <EmptyState title="No notification history yet" subtitle="Sent broadcasts and their delivery stats will appear here once broadcast sending is available." />
         </div>
       </section>
 
       {modal && (
         <NotificationFormModal
+          key={`${modal}-${editing?.id ?? "blank"}`}
+          initial={
+            editing
+              ? { subject: editing.subject ?? editing.name, bodyHtml: editing.bodyHtml ?? "" }
+              : undefined
+          }
+          notice={modal === "send" ? sendNotice : undefined}
+          busy={creating || updating}
           title={FORM_COPY[modal].title}
           subtitle={FORM_COPY[modal].subtitle}
           submitLabel={FORM_COPY[modal].submitLabel}
           showSaveAsTemplate={FORM_COPY[modal].showSaveAsTemplate}
-          onClose={() => setModal(null)}
-          onSubmit={() => { const m = modal; setModal(null); setSuccess(SUCCESS_COPY[m]); }}
-          onSaveAsTemplate={() => { setModal(null); setSuccess(SUCCESS_COPY.new); }}
+          onClose={() => { setModal(null); setEditing(null); setSendNotice(undefined); }}
+          onSubmit={handleSubmit}
+          onSaveAsTemplate={handleSaveAsTemplate}
         />
       )}
       {success && <SuccessModal title={success.title} body={success.body} onClose={() => setSuccess(null)} />}

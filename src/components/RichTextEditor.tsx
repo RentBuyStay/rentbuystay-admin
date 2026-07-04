@@ -27,7 +27,7 @@ const TOOL: Record<string, { icon: string; cmd: string; title: string }> = {
 
 const SPACINGS = ["24px", "30px", "36px"];
 
-export default function RichTextEditor({ placeholder, minHeight = 240, align = false, defaultHtml }: { placeholder?: string; minHeight?: number; align?: boolean; defaultHtml?: string }) {
+export default function RichTextEditor({ placeholder, minHeight = 240, align = false, defaultHtml, onHtmlChange }: { placeholder?: string; minHeight?: number; align?: boolean; defaultHtml?: string; onHtmlChange?: (html: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const colorRef = useRef<HTMLInputElement>(null);
   const savedRange = useRef<Range | null>(null);
@@ -46,6 +46,7 @@ export default function RichTextEditor({ placeholder, minHeight = 240, align = f
   const refresh = () => {
     const el = ref.current;
     setEmpty(!el || (!el.textContent?.trim() && !el.querySelector("img,li")));
+    onHtmlChange?.(el?.innerHTML ?? "");
   };
   const run = (cmd: string) => {
     ref.current?.focus();
