@@ -17,6 +17,7 @@ import {
   useRejectPropertyMutation,
   useRemovePropertyMutation,
 } from "@/services/adminApi";
+import { useGetPropertyQuery } from "@/services/propertyApi";
 
 const STATUS_BADGE: Record<PropertyStatus, { label: string; bg: string; color: string }> = {
   ACTIVE: { label: "Active", bg: "#ECFDF3", color: "#027A48" },
@@ -66,10 +67,11 @@ const SECTION_HEADING: React.CSSProperties = {
 
 export default function AdminPropertyDetail({ propertyId }: { propertyId: string }) {
   const router = useRouter();
-  // Pending listings aren't reachable via the public /properties/{id}, so read
-  // from the admin lists (both queries are already cached by the list pages).
-  const { data: allPage, isLoading: loadingAll } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
+  // Any publicly-visible listing loads directly by id (no list-size limit);
+  // pending listings aren't reachable that way, so fall back to the admin lists.
+  const { data: single, isLoading: loadingSingle } = useGetPropertyQuery(propertyId);
   const { data: awaitingPage, isLoading: loadingAwaiting } = useGetAwaitingPropertiesQuery({ page: 0, size: 100 });
+  const { data: allPage, isLoading: loadingAll } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
   const [approveProperty, { isLoading: approving }] = useApprovePropertyMutation();
   const [rejectProperty, { isLoading: rejecting }] = useRejectPropertyMutation();
   const [removeProperty, { isLoading: removing }] = useRemovePropertyMutation();
@@ -77,10 +79,11 @@ export default function AdminPropertyDetail({ propertyId }: { propertyId: string
   const [restoreProperty, { isLoading: restoring }] = useRestoreAdminPropertyMutation();
 
   const property =
+    single ??
     (awaitingPage?.content ?? []).find((p) => p.id === propertyId) ??
     (allPage?.content ?? []).find((p) => p.id === propertyId);
 
-  if (loadingAll || loadingAwaiting) {
+  if (!property && (loadingSingle || loadingAll || loadingAwaiting)) {
     return (
       <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
         Loading property…
