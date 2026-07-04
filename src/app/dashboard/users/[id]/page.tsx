@@ -7,7 +7,18 @@ import { useRouter, useParams } from "next/navigation";
 import { Bell, UserX, Star, ChevronDown } from "lucide-react";
 import SeekerPropertyCard, { type SeekerListing } from "@/components/SeekerPropertyCard";
 import { type Agent } from "@/components/AgentCard";
-import { getDemoUser, DEMO_AGENCY_AGENTS } from "@/lib/demoUsers";
+import {
+  useGetAdminUsersQuery,
+  useGetAdminPropertiesQuery,
+  useGetProfessionalsQuery,
+  useGetSubjectReviewsQuery,
+  useGetUserKycStatusQuery,
+  useSuspendUserMutation,
+  useUnsuspendUserMutation,
+} from "@/services/adminApi";
+import { useGetAgentsQuery } from "@/services/agentApi";
+import { toSeekerListing } from "@/lib/property";
+import { EmptyState as RichEmptyState } from "@/components/admin/userRows";
 
 /* Per-role badge colors (text = solid, bg = same hue @8%), from the Figma detail variants. */
 const ROLE_BADGE: Record<string, { bg: string; color: string }> = {
@@ -15,42 +26,35 @@ const ROLE_BADGE: Record<string, { bg: string; color: string }> = {
   Agent: { bg: "rgba(48,94,130,0.08)", color: "#305E82" },
   Agency: { bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
   Seeker: { bg: "rgba(20,174,92,0.08)", color: "#14AE5C" },
+  Admin: { bg: "rgba(48,94,130,0.08)", color: "#305E82" },
+  Staff: { bg: "rgba(138,56,245,0.08)", color: "#8A38F5" },
 };
 
-/* Listing template — seller is filled in from the viewed user. */
-const BASE_LISTINGS: Omit<SeekerListing, "seller">[] = [
-  {
-    id: "1", title: "3-Bedroom Flat, Lekki Phase 1", location: "Lekki Phase 1, Lagos",
-    price: "₦2,800,000", priceSuffix: "/year", tag: "FOR RENT", sqft: "1,200 sqft", beds: 3, baths: 3,
-    image: "/images/prop1.jpg", amenities: ["Furnished", "Parking", "24/7 Power", "Security"],
-  },
-  {
-    id: "2", title: "3-Bedroom Flat, Victoria Island", location: "Victoria Island, Lagos",
-    price: "₦650,000", priceSuffix: "/year", tag: "FOR RENT", sqft: "980 sqft", beds: 3, baths: 3,
-    image: "/images/prop2.jpg", amenities: ["Pool", "Gym", "Parking"],
-  },
-  {
-    id: "3", title: "4-Bedroom Duplex, Ikoyi", location: "Ikoyi, Lagos",
-    price: "₦95,000,000", tag: "FOR SALE", sqft: "2,400 sqft", beds: 4, baths: 5,
-    image: "/images/prop3.jpg", amenities: ["BQ", "Garden", "Smart Home", "CCTV"],
-  },
-];
+const ROLE_BY_TYPE: Record<string, string> = {
+  PROPERTY_SEEKER: "Seeker",
+  PROPERTY_OWNER: "Owner",
+  PROPERTY_AGENT: "Agent",
+  PROPERTY_AGENCY: "Agency",
+  AGENCY_STAFF: "Staff",
+  ADMIN: "Admin",
+  SUPER_ADMIN: "Admin",
+};
 
-/* Reviews left for this user (swap for admin GET /admin/users/{id}/reviews). */
-const REVIEWS = [
-  {
-    name: "Alexa Henry", avatar: "/images/seekers/aishat-dada.png", rating: 5, time: "2 days ago",
-    text: "Ibrahim is a lifesaver! After months of searching, he helped me find an amazing apartment in Yaba with 24/7 security and stable power. Moving to Lagos was daunting, but Ibrahim made the process smooth and stress-free. Highly recommend his services!",
-  },
-  {
-    name: "Chinedu Okafor", avatar: "/images/seekers/bayo-lawal.png", rating: 4, time: "5 hours ago",
-    text: "Working with Ibrahim was a breeze. He found me a cozy studio near Lekki with great amenities and a friendly neighborhood. ",
-  },
-  {
-    name: "Sade Ajayi", avatar: "/images/seekers/olaide-batifeori.png", rating: 5, time: "1 week ago",
-    text: "Ibrahim's expertise helped me secure a beautiful family home in Ikeja. The entire process was transparent, and he was always available to answer my questions. I felt supported every step of the way.",
-  },
-];
+function relTime(iso?: string): string {
+  if (!iso) return "recently";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "recently";
+  const mins = Math.floor((Date.now() - t) / 60000);
+  if (mins < 60) return `${Math.max(mins, 1)} min${mins > 1 ? "s" : ""} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} day${days > 1 ? "s" : ""} ago`;
+  if (days < 30) { const w = Math.floor(days / 7); return `${w} week${w > 1 ? "s" : ""} ago`; }
+  if (days < 365) { const m = Math.floor(days / 30); return `${m} month${m > 1 ? "s" : ""} ago`; }
+  const y = Math.floor(days / 365);
+  return `${y} year${y > 1 ? "s" : ""} ago`;
+}
 
 function initials(name: string) {
   const p = name.trim().split(/\s+/);
@@ -73,9 +77,60 @@ export default function UserDetailPage() {
   const router = useRouter();
   const params = useParams();
   const userId = String(params?.id ?? "");
-  const user = getDemoUser(userId);
-  const isAgency = user.role === "Agency";
-  const isAgent = user.role === "Agent";
+
+  // Composed from what the backend exposes today: the admin user list (base
+  // record), public directories (profile), KYC (verified), platform properties
+  // (listings) and reviews. A proper GET /admin/users/{id} is issue #7.
+  const { data: usersPage, isLoading: loadingUsers } = useGetAdminUsersQuery({ page: 0, size: 200 });
+  const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
+  const { data: prosPage } = useGetProfessionalsQuery({ size: 200 });
+  const { data: kyc } = useGetUserKycStatusQuery(userId);
+  const { data: propsPage } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
+  const [suspendUser, { isLoading: suspending }] = useSuspendUserMutation();
+  const [unsuspendUser, { isLoading: unsuspending }] = useUnsuspendUserMutation();
+
+  const base = (usersPage?.content ?? []).find((u) => u.id === userId);
+  const agentInfo = (agentsPage?.content ?? []).find((a) => a.userId === userId);
+  const proInfo =
+    (prosPage?.content ?? []).find((p) => p.id === userId) ??
+    (base?.organizationId ? (prosPage?.content ?? []).find((p) => p.id === base.organizationId) : undefined);
+
+  const role = base ? ROLE_BY_TYPE[base.userType] ?? "Seeker" : "Seeker";
+  const isAgency = role === "Agency";
+  const isAgent = role === "Agent";
+
+  const name =
+    [agentInfo?.firstName, agentInfo?.lastName].filter(Boolean).join(" ") ||
+    proInfo?.name ||
+    proInfo?.organizationName ||
+    base?.email?.split("@")[0] ||
+    "—";
+  const joinedDate = base?.createdAt ? new Date(base.createdAt) : null;
+  const NSDASH = "Not Specified";
+  const user = {
+    name,
+    email: base?.email ?? "—",
+    role,
+    verified: kyc ? kyc.identity?.status === "VERIFIED" || kyc.business?.status === "VERIFIED" : (agentInfo?.identityVerified ?? proInfo?.verified ?? false),
+    joined: joinedDate && !Number.isNaN(joinedDate.getTime())
+      ? joinedDate.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" })
+      : "—",
+    firstName: agentInfo?.firstName ?? "",
+    lastName: agentInfo?.lastName ?? "",
+    phone: proInfo?.phoneNumber ?? "",
+    state: agentInfo?.state ?? "",
+    city: agentInfo?.city ?? "",
+    bio: agentInfo?.bio || NSDASH,
+    whatsapp: "",
+    website: "",
+    officeAddress: "",
+    companyRegNo: "",
+    esvarbonLicence: "",
+    yearEstablished: "",
+    affiliatedWith: agentInfo?.organizationName ?? "",
+    logoUrl: undefined as string | undefined,
+    avatarUrl: agentInfo?.avatarUrl ?? proInfo?.avatarUrl ?? undefined,
+  };
 
   const tabs = isAgency
     ? ["Profile Details", "Agents", "Listings", "Reviews"]
@@ -84,24 +139,71 @@ export default function UserDetailPage() {
     : ["Profile Details", "Listings", "Reviews"];
   const [tab, setTab] = useState("Profile Details");
 
+  // Their listings across the platform (owned, assigned, or via their org).
+  const listings: SeekerListing[] = (propsPage?.content ?? [])
+    .filter((p) => p.ownerUserId === userId || p.assignedAgentUserId === userId || (!!base?.organizationId && p.organizationId === base.organizationId))
+    .map(toSeekerListing);
+
+  // Agency roster from the public agents directory.
+  const agents: Agent[] = (agentsPage?.content ?? [])
+    .filter((a) => !!base?.organizationId && a.organizationId === base.organizationId)
+    .map((a) => {
+      const fullName = [a.firstName, a.lastName].filter(Boolean).join(" ") || "—";
+      return {
+        id: a.userId,
+        name: fullName,
+        avatar: a.avatarUrl ?? "",
+        initials: initials(fullName),
+        company: a.organizationName ?? name,
+        location: [a.city, a.state].filter(Boolean).join(", ") || "—",
+        rating: a.averageRating ? a.averageRating.toFixed(1) : "New",
+        listings: `${a.listingCount ?? 0} listings`,
+        verified: !!a.identityVerified,
+        contactUserId: a.userId,
+      };
+    });
+
+  // Reviews target the agent (userId) or the agency (organizationId).
+  const reviewSubject = isAgency && base?.organizationId
+    ? { subjectType: "AGENCY" as const, subjectId: base.organizationId }
+    : { subjectType: "AGENT" as const, subjectId: userId };
+  const { data: reviewsPage } = useGetSubjectReviewsQuery(reviewSubject, { skip: !base });
+  const REVIEWS = (reviewsPage?.content ?? []).map((r) => ({
+    name: [r.reviewerFirstName, r.reviewerLastName].filter(Boolean).join(" ") || "Anonymous",
+    avatar: "",
+    rating: r.rating,
+    time: relTime(r.createdAt),
+    text: r.body ?? "",
+  }));
+
+  const isSuspended = base?.status === "SUSPENDED";
+  const handleSuspendToggle = async () => {
+    if (!base || suspending || unsuspending) return;
+    try {
+      if (isSuspended) await unsuspendUser(userId).unwrap();
+      else await suspendUser({ id: userId, reason: "Suspended by admin", notifyUser: true }).unwrap();
+    } catch {
+      // page re-renders from tag invalidation; state unchanged on failure
+    }
+  };
+
+  if (loadingUsers) {
+    return (
+      <div className="bg-white flex items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", color: "#807E7E", fontSize: 14 }}>
+        Loading user…
+      </div>
+    );
+  }
+  if (!base) {
+    return (
+      <div className="bg-white" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
+        <RichEmptyState title="User not found" subtitle="This account may have been removed, or it hasn't loaded yet. Go back and try again." />
+      </div>
+    );
+  }
+
   const badge = ROLE_BADGE[user.role] ?? ROLE_BADGE.Owner;
   const avatarImg = user.logoUrl || user.avatarUrl;
-  const listings: SeekerListing[] =
-    user.listings > 0
-      ? BASE_LISTINGS.map((l) => ({ ...l, seller: { name: user.name, initials: initials(user.name), verified: user.verified } }))
-      : [];
-  const agents: Agent[] = DEMO_AGENCY_AGENTS.map((a) => ({
-    id: a.id,
-    name: a.name,
-    avatar: a.avatarUrl ?? "",
-    initials: initials(a.name),
-    company: a.affiliatedWith ?? user.name,
-    location: a.location,
-    rating: a.rating ?? "New",
-    listings: `${a.listings} listings`,
-    verified: a.verified,
-    contactUserId: a.id,
-  }));
 
   return (
     <div className="flex flex-col gap-10">
@@ -139,8 +241,8 @@ export default function UserDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <button className="flex items-center gap-2 hover:opacity-70" style={{ height: 48, padding: "8px 24px", fontSize: 14, fontWeight: 500, color: "#E30045" }}>
-            <UserX size={20} /> Suspend User
+          <button onClick={handleSuspendToggle} disabled={suspending || unsuspending} className="flex items-center gap-2 hover:opacity-70 disabled:opacity-50" style={{ height: 48, padding: "8px 24px", fontSize: 14, fontWeight: 500, color: isSuspended ? "#009D35" : "#E30045" }}>
+            <UserX size={20} /> {isSuspended ? "Reactivate User" : "Suspend User"}
           </button>
           <button
             className="flex items-center gap-2 text-white hover:opacity-90"

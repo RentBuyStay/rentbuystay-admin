@@ -119,6 +119,19 @@ export type BusinessKycEntry = KycVerificationEntry & {
   subjectId?: string;
 };
 
+/** Item from GET /reviews/{subjectType}/{subjectId}. */
+export type ReviewItem = {
+  id: string;
+  subjectType: "AGENT" | "AGENCY";
+  subjectId: string;
+  reviewerUserId?: string;
+  reviewerFirstName?: string;
+  reviewerLastName?: string;
+  rating: number;
+  body?: string;
+  createdAt?: string;
+};
+
 export const adminApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getPlatformStats: builder.query<PlatformStats, void>({
@@ -214,6 +227,14 @@ export const adminApi = api.injectEndpoints({
         { type: "Properties" as const, id: "ADMIN_AWAITING" },
       ],
     }),
+    getSubjectReviews: builder.query<PageResponse<ReviewItem>, { subjectType: "AGENT" | "AGENCY"; subjectId: string }>({
+      query: ({ subjectType, subjectId }) => ({
+        url: endpoints.reviewsFor(subjectType, subjectId),
+        method: "GET",
+        params: { page: 0, size: 50 },
+      }),
+      transformResponse: (res: ApiEnvelope<PageResponse<ReviewItem>>) => res.data,
+    }),
     getUserKycStatus: builder.query<KycStatus, string>({
       query: (userId) => ({ url: endpoints.adminUserKyc(userId), method: "GET" }),
       transformResponse: (res: ApiEnvelope<KycStatus>) => res.data,
@@ -271,4 +292,5 @@ export const {
   useRejectPropertyMutation,
   useRemovePropertyMutation,
   useArchiveAdminPropertyMutation,
+  useGetSubjectReviewsQuery,
 } = adminApi;
