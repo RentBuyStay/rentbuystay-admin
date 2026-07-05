@@ -2,6 +2,32 @@ import { api } from "./api";
 import { endpoints } from "./endpoints";
 import type { ApiEnvelope, PropertyResponse } from "./types";
 
+/**
+ * Best-effort: after a blog change, ask the public website to refresh its cached
+ * blog pages so the update is live immediately. Fire-and-forget — a failure is
+ * caught by the website's hourly safety revalidate. Runs in the browser and hits
+ * the admin's own server route, which holds the shared secret server-side.
+ */
+async function revalidateWebsiteBlog(slug?: string | null): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    await fetch("/api/revalidate-blog", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ slug: slug ?? null }),
+      keepalive: true,
+    });
+  } catch {
+    /* non-fatal */
+  }
+}
+
+/** Pull a slug out of a create/update result whether or not it's envelope-wrapped. */
+function slugFromResult(data: unknown): string | undefined {
+  const d = data as { slug?: string; data?: { slug?: string } } | undefined;
+  return d?.slug ?? d?.data?.slug;
+}
+
 /** Shapes from GET /admin/stats (PlatformStatsResponse). */
 export type UserBreakdown = {
   seekers: number;
@@ -615,6 +641,14 @@ export const adminApi = api.injectEndpoints({
         { type: "Notifications" as const, id: "BLOG_LIST" },
         { type: "Notifications" as const, id: "BLOG_STATS" },
       ],
+      async onQueryStarted(_arg, { queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          await revalidateWebsiteBlog(slugFromResult(data));
+        } catch {
+          /* mutation failed — nothing published to revalidate */
+        }
+      },
     }),
     updateBlogPost: builder.mutation<AdminBlogPost, { id: string; body: Partial<BlogPostPayload> }>({
       query: ({ id, body }) => ({ url: endpoints.adminBlogPost(id), method: "PUT", body }),
@@ -623,6 +657,14 @@ export const adminApi = api.injectEndpoints({
         { type: "Notifications" as const, id: "BLOG_STATS" },
         { type: "Notifications" as const, id: `BLOG_${id}` },
       ],
+      async onQueryStarted(_arg, { queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          await revalidateWebsiteBlog(slugFromResult(data));
+        } catch {
+          /* no-op */
+        }
+      },
     }),
     unpublishBlogPost: builder.mutation<AdminBlogPost, string>({
       query: (id) => ({ url: endpoints.adminBlogUnpublish(id), method: "PUT" }),
@@ -632,6 +674,14 @@ export const adminApi = api.injectEndpoints({
         { type: "Notifications" as const, id: "BLOG_STATS" },
         { type: "Notifications" as const, id: `BLOG_${id}` },
       ],
+      async onQueryStarted(_arg, { queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          await revalidateWebsiteBlog(data?.slug);
+        } catch {
+          /* no-op */
+        }
+      },
     }),
     deleteBlogPost: builder.mutation<void, string>({
       query: (id) => ({ url: endpoints.adminBlogPost(id), method: "DELETE" }),
@@ -639,6 +689,15 @@ export const adminApi = api.injectEndpoints({
         { type: "Notifications" as const, id: "BLOG_LIST" },
         { type: "Notifications" as const, id: "BLOG_STATS" },
       ],
+      async onQueryStarted(_arg, { queryFulfilled }) {
+        try {
+          await queryFulfilled;
+          // No slug on delete; the "blog" tag revalidation covers detail pages.
+          await revalidateWebsiteBlog();
+        } catch {
+          /* no-op */
+        }
+      },
     }),
     // ── Roles & platform settings (admin) ──
     getAdminRoles: builder.query<AdminRoleItem[], void>({
