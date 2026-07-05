@@ -146,14 +146,17 @@ export default function AdminDashboardPage() {
     { label: "Listings Awaiting Approval", value: fmt(stats?.awaitingApproval, "—"), deltaNum: "", deltaPeriod: "", Icon: Building2, deltaColor: "#CF3801" },
   ];
 
+  // Only surface a banner when it has something to act on — a "0 …" banner is
+  // noise, so hide it (and any whose count hasn't loaded yet).
   const BANNERS = [
-    { ...BANNER_STYLES[0], title: `${fmt(stats?.awaitingApproval, "0")} listings awaiting approval` },
-    { ...BANNER_STYLES[1], title: `${fmt(stats?.identityKyc?.pending, "0")} identity verifications pending Qore ID manual review` },
-  ];
+    { ...BANNER_STYLES[0], count: stats?.awaitingApproval ?? 0, title: `${fmt(stats?.awaitingApproval, "0")} listings awaiting approval` },
+    { ...BANNER_STYLES[1], count: stats?.identityKyc?.pending ?? 0, title: `${fmt(stats?.identityKyc?.pending, "0")} identity verifications pending Qore ID manual review` },
+  ].filter((b) => b.count > 0);
 
   return (
     <div className="flex flex-col gap-6">
-      {/* ── Alert banners (stacked, full-width) ── */}
+      {/* ── Alert banners (stacked, full-width) — only shown when actionable ── */}
+      {BANNERS.length > 0 && (
       <div className="flex flex-col gap-4">
         {BANNERS.map((b) => (
           <div key={b.title} className="flex items-center gap-4 rounded-[15px] p-4" style={{ background: b.bg, border: `1px solid ${b.border}` }}>
@@ -168,6 +171,7 @@ export default function AdminDashboardPage() {
           </div>
         ))}
       </div>
+      )}
 
       {/* ── Stat cards (2 rows × 3) ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6">
