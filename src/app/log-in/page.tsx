@@ -9,7 +9,7 @@ import { useLoginMutation } from "@/services/authApi";
 import { useLazyGetMeQuery } from "@/services/meApi";
 import { useAppDispatch } from "@/store/hooks";
 import { setCredentials, logOut } from "@/features/auth/authSlice";
-import { unwrapApiError } from "@/services/api";
+import { unwrapApiError, describeApiError } from "@/services/api";
 import { isAdminType } from "@/lib/userType";
 import { NEW_DEVICE_REQUIRES_OTP } from "@/services/types";
 import { getOnboarding, setOnboarding, clearOnboarding } from "@/lib/onboarding";
@@ -67,7 +67,7 @@ export default function LogInPage() {
         router.push("/verify-email");
         return;
       }
-      setError(unwrapApiError(err)?.message ?? "Invalid email or password.");
+      setError(describeApiError(err));
     }
   }
 
