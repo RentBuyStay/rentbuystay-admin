@@ -1,4 +1,5 @@
 "use client";
+import { pageTotal } from "@/services/types";
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -72,7 +73,7 @@ export default function UsersPage() {
 
   // Live per-type counts from /admin/stats; fall back to page total while loading.
   const TABS: { key: "All" | Role; label: string; count: number }[] = [
-    { key: "All", label: "All", count: stats?.totalUsers ?? usersPage?.totalElements ?? 0 },
+    { key: "All", label: "All", count: stats?.totalUsers ?? pageTotal(usersPage) },
     { key: "Seeker", label: "Seekers", count: stats?.usersByType?.seekers ?? 0 },
     { key: "Owner", label: "Owners", count: stats?.usersByType?.owners ?? 0 },
     { key: "Agent", label: "Agents", count: stats?.usersByType?.agents ?? 0 },

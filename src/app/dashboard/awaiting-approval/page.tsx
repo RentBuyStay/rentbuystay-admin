@@ -1,4 +1,5 @@
 "use client";
+import { pageTotal } from "@/services/types";
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
@@ -24,7 +25,7 @@ export default function AwaitingApprovalPage() {
   );
 
   const TABS: { key: "Awaiting Approval" | "Rejected"; count: number }[] = [
-    { key: "Awaiting Approval", count: awaitingPage?.totalElements ?? 0 },
+    { key: "Awaiting Approval", count: pageTotal(awaitingPage) },
     { key: "Rejected", count: rejected.length },
   ];
 

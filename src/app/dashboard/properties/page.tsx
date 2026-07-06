@@ -1,4 +1,5 @@
 "use client";
+import { pageTotal } from "@/services/types";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -22,7 +23,7 @@ export default function PropertyManagementPage() {
   const all = useMemo(() => (propPage?.content ?? []).map(toAdminPropertyFromApi), [propPage]);
 
   const TABS: { key: TabKey; label: string; count: number }[] = [
-    { key: "All", label: "All", count: propPage?.totalElements ?? 0 },
+    { key: "All", label: "All", count: pageTotal(propPage) },
     { key: "Active", label: "Active", count: all.filter((p) => p.status === "Active").length },
     { key: "Archived", label: "Archived", count: all.filter((p) => p.status === "Archived").length },
     { key: "Removed", label: "Removed", count: all.filter((p) => p.status === "Removed").length },

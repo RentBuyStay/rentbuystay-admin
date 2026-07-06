@@ -164,13 +164,15 @@ export type AdminUserDetail = AdminUser & {
   updatedAt?: string | null;
 };
 
-/** Spring Data page envelope. */
+/** Spring Data page envelope. Pagination may be flat (older) or nested under
+ *  `page` (newer Spring) — read totals via pageTotal() from services/types. */
 export type PageResponse<T> = {
   content: T[];
-  totalElements: number;
-  totalPages: number;
-  number: number; // current page index (0-based)
-  size: number;
+  totalElements?: number;
+  totalPages?: number;
+  number?: number; // current page index (0-based)
+  size?: number;
+  page?: { size: number; number: number; totalElements: number; totalPages: number };
 };
 
 /** Item from GET /professionals (agents + agencies public directory). */
