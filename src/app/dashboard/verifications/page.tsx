@@ -39,6 +39,7 @@ type QueueItem = {
   doc: string;
   submitted: string;
   subjectUserId?: string;
+  subjectKey: string; // stable per-subject key for de-duping across rows
   affiliatedWith?: string;
 };
 
@@ -60,6 +61,11 @@ export default function VerificationManagementPage() {
   const { data: stats } = useGetPlatformStatsQuery();
   const { data: identityPage } = useGetIdentityKycQuery({ status });
   const { data: businessPage } = useGetBusinessKycQuery({ status });
+  // Always know which subjects are already VERIFIED so a leftover PENDING row
+  // for the same subject (a Dojah auto-verify that left a stray) isn't shown as
+  // still needing approval.
+  const { data: verifiedIdentity } = useGetIdentityKycQuery({ status: "VERIFIED" });
+  const { data: verifiedBusiness } = useGetBusinessKycQuery({ status: "VERIFIED" });
   const { data: prosPage } = useGetProfessionalsQuery({ size: 200 });
   const [decideKyc, { isLoading: deciding }] = useDecideKycMutation();
 
@@ -88,6 +94,7 @@ export default function VerificationManagementPage() {
       doc: docLabel(v),
       submitted: submittedLabel(v.createdAt),
       subjectUserId: v.userId,
+      subjectKey: `identity:${v.userId ?? v.id}`,
     }));
     const business: QueueItem[] = (businessPage?.content ?? []).map((v: BusinessKycEntry) => {
       const pro = v.subjectId ? pros.get(v.subjectId) : undefined;
@@ -100,10 +107,24 @@ export default function VerificationManagementPage() {
         doc: docLabel(v),
         submitted: submittedLabel(v.createdAt),
         subjectUserId: v.subjectKind === "USER" ? v.subjectId : undefined,
+        subjectKey: `business:${v.subjectId ?? v.id}`,
       };
     });
-    return [...identity, ...business];
-  }, [identityPage, businessPage, prosPage]);
+
+    // Subjects already verified (across identity + business), so we can drop a
+    // stray PENDING duplicate left behind by a Dojah auto-verify.
+    const verifiedKeys = new Set<string>([
+      ...(verifiedIdentity?.content ?? []).map((v) => `identity:${v.userId ?? v.id}`),
+      ...(verifiedBusiness?.content ?? []).map((v: BusinessKycEntry) => `business:${v.subjectId ?? v.id}`),
+    ]);
+
+    const merged = [...identity, ...business]
+      // On the Pending tab, hide items whose subject is already verified.
+      .filter((it) => !(isPending && verifiedKeys.has(it.subjectKey)))
+      // Collapse duplicate rows for the same subject (keep the first).
+      .filter((it, i, arr) => arr.findIndex((o) => o.subjectKey === it.subjectKey) === i);
+    return merged;
+  }, [identityPage, businessPage, verifiedIdentity, verifiedBusiness, prosPage, isPending]);
 
   const handleDecision = async (item: QueueItem, approve: boolean) => {
     if (deciding) return;
