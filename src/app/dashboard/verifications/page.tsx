@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { type Role } from "@/lib/demoUsers";
+import { roleFromUserType } from "@/lib/property";
 import {
   useDecideKycMutation,
   useGetBusinessKycQuery,
@@ -90,7 +91,8 @@ export default function VerificationManagementPage() {
       id: v.id,
       name: [v.firstName, v.lastName].filter(Boolean).join(" ") || v.email || "—",
       email: v.email || "—",
-      role: "Seeker",
+      // Use the subject's real account type from the response, not a guess.
+      role: roleFromUserType(v.userType),
       doc: docLabel(v),
       submitted: submittedLabel(v.createdAt),
       subjectUserId: v.userId,

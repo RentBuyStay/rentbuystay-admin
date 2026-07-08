@@ -222,6 +222,7 @@ export type KycVerificationEntry = {
   firstName?: string | null;
   lastName?: string | null;
   email?: string | null;
+  userType?: string | null; // subject's account type — authoritative for the role badge
   verificationType?: string;
   provider?: string;
   documentType?: string;

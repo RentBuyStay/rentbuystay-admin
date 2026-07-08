@@ -207,6 +207,18 @@ const ADMIN_STATUS_BY_BACKEND: Record<PropertyResponse["status"], AdminPropertyS
 
 /** The lister's role, from the owner's real account type (backend ownerUserType),
  *  falling back to a distinct-agent / organization heuristic when it's absent. */
+/** Map a raw account userType to the admin role badge. */
+export function roleFromUserType(userType?: string | null): Role {
+  switch (userType) {
+    case "PROPERTY_OWNER": return "Owner";
+    case "PROPERTY_AGENCY": return "Agency";
+    case "PROPERTY_AGENT":
+    case "AGENCY_STAFF": return "Agent";
+    case "PROPERTY_SEEKER": return "Seeker";
+    default: return "Seeker";
+  }
+}
+
 export function listerRoleOf(p: {
   ownerUserType?: string | null;
   assignedAgentUserId?: string | null;
