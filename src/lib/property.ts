@@ -207,8 +207,12 @@ const ADMIN_STATUS_BY_BACKEND: Record<PropertyResponse["status"], AdminPropertyS
 
 /** Map a backend PropertyResponse to the admin moderation card view model. */
 export function toAdminPropertyFromApi(p: PropertyResponse): AdminProperty {
-  const role: Role = p.assignedAgentName ? "Agent" : p.organizationId ? "Agency" : "Owner";
-  const name = p.assignedAgentName || p.ownerName || "Property Owner";
+  // Only "Agent" when a distinct agent (different user from the owner) is
+  // assigned — an owner who lists directly must read as Owner even if the
+  // backend echoes their name into assignedAgentName.
+  const hasAgent = !!p.assignedAgentUserId && p.assignedAgentUserId !== p.ownerUserId;
+  const role: Role = hasAgent ? "Agent" : p.organizationId ? "Agency" : "Owner";
+  const name = (hasAgent ? p.assignedAgentName : p.ownerName) || p.ownerName || "Property Owner";
   const parts = name.trim().split(/\s+/);
   const initials = ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "P";
   return {

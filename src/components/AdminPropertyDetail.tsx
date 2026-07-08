@@ -136,9 +136,14 @@ function DetailBody({
   const images = property.photos?.length ? property.photos.map((p) => p.url) : [listing.image];
   const sqft = property.totalAreaSqm ? `${property.totalAreaSqm.toLocaleString()} sqft` : listing.sqft;
 
-  // Lister
-  const listerRole: Role = property.assignedAgentName ? "Agent" : property.organizationId ? "Agency" : "Owner";
-  const listerName = property.assignedAgentName ?? property.ownerName ?? listing.seller.name;
+  // Lister — only call it an Agent when a *distinct* agent is assigned (different
+  // user from the owner). An owner who lists directly must show as Owner, even if
+  // the backend echoes their name into assignedAgentName.
+  const hasAgent =
+    !!property.assignedAgentUserId && property.assignedAgentUserId !== property.ownerUserId;
+  const listerRole: Role = hasAgent ? "Agent" : property.organizationId ? "Agency" : "Owner";
+  const listerName =
+    (hasAgent ? property.assignedAgentName : property.ownerName) ?? property.ownerName ?? listing.seller.name;
   const listerVerified = false;
   const roleBadge = ROLE_BADGE[listerRole];
   const approvalFlow = property.status === "AWAITING_APPROVAL" || property.status === "REJECTED";
