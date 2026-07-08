@@ -105,7 +105,9 @@ export default function VerificationManagementPage() {
         id: v.id,
         name: pro?.name || pro?.organizationName || "—",
         email: pro?.email || "—",
-        role: v.subjectKind === "ORGANIZATION" ? "Agency" : "Agent",
+        role: v.userType
+          ? roleFromUserType(v.userType)
+          : v.subjectKind === "ORGANIZATION" ? "Agency" : "Agent",
         doc: docLabel(v),
         submitted: submittedLabel(v.createdAt),
         subjectUserId: v.subjectKind === "USER" ? v.subjectId : undefined,
