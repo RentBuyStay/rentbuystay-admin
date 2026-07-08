@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import {
   useGetAdminUsersQuery,
   useUnsuspendUserMutation,
+  useEraseUserDataMutation,
 } from "@/services/adminApi";
+import { unwrapApiError } from "@/services/api";
 import { Badge, EmptyState, ROLE_STYLE, VerificationCell, toRow } from "@/components/admin/userRows";
 import RowActionsMenu from "@/components/admin/RowActionsMenu";
 import { useToast } from "@/components/Toast";
@@ -24,6 +26,8 @@ export default function SuspendedUsersPage() {
     q: query.trim() || undefined,
   });
   const [unsuspendUser] = useUnsuspendUserMutation();
+  const [eraseUserData, { isLoading: erasing }] = useEraseUserDataMutation();
+  const [confirmErase, setConfirmErase] = useState<{ id: string; name: string } | null>(null);
 
   const rows = useMemo(
     () => (usersPage?.content ?? []).filter((u) => u.status === "SUSPENDED").map((u) => toRow(u)),
@@ -35,6 +39,17 @@ export default function SuspendedUsersPage() {
       await unsuspendUser(id).unwrap();
     } catch {
       // list re-fetches via tag invalidation; row stays if the call failed
+    }
+  };
+
+  const handleErase = async () => {
+    if (!confirmErase) return;
+    try {
+      await eraseUserData(confirmErase.id).unwrap();
+      toast("User data permanently erased.", "success");
+      setConfirmErase(null);
+    } catch (e) {
+      toast(unwrapApiError(e)?.message ?? "Couldn't erase this user's data. Please try again.", "error");
     }
   };
 
@@ -135,7 +150,7 @@ export default function SuspendedUsersPage() {
                           <button type="button" onClick={() => { close(); handleReactivate(r.id); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
                             <Image src="/icons/admin/menu-reactivate.svg" alt="" width={16} height={16} /> Reactivate User
                           </button>
-                          <button type="button" onClick={() => { close(); toast("Permanent data deletion isn't available yet — the user stays suspended (access already revoked).", "info"); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
+                          <button type="button" onClick={() => { close(); setConfirmErase({ id: r.id, name: r.name }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
                             <Image src="/icons/admin/menu-delete.svg" alt="" width={16} height={16} /> Delete User Data
                           </button>
                         </>
@@ -173,6 +188,52 @@ export default function SuspendedUsersPage() {
           </button>
         </div>
       </div>
+      )}
+
+      {/* Permanent erase confirmation */}
+      {confirmErase && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-end md:items-center justify-center md:p-4"
+          style={{ background: "rgba(18,18,18,0.5)" }}
+          onClick={() => !erasing && setConfirmErase(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative bg-white w-full md:w-[460px] md:max-w-full rounded-t-[24px] md:rounded-[24px] p-6 md:p-8 flex flex-col"
+            style={{ gap: 16 }}
+          >
+            <div className="flex items-center justify-center rounded-full" style={{ width: 48, height: 48, background: "rgba(227,0,69,0.08)" }}>
+              <Image src="/icons/admin/menu-delete.svg" alt="" width={22} height={22} />
+            </div>
+            <div className="flex flex-col" style={{ gap: 8 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: "#121212" }}>Permanently erase user data?</h2>
+              <p style={{ fontSize: 14, lineHeight: "22px", color: "#807E7E" }}>
+                This permanently erases and anonymises <span style={{ fontWeight: 600, color: "#121212" }}>{confirmErase.name}</span>&rsquo;s
+                data. This can&rsquo;t be undone.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 mt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmErase(null)}
+                disabled={erasing}
+                className="flex-1 flex items-center justify-center rounded-[12px] border border-[#EDEDED] hover:bg-[#fafafa] disabled:opacity-60"
+                style={{ height: 48, fontSize: 14, fontWeight: 500, color: "#121212" }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleErase}
+                disabled={erasing}
+                className="flex-1 flex items-center justify-center rounded-[12px] text-white hover:opacity-90 disabled:opacity-60"
+                style={{ height: 48, fontSize: 14, fontWeight: 600, background: "#E30045" }}
+              >
+                {erasing ? "Erasing…" : "Erase Data"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

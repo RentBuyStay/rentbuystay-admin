@@ -448,6 +448,11 @@ export const adminApi = api.injectEndpoints({
       query: (id) => ({ url: endpoints.adminUserUnsuspend(id), method: "POST" }),
       invalidatesTags: [{ type: "AdminUsers" as const, id: "LIST" }],
     }),
+    // Permanently erase a suspended user's data (SUPER_ADMIN only).
+    eraseUserData: builder.mutation<void, string>({
+      query: (id) => ({ url: `${endpoints.adminUsers}/${id}`, method: "DELETE" }),
+      invalidatesTags: [{ type: "AdminUsers" as const, id: "LIST" }],
+    }),
     // Public directory of agents + agencies — used to enrich the admin user list
     // with names/avatars until /admin/users returns profile fields.
     getProfessionals: builder.query<PageResponse<ProfessionalListItem>, { page?: number; size?: number; search?: string }>({
@@ -809,6 +814,7 @@ export const {
   useNotifyUserMutation,
   useSuspendUserMutation,
   useUnsuspendUserMutation,
+  useEraseUserDataMutation,
   useGetProfessionalsQuery,
   useGetUserKycStatusQuery,
   useGetAwaitingIdentityKycQuery,
