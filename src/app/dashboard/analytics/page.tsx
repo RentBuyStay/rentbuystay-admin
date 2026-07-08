@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import {
   useGetPlatformStatsQuery,
   useGetRegistrationStatsQuery,
+  useGetEngagementStatsQuery,
   useGetAdminUsersQuery,
   useGetAdminPropertiesQuery,
 } from "@/services/adminApi";
@@ -57,6 +58,10 @@ function bucketSeries(daily: { date: string; value: number }[]): { labels: strin
 
 type PageData = {
   stats?: import("@/services/adminApi").PlatformStats;
+  sessionCards: Stat[];
+  churnRate: string;
+  avgInquiriesPerListing: string;
+  avgTimeToRent: string;
   regByRole: { role: string; pct: string; value: string; barPct: number }[];
   newThisMonth: number;
   verified: number;
@@ -88,6 +93,7 @@ export default function Page() {
 
   const { data: stats } = useGetPlatformStatsQuery();
   const { data: registrations } = useGetRegistrationStatsQuery({ days: usersRange });
+  const { data: engagement } = useGetEngagementStatsQuery({ days: usersRange });
   const { data: usersPage } = useGetAdminUsersQuery({ page: 0, size: 200 });
   const { data: propsPage } = useGetAdminPropertiesQuery({ page: 0, size: 100 });
   const { data: agentsPage } = useGetAgentsQuery({ size: 200 });
@@ -139,18 +145,24 @@ export default function Page() {
       const d = new Date(iso);
       return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-NG", { day: "2-digit", month: "short", year: "numeric" });
     };
+    const engTopByEmail = new Map(
+      (engagement?.userAnalytics?.topUsers ?? []).map((u) => [u.email, u]),
+    );
     const topUsers = [...agents]
       .sort((a, b) => (b.listingCount ?? 0) - (a.listingCount ?? 0))
       .slice(0, 8)
-      .map((a) => ({
-        name: [a.firstName, a.lastName].filter(Boolean).join(" ") || "—",
-        email: a.email ?? "—",
-        role: "Agent",
-        listings: String(a.listingCount ?? 0),
-        views: "—",
-        leads: "—",
-        since: fmtSince(a.createdAt),
-      }));
+      .map((a) => {
+        const eng = a.email ? engTopByEmail.get(a.email) : undefined;
+        return {
+          name: [a.firstName, a.lastName].filter(Boolean).join(" ") || "—",
+          email: a.email ?? "—",
+          role: "Agent",
+          listings: String(a.listingCount ?? 0),
+          views: eng ? eng.views.toLocaleString("en-NG") : "—",
+          leads: eng ? eng.leads.toLocaleString("en-NG") : "—",
+          since: fmtSince(a.createdAt),
+        };
+      });
 
     // Listing type distribution from the platform properties.
     const typeCount = { RENT: 0, BUY: 0, SHORTLET: 0 } as Record<string, number>;
@@ -207,15 +219,20 @@ export default function Page() {
     const regions = [...(stats?.listingsByState ?? [])].sort((a, b) => b.count - a.count);
     const geoLegend = regions.slice(0, 6).map((r, i) => ({ city: r.state, state: r.state, color: GEO_PALETTE[i % GEO_PALETTE.length] }));
     const geoFills = Object.fromEntries(geoLegend.map((l) => [l.state, l.color]));
-    const geoRows = regions.slice(0, 8).map((r) => ({
-      city: r.state,
-      users: "—",
-      listings: r.count.toLocaleString("en-NG"),
-      leads: "—",
-      revenue: "—",
-      price: "—",
-      growth: "—",
-    }));
+    const engGeoByState = new Map((engagement?.geographic ?? []).map((g) => [g.state, g]));
+    const naira = (n: number) => `₦${Math.round(n).toLocaleString("en-NG")}`;
+    const geoRows = regions.slice(0, 8).map((r) => {
+      const g = engGeoByState.get(r.state);
+      return {
+        city: r.state,
+        users: g ? g.usersCount.toLocaleString("en-NG") : "—",
+        listings: r.count.toLocaleString("en-NG"),
+        leads: g ? g.leadsCount.toLocaleString("en-NG") : "—",
+        revenue: g ? naira(g.revenue) : "—",
+        price: g ? naira(g.averagePrice) : "—",
+        growth: g ? `${g.growth >= 0 ? "+" : ""}${g.growth}%` : "—",
+      };
+    });
     const listingsTotal = Math.max(1, regions.reduce((a, r) => a + r.count, 0));
     const topState = regions[0];
 
@@ -242,8 +259,29 @@ export default function Page() {
     const listingsLabels = listings.labels;
     const listingsByDay = listings.values;
 
+    const ov = engagement?.overview;
+    const sessionCards: Stat[] = [
+      { label: "Total Sessions (30 Days)", value: ov ? ov.totalSessions.toLocaleString("en-NG") : "—", delta: ov ? "Last 30 days" : "Awaiting analytics data", gradient: true },
+      { label: "Average Session (Min)", value: ov ? ov.averageSession.toFixed(1) : "—", delta: ov ? "Per session" : "Awaiting analytics data" },
+      { label: "Bounce Rate", value: ov ? `${ov.bounceRate.toFixed(1)}%` : "—", delta: ov ? "Single-page sessions" : "Awaiting analytics data" },
+      { label: "Conversion Rate", value: ov ? `${ov.conversionRate.toFixed(1)}%` : "—", delta: ov ? "Sessions to leads" : "Awaiting analytics data" },
+    ];
+    const churnRate = engagement?.userAnalytics
+      ? `${engagement.userAnalytics.thirtyDayChurnRate.toFixed(1)}%`
+      : "—";
+    const avgInquiriesPerListing = engagement?.listingAnalytics
+      ? engagement.listingAnalytics.avgInquiriesPerListing.toFixed(1)
+      : "—";
+    const avgTimeToRent = engagement?.listingAnalytics
+      ? `${Math.round(engagement.listingAnalytics.avgTimeToRentOrSellDays)} days`
+      : "—";
+
     return {
       stats,
+      sessionCards,
+      churnRate,
+      avgInquiriesPerListing,
+      avgTimeToRent,
       regByRole,
       newThisMonth,
       verified,
@@ -267,7 +305,7 @@ export default function Page() {
       listingsLabels,
       listingsByDay,
     };
-  }, [stats, registrations, usersPage, propsPage, agentsPage, listingsRange]);
+  }, [stats, registrations, engagement, usersPage, propsPage, agentsPage, listingsRange]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -489,13 +527,6 @@ const STATUS_COLOR: Record<string, string> = { Active: "#009D35", Pending: "#DC8
 
 /* ════════════ Platform Overview ════════════ */
 
-/* Session/bounce/conversion tracking doesn't exist yet (backend issue #6). */
-const PLATFORM_STATS: Stat[] = [
-  { label: "Total Sessions (30 Days)", value: "—", delta: "Awaiting analytics data", gradient: true },
-  { label: "Average Session (Min)", value: "—", delta: "Awaiting analytics data" },
-  { label: "Bounce Rate", value: "—", delta: "Awaiting analytics data" },
-  { label: "Conversion Rate", value: "—", delta: "Awaiting analytics data" },
-];
 const DAYS = ["Mon", "Tue", "Wed", "Thur", "Fri", "Sat", "Sun"];
 
 function GeoMapCard({ title, subtitle, legend, fills }: { title: string; subtitle: string; legend: { city: string; color: string }[]; fills: Record<string, string> }) {
@@ -519,7 +550,7 @@ function GeoMapCard({ title, subtitle, legend, fills }: { title: string; subtitl
 function PlatformOverview({ d, usersRange, onUsersRange, listingsRange, onListingsRange }: { d: PageData; usersRange: number; onUsersRange: (days: number) => void; listingsRange: number; onListingsRange: (days: number) => void }) {
   return (
     <>
-      <StatCards stats={PLATFORM_STATS} />
+      <StatCards stats={d.sessionCards} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="flex flex-col bg-white" style={cardStyle}>
           <div className="flex flex-col gap-4">
@@ -588,7 +619,7 @@ function UserAnalytics({ d }: { d: PageData }) {
   const USER_STATS: Stat[] = [
     { label: "New This Month", value: String(d.newThisMonth), delta: "From latest signups", gradient: true },
     { label: "Verified Users", value: d.verified.toLocaleString("en-NG"), delta: `${d.verifiedPct}% of total` },
-    { label: "Churn Rate (30 Days)", value: "—", delta: "Awaiting analytics data" },
+    { label: "Churn Rate (30 Days)", value: d.churnRate, delta: d.churnRate === "—" ? "Awaiting analytics data" : "Last 30 days" },
     { label: "Avg. Account Age", value: d.avgAccountAge, delta: "Across all users" },
   ];
   return (
@@ -641,8 +672,8 @@ function ListingAnalytics({ d }: { d: PageData }) {
   const LISTING_STATS: Stat[] = [
     { label: "Total Active", value: (d.stats?.activeListings ?? 0).toLocaleString("en-NG"), delta: "Live", gradient: true },
     { label: "Avg. Views/Listing", value: d.avgViews, delta: "All time" },
-    { label: "Avg. Inquiries/Listing", value: "—", delta: "Awaiting analytics data" },
-    { label: "Avg. Time to Rent/Sell", value: "—", delta: "Awaiting analytics data" },
+    { label: "Avg. Inquiries/Listing", value: d.avgInquiriesPerListing, delta: d.avgInquiriesPerListing === "—" ? "Awaiting analytics data" : "Per active listing" },
+    { label: "Avg. Time to Rent/Sell", value: d.avgTimeToRent, delta: d.avgTimeToRent === "—" ? "Awaiting analytics data" : "From posting to close" },
   ];
   return (
     <>

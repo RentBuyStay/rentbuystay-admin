@@ -72,6 +72,29 @@ export type RevenueStats = {
   byPlan: PlanRevenue[];
 };
 
+/** GET /admin/stats/engagement — session/engagement analytics. */
+export type EngagementStats = {
+  overview: {
+    totalSessions: number;
+    averageSession: number;
+    bounceRate: number;
+    conversionRate: number;
+    newUsersVsActiveUsers: { day: string; newUsers: number; activeUsers: number }[];
+    listingsPostedVsLeadsGenerated: { day: string; listingsPosted: number; leadsGenerated: number }[];
+    activityHeatmap: { dayOfWeek: number; hourOfDay: number; count: number }[];
+  };
+  userAnalytics: {
+    thirtyDayChurnRate: number;
+    topUsers: { userId: string; email: string; fullName: string; views: number; leads: number }[];
+  };
+  listingAnalytics: {
+    avgInquiriesPerListing: number;
+    avgTimeToRentOrSellDays: number;
+    topListings: { propertyId: string; title: string; inquiries: number; views: number; conversionRate: number }[];
+  };
+  geographic: { state: string; usersCount: number; leadsCount: number; revenue: number; averagePrice: number; growth: number }[];
+};
+
 /** GET /admin/activity — one entry in the recent-activity feed. */
 export type ActivityItem = {
   type: string;
@@ -386,6 +409,10 @@ export const adminApi = api.injectEndpoints({
     getRevenueStats: builder.query<RevenueStats, void>({
       query: () => ({ url: endpoints.adminStatsRevenue, method: "GET" }),
       transformResponse: (res: ApiEnvelope<RevenueStats>) => res.data,
+    }),
+    getEngagementStats: builder.query<EngagementStats, { days?: number }>({
+      query: ({ days = 30 } = {}) => ({ url: endpoints.adminStatsEngagement, method: "GET", params: { days } }),
+      transformResponse: (res: ApiEnvelope<EngagementStats>) => res.data,
     }),
     getRecentActivity: builder.query<ActivityItem[], { size?: number }>({
       query: ({ size = 10 } = {}) => ({
@@ -806,6 +833,7 @@ export const adminApi = api.injectEndpoints({
 export const {
   useGetPlatformStatsQuery,
   useGetRegistrationStatsQuery,
+  useGetEngagementStatsQuery,
   useGetRevenueStatsQuery,
   useGetRecentActivityQuery,
   useGetAdminUsersQuery,

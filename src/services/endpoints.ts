@@ -103,6 +103,7 @@ export const endpoints = {
   adminStats: "/admin/stats",
   adminStatsRegistrations: "/admin/stats/registrations",
   adminStatsRevenue: "/admin/stats/revenue",
+  adminStatsEngagement: "/admin/stats/engagement",
   adminActivity: "/admin/activity",
   adminUsers: "/admin/users",
   adminUserSuspend: (id: string) => `/admin/users/${id}/suspend`,
