@@ -153,6 +153,7 @@ export type PropertyResponse = {
   isFurnished?: boolean;
   ownerUserId?: string;
   ownerName?: string;
+  ownerUserType?: string; // PROPERTY_OWNER | PROPERTY_AGENT | PROPERTY_AGENCY | …
   organizationId?: string;
   assignedAgentUserId?: string;
   assignedAgentName?: string;

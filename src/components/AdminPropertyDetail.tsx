@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Trash2, Pencil, X } from "lucide-react";
-import { toSeekerListing, formatPrice } from "@/lib/property";
+import { toSeekerListing, formatPrice, listerRoleOf } from "@/lib/property";
 import type { PropertyStatus } from "@/services/types";
 import type { Role } from "@/lib/demoUsers";
 import { EmptyState } from "@/components/admin/userRows";
@@ -136,12 +136,10 @@ function DetailBody({
   const images = property.photos?.length ? property.photos.map((p) => p.url) : [listing.image];
   const sqft = property.totalAreaSqm ? `${property.totalAreaSqm.toLocaleString()} sqft` : listing.sqft;
 
-  // Lister — only call it an Agent when a *distinct* agent is assigned (different
-  // user from the owner). An owner who lists directly must show as Owner, even if
-  // the backend echoes their name into assignedAgentName.
+  // Lister role from the owner's real account type (backend ownerUserType).
   const hasAgent =
     !!property.assignedAgentUserId && property.assignedAgentUserId !== property.ownerUserId;
-  const listerRole: Role = hasAgent ? "Agent" : property.organizationId ? "Agency" : "Owner";
+  const listerRole: Role = listerRoleOf(property);
   const listerName =
     (hasAgent ? property.assignedAgentName : property.ownerName) ?? property.ownerName ?? listing.seller.name;
   const listerVerified = false;
