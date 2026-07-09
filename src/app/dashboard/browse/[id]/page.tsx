@@ -180,6 +180,7 @@ export default function BrowsePropertyDetailPage({
       </div>
 
       <PropertyGallery
+        media={listing.media}
         images={listing.images ?? [listing.image]}
         alt={listing.title}
         className="h-[482px]"

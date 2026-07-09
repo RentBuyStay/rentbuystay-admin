@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Trash2, Pencil, X } from "lucide-react";
-import { toSeekerListing, formatPrice, listerRoleOf } from "@/lib/property";
+import { toSeekerListing, formatPrice, listerRoleOf, mediaItems } from "@/lib/property";
 import { PropertyGallery } from "@/components/PropertyGallery";
 import type { PropertyStatus } from "@/services/types";
 import type { Role } from "@/lib/demoUsers";
@@ -135,6 +135,7 @@ function DetailBody({
   const displayTitle = `${property.title} for ${tagWord} in ${listing.location}`;
   const status = STATUS_BADGE[property.status] || STATUS_BADGE.ACTIVE;
   const images = property.photos?.length ? property.photos.map((p) => p.url) : [listing.image];
+  const media = mediaItems(property);
   const sqft = property.totalAreaSqm ? `${property.totalAreaSqm.toLocaleString()} sqft` : listing.sqft;
 
   // Lister role from the owner's real account type (backend ownerUserType).
@@ -282,7 +283,7 @@ function DetailBody({
 
       {/* Content */}
       <div className="flex flex-col" style={{ gap: 32 }}>
-        <PropertyGallery images={images} alt={property.title} radius={20} className="h-[450px]" />
+        <PropertyGallery media={media} images={images} alt={property.title} radius={20} className="h-[450px]" />
         <PriceSpecs price={listing.price} sqft={sqft} beds={listing.beds} baths={listing.baths} />
 
         <div className="flex flex-col" style={{ gap: 40 }}>

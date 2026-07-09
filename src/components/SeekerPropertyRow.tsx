@@ -36,7 +36,7 @@ export default function SeekerPropertyRow({ listing }: { listing: SeekerListing 
           borderRadius: "15px",
         }}
       >
-        <PropertyCardImage images={listing.images ?? [listing.image]} alt={listing.title} sizes="184px" intervalMs={4600} />
+        <PropertyCardImage media={listing.media} images={listing.images ?? [listing.image]} alt={listing.title} sizes="184px" intervalMs={4600} />
         <span
           className="absolute z-10 inline-flex items-center justify-center"
           style={{
