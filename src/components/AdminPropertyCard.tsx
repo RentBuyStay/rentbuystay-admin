@@ -3,12 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Role } from "@/lib/demoUsers";
+import { PropertyCardImage } from "@/components/PropertyGallery";
 
 export type AdminPropertyStatus = "Active" | "Archived" | "Removed" | "Awaiting Approval" | "Rejected";
 
 export type AdminProperty = {
   id: string;
   image: string;
+  images?: string[];
   listingType: "For Rent" | "For Sale" | "Shortlet";
   price: string;
   priceSuffix?: string;
@@ -43,9 +45,9 @@ export default function AdminPropertyCard({ property: p, hideTrash, onDelete }: 
     <Link href={`/dashboard/properties/${p.id}`} className="flex flex-col bg-white overflow-hidden hover:shadow-md transition-shadow" style={{ border: "1px solid #F6F6F6", borderRadius: 20 }}>
       {/* Image + listing-type pill */}
       <div className="relative" style={{ height: 218, background: "#EDEDED" }}>
-        <Image src={p.image} alt={p.title} fill sizes="352px" style={{ objectFit: "cover" }} />
+        <PropertyCardImage images={p.images ?? [p.image]} alt={p.title} sizes="352px" />
         <span
-          className="absolute inline-flex items-center justify-center"
+          className="absolute z-10 inline-flex items-center justify-center"
           style={{ right: 16, bottom: 16, height: 32, padding: "0 8px", background: "#FFAE00", color: "#FFFFFF", borderRadius: 50, fontSize: 12, fontWeight: 600, lineHeight: "20px" }}
         >
           {p.listingType}

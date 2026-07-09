@@ -15,18 +15,12 @@ import {
 } from "@/services/propertyApi";
 import { useOpenDirectConversationMutation } from "@/services/conversationApi";
 import { toSeekerListing } from "@/lib/property";
+import { PropertyGallery } from "@/components/PropertyGallery";
 import { unwrapApiError } from "@/services/api";
 import { useToast } from "@/components/Toast";
 import ScheduleInspectionModal from "@/components/ScheduleInspectionModal";
 import { EmptyState } from "@/components/admin/userRows";
 
-const FALLBACK_GALLERY = [
-  "/images/prop1.jpg",
-  "/images/prop2.jpg",
-  "/images/prop3.jpg",
-  "/images/prop4.jpg",
-  "/images/prop5.jpg",
-];
 
 export default function BrowsePropertyDetailPage({
   params,
@@ -73,7 +67,6 @@ export default function BrowsePropertyDetailPage({
   const property = data;
   const listing = toSeekerListing(property);
   const isSaved = (savedPage?.content ?? []).some((p) => p.id === id);
-  const galleryImages = property.photos?.length ? property.photos.map((ph) => ph.url) : undefined;
 
   const tagLabel =
     listing.tag === "FOR SALE"
@@ -186,9 +179,10 @@ export default function BrowsePropertyDetailPage({
         </button>
       </div>
 
-      <PhotoGallery
-        title={listing.title}
-        images={galleryImages ?? [listing.image, ...FALLBACK_GALLERY.filter((i) => i !== listing.image)]}
+      <PropertyGallery
+        images={listing.images ?? [listing.image]}
+        alt={listing.title}
+        className="h-[482px]"
       />
 
       <PriceSpecsRow listing={listing} />
@@ -922,114 +916,3 @@ function SpecSeparator() {
   return <div style={{ width: "1px", height: "14px", background: "#F4F4F4" }} />;
 }
 
-function PhotoGallery({ title, images }: { title: string; images: string[] }) {
-  const [index, setIndex] = useState(0);
-  const total = images.length;
-
-  function prev() {
-    setIndex((i) => (i - 1 + total) % total);
-  }
-  function next() {
-    setIndex((i) => (i + 1) % total);
-  }
-
-  return (
-    <div
-      className="relative"
-      style={{
-        width: "100%",
-        height: "482px",
-        background: "#F6F6F6",
-        borderRadius: "20px",
-        overflow: "hidden",
-      }}
-    >
-      <Image
-        key={index}
-        src={images[index]}
-        alt={`${title} — photo ${index + 1}`}
-        fill
-        style={{ objectFit: "cover" }}
-        sizes="1088px"
-        priority
-      />
-
-      <button
-        type="button"
-        onClick={prev}
-        aria-label="Previous photo"
-        className="absolute inline-flex items-center justify-center hover:opacity-90"
-        style={{
-          left: "24px",
-          top: "50%",
-          transform: "translateY(-50%)",
-          width: "34px",
-          height: "34px",
-          borderRadius: "100%",
-          background: "rgba(18,18,18,0.25)",
-          border: "none",
-          color: "#FFFFFF",
-          cursor: "pointer",
-        }}
-      >
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <path
-            d="M12.5 4L6.5 10L12.5 16"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-
-      <button
-        type="button"
-        onClick={next}
-        aria-label="Next photo"
-        className="absolute inline-flex items-center justify-center hover:opacity-90"
-        style={{
-          right: "24px",
-          top: "50%",
-          transform: "translateY(-50%)",
-          width: "34px",
-          height: "34px",
-          borderRadius: "100%",
-          background: "rgba(18,18,18,0.25)",
-          border: "none",
-          color: "#FFFFFF",
-          cursor: "pointer",
-        }}
-      >
-        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-          <path
-            d="M7.5 4L13.5 10L7.5 16"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-
-      <div
-        className="absolute inline-flex items-center justify-center"
-        style={{
-          left: "24px",
-          bottom: "24px",
-          height: "32px",
-          padding: "0 12px",
-          gap: "5px",
-          background: "rgba(18,18,18,0.5)",
-          borderRadius: "8px",
-          color: "#FFFFFF",
-        }}
-      >
-        <Image src="/icons/dash/detail-gallery.svg" alt="" width={16} height={16} />
-        <span style={{ fontSize: "15px", lineHeight: 1, fontWeight: 400 }}>
-          {index + 1}/{total}
-        </span>
-      </div>
-    </div>
-  );
-}

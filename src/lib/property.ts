@@ -29,6 +29,7 @@ export type PropertyVM = {
   beds: number;
   baths: number;
   image: string;
+  images?: string[];
   viewCount: number;
 };
 
@@ -73,6 +74,18 @@ export function primaryPhoto(p: PropertyResponse): string {
   if (!p.photos?.length) return PLACEHOLDER_IMAGE;
   const primary = p.photos.find((ph) => ph.isPrimary) ?? p.photos[0];
   return primary.url || PLACEHOLDER_IMAGE;
+}
+
+/** All photo URLs, primary first then by sortOrder, placeholder fallback. */
+export function photoUrls(p: PropertyResponse): string[] {
+  if (!p.photos?.length) return [PLACEHOLDER_IMAGE];
+  const ordered = [...p.photos].sort((a, b) => {
+    if (a.isPrimary && !b.isPrimary) return -1;
+    if (b.isPrimary && !a.isPrimary) return 1;
+    return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+  });
+  const urls = ordered.map((ph) => ph.url).filter(Boolean);
+  return urls.length ? urls : [PLACEHOLDER_IMAGE];
 }
 
 // --- Detail view model (property details page) ---
@@ -150,6 +163,7 @@ export function toPropertyVM(p: PropertyResponse): PropertyVM {
     beds: p.bedrooms ?? 0,
     baths: p.bathrooms ?? 0,
     image: primaryPhoto(p),
+    images: photoUrls(p),
     viewCount: p.viewCount ?? 0,
   };
 }
@@ -175,6 +189,7 @@ export function toSeekerListing(p: PropertyResponse): SeekerListing {
     beds: p.bedrooms ?? 0,
     baths: p.bathrooms ?? 0,
     image: primaryPhoto(p),
+    images: photoUrls(p),
     amenities: (p.amenities ?? []).map((a) => a.name),
     seller: sellerFrom(p),
     ownerUserId: p.assignedAgentUserId ?? p.ownerUserId,
@@ -246,6 +261,7 @@ export function toAdminPropertyFromApi(p: PropertyResponse): AdminProperty {
   return {
     id: p.id,
     image: primaryPhoto(p),
+    images: photoUrls(p),
     listingType: p.listingType === "BUY" ? "For Sale" : p.listingType === "SHORTLET" ? "Shortlet" : "For Rent",
     price: formatPrice(p.price, p.currency),
     priceSuffix: SUFFIX_BY_FREQUENCY[p.priceFrequency] || undefined,

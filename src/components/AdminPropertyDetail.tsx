@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Trash2, Pencil, X } from "lucide-react";
 import { toSeekerListing, formatPrice, listerRoleOf } from "@/lib/property";
+import { PropertyGallery } from "@/components/PropertyGallery";
 import type { PropertyStatus } from "@/services/types";
 import type { Role } from "@/lib/demoUsers";
 import { EmptyState } from "@/components/admin/userRows";
@@ -281,7 +282,7 @@ function DetailBody({
 
       {/* Content */}
       <div className="flex flex-col" style={{ gap: 32 }}>
-        <Gallery title={property.title} images={images} />
+        <PropertyGallery images={images} alt={property.title} radius={20} className="h-[450px]" />
         <PriceSpecs price={listing.price} sqft={sqft} beds={listing.beds} baths={listing.baths} />
 
         <div className="flex flex-col" style={{ gap: 40 }}>
@@ -327,30 +328,6 @@ function DetailBody({
 
           <ViewMap lat={listing.lat} lng={listing.lng} />
         </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Gallery: 450px, counter bottom-left, prev/next circular ── */
-function Gallery({ title, images }: { title: string; images: string[] }) {
-  const [index, setIndex] = useState(0);
-  const total = images.length;
-  const prev = () => setIndex((i) => (i - 1 + total) % total);
-  const next = () => setIndex((i) => (i + 1) % total);
-
-  return (
-    <div className="relative" style={{ width: "100%", height: 450, background: "#F6F6F6", borderRadius: 20, overflow: "hidden" }}>
-      <Image key={index} src={images[index]} alt={`${title} — photo ${index + 1}`} fill style={{ objectFit: "cover" }} sizes="1088px" priority />
-      <button type="button" onClick={prev} aria-label="Previous photo" className="absolute inline-flex items-center justify-center hover:opacity-90" style={{ left: 24, top: "50%", transform: "translateY(-50%)", width: 48, height: 48, borderRadius: 14, background: "rgba(18,18,18,0.25)", color: "#fff" }}>
-        <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M12.5 4L6.5 10L12.5 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      </button>
-      <button type="button" onClick={next} aria-label="Next photo" className="absolute inline-flex items-center justify-center hover:opacity-90" style={{ right: 24, top: "50%", transform: "translateY(-50%)", width: 48, height: 48, borderRadius: 14, background: "rgba(18,18,18,0.25)", color: "#fff" }}>
-        <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M7.5 4L13.5 10L7.5 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-      </button>
-      <div className="absolute inline-flex items-center justify-center" style={{ left: 24, bottom: 24, height: 40, padding: "0 16px", gap: 6, background: "rgba(18,18,18,0.5)", borderRadius: 10, color: "#fff" }}>
-        <Image src="/icons/dash/detail-gallery.svg" alt="" width={20} height={20} />
-        <span style={{ fontSize: 18, lineHeight: 1, fontWeight: 400 }}>{index + 1}/{total}</span>
       </div>
     </div>
   );
