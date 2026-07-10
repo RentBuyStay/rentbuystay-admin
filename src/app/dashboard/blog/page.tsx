@@ -7,6 +7,7 @@ import { useState } from "react";
 import { STATUS_COLOR, type BlogStatus } from "@/lib/demoBlog";
 import { ConfirmModal, SuccessModal } from "@/components/PlanModals";
 import { EmptyState } from "@/components/admin/userRows";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   useDeleteBlogPostMutation,
   useGetBlogPostsQuery,
@@ -57,6 +58,10 @@ export default function Page() {
 
   const { data: stats } = useGetBlogStatsQuery();
   const { data: postsPage, isLoading } = useGetBlogPostsQuery({ status: filter });
+  const { can } = usePermissions();
+  const canCreateBlog = can("BLOG_MANAGEMENT", "CREATE");
+  const canEditBlog = can("BLOG_MANAGEMENT", "EDIT");
+  const canDeleteBlog = can("BLOG_MANAGEMENT", "DELETE");
   const [deletePost, { isLoading: deleting }] = useDeleteBlogPostMutation();
   const rows = postsPage?.content ?? [];
 
@@ -122,6 +127,7 @@ export default function Page() {
             );
           })}
         </div>
+        {canCreateBlog && (
         <Link
           href="/dashboard/blog/new"
           className="flex items-center justify-center text-white hover:opacity-90 shrink-0"
@@ -129,6 +135,7 @@ export default function Page() {
         >
           <Image src="/icons/admin/blog/blog-add.svg" alt="" width={20} height={20} /> New Blog Post
         </Link>
+        )}
       </div>
 
       {/* Table */}
@@ -159,8 +166,13 @@ export default function Page() {
                 <td style={cell}><span style={{ fontSize: 14, fontWeight: 400, color: "#121212" }}>{p.viewCount.toLocaleString("en-NG")}</span></td>
                 <td style={cell}>
                   <div className="flex items-center" style={{ gap: 24 }}>
+                    {canEditBlog && (
                     <button type="button" aria-label="Edit post" onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/blog/${p.id}/edit`); }} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-edit.svg" alt="" width={20} height={20} /></button>
+                    )}
+                    {canDeleteBlog && (
                     <button type="button" aria-label="Delete post" onClick={(e) => { e.stopPropagation(); setToDelete(p); }} className="hover:opacity-70"><Image src="/icons/admin/blog/blog-trash.svg" alt="" width={20} height={20} /></button>
+                    )}
+                    {!canEditBlog && !canDeleteBlog && <span style={{ fontSize: 12, color: "#807E7E" }}>—</span>}
                   </div>
                 </td>
               </tr>

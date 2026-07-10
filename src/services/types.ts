@@ -114,6 +114,14 @@ export type PropertyStatus =
   | "REJECTED"
   | "LIMIT_EXCEEDED";
 
+/** GET /me/permissions — the caller's role + granted "MODULE:ACTION" list. */
+export type MyPermissionsResponse = {
+  userType: string;
+  roleId?: string | null;
+  roleName?: string | null;
+  permissions: string[];
+};
+
 export type PhotoRef = { id?: string; url: string; contentType?: string | null; sortOrder?: number; isPrimary?: boolean };
 export type ChargeRef = {
   id?: string;

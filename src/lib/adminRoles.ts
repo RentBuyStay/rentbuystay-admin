@@ -8,6 +8,7 @@ export const MODULE_BY_LABEL: Record<string, RolePermissionDto["module"]> = {
   "Property Management": "PROPERTY_MANAGEMENT",
   "Awaiting Approval": "AWAITING_APPROVAL",
   Subscriptions: "SUBSCRIPTIONS",
+  "Blog Management": "BLOG_MANAGEMENT",
 };
 
 const LABEL_BY_MODULE = Object.fromEntries(

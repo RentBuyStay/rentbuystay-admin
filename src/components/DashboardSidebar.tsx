@@ -25,9 +25,19 @@ import { logOut, selectRefreshToken } from "@/features/auth/authSlice";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { PermModule } from "@/lib/permissions";
 
-// `perm` gates the item behind MODULE:VIEW. Items with no `perm` (Dashboard,
-// Analytics) are always shown. Super admins see everything.
-type NavItem = { label: string; href: string; Icon: LucideIcon; perm?: PermModule };
+// Gating (super admins always pass):
+//  - perm          → needs MODULE:VIEW
+//  - anyPerm       → needs VIEW on ANY of the listed modules
+//  - superAdminOnly→ super admin only (backend endpoints are SUPER_ADMIN-gated)
+//  - none          → always shown (Dashboard)
+type NavItem = {
+  label: string;
+  href: string;
+  Icon: LucideIcon;
+  perm?: PermModule;
+  anyPerm?: PermModule[];
+  superAdminOnly?: boolean;
+};
 type NavGroup = { label: string; items: NavItem[] };
 
 const adminGroups: NavGroup[] = [
@@ -56,14 +66,16 @@ const adminGroups: NavGroup[] = [
   },
   {
     label: "REPORTS",
-    items: [{ label: "Analytics", href: "/dashboard/analytics", Icon: TrendingUp }],
+    // Analytics needs subscriptions- or user-view (matches AdminAnalyticsController).
+    items: [{ label: "Analytics", href: "/dashboard/analytics", Icon: TrendingUp, anyPerm: ["SUBSCRIPTIONS", "USER_MANAGEMENT"] }],
   },
   {
     label: "PLATFORM",
     items: [
-      { label: "Notification/Email", href: "/dashboard/notifications", Icon: Bell, perm: "SETTINGS" },
+      // Notifications and Platform Settings (admin/role mgmt) are super-admin-only endpoints.
+      { label: "Notification/Email", href: "/dashboard/notifications", Icon: Bell, superAdminOnly: true },
       { label: "Blog Management", href: "/dashboard/blog", Icon: BookOpen, perm: "BLOG_MANAGEMENT" },
-      { label: "Platform Settings", href: "/dashboard/settings", Icon: Settings, perm: "SETTINGS" },
+      { label: "Platform Settings", href: "/dashboard/settings", Icon: Settings, superAdminOnly: true },
     ],
   },
 ];
@@ -83,11 +95,18 @@ export default function DashboardSidebar({
   const dispatch = useAppDispatch();
   const refreshToken = useAppSelector(selectRefreshToken);
   const [logout] = useLogoutMutation();
-  const { can, isSuperAdmin } = usePermissions();
+  const { can, isSuperAdmin, roleName } = usePermissions();
+  const roleBadge = isSuperAdmin ? "SUPER ADMIN" : (roleName?.toUpperCase() || "ADMIN");
 
   // Hide nav items a scoped admin can't view; drop groups left empty.
+  const showItem = (it: NavItem) => {
+    if (it.superAdminOnly) return isSuperAdmin;
+    if (it.anyPerm) return isSuperAdmin || it.anyPerm.some((m) => can(m, "VIEW"));
+    if (it.perm) return can(it.perm, "VIEW");
+    return true;
+  };
   const visibleGroups = adminGroups
-    .map((g) => ({ ...g, items: g.items.filter((it) => !it.perm || can(it.perm, "VIEW")) }))
+    .map((g) => ({ ...g, items: g.items.filter(showItem) }))
     .filter((g) => g.items.length > 0);
 
   async function handleLogout() {
@@ -124,7 +143,7 @@ export default function DashboardSidebar({
         >
           <ShieldUser size={20} strokeWidth={1.6} color="#FFFFFF" />
           <span style={{ fontSize: "12px", lineHeight: "20px", fontWeight: 500, color: "#FFFFFF" }}>
-            {isSuperAdmin ? "SUPER ADMIN" : "ADMIN"}
+            {roleBadge}
           </span>
         </div>
       </div>

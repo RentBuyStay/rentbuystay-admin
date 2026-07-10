@@ -21,6 +21,7 @@ export const endpoints = {
 
   // Current user
   me: "/me",
+  myPermissions: "/me/permissions",
   meProfile: "/me/profile",
   meDeactivate: "/me/deactivate",
   meOrganization: "/me/organization",

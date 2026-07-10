@@ -26,9 +26,10 @@ export default function SuspendedUsersPage() {
     status: "SUSPENDED",
     q: query.trim() || undefined,
   });
-  const { can } = usePermissions();
+  const { can, isSuperAdmin } = usePermissions();
   const canEditUser = can("USER_MANAGEMENT", "EDIT");
-  const canDeleteUser = can("USER_MANAGEMENT", "DELETE");
+  // Permanently erasing user data is a SUPER_ADMIN-only backend endpoint.
+  const canDeleteUser = isSuperAdmin;
   const [unsuspendUser] = useUnsuspendUserMutation();
   const [eraseUserData, { isLoading: erasing }] = useEraseUserDataMutation();
   const [confirmErase, setConfirmErase] = useState<{ id: string; name: string } | null>(null);

@@ -46,8 +46,9 @@ export default function Page() {
   const { data: usersPage } = useGetAdminUsersQuery({ page: 0, size: 200 });
   const { data: roles = [] } = useGetAdminRolesQuery();
   const [addNewAdmin, { isLoading: addingAdmin }] = useAddNewAdminMutation();
-  const { can } = usePermissions();
-  const canManageSettings = can("SETTINGS", "CREATE");
+  const { isSuperAdmin } = usePermissions();
+  // Admin & role management endpoints are SUPER_ADMIN-only on the backend.
+  const canManageSettings = isSuperAdmin;
   const [suspendUser] = useSuspendUserMutation();
   const [updateRole] = useUpdateAdminRoleMutation();
   const [deleteRoleMut, { isLoading: deletingRole }] = useDeleteAdminRoleMutation();

@@ -1,11 +1,15 @@
 /* Demo roles & permissions (swap for admin GET /admin/roles). UI-first. */
 
+// NOTE: "Settings" (admin & role management) is intentionally NOT grantable —
+// it stays SUPER_ADMIN-only (the backend enforces hasRole('SUPER_ADMIN') on
+// role/admin endpoints). Blog Management IS delegable to a content role.
 export const MODULES = [
   "User Management",
   "Verification Management",
   "Property Management",
   "Awaiting Approval",
   "Subscriptions",
+  "Blog Management",
 ] as const;
 
 export const PERMISSIONS = ["Create", "View", "Edit", "Delete"] as const;
@@ -18,6 +22,7 @@ export const DEFAULT_PERMS: PermMatrix = {
   "Property Management": [true, true, true, true],
   "Awaiting Approval": [false, true, true, false],
   Subscriptions: [true, true, true, false],
+  "Blog Management": [false, true, false, false],
 };
 
 export const EMPTY_PERMS: PermMatrix = Object.fromEntries(MODULES.map((m) => [m, [false, false, false, false]]));

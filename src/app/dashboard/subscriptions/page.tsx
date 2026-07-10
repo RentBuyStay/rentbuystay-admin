@@ -106,8 +106,10 @@ export default function SubscriptionManagementPage() {
   const [createPlan, { isLoading: creatingPlan }] = useCreateAdminPlanMutation();
   const [updatePlan, { isLoading: updatingPlan }] = useUpdateAdminPlanMutation();
   const [deletePlan, { isLoading: deletingPlan }] = useDeleteAdminPlanMutation();
-  const { can } = usePermissions();
+  const { can, isSuperAdmin } = usePermissions();
   const canEditSub = can("SUBSCRIPTIONS", "EDIT");
+  // Plan CRUD (create/edit/delete plans) is a SUPER_ADMIN-only backend endpoint.
+  const canManagePlans = isSuperAdmin;
   const [cancelSub, { isLoading: cancelling }] = useCancelUserSubscriptionMutation();
   const [extendSub, { isLoading: extending }] = useExtendUserSubscriptionMutation();
 
@@ -301,7 +303,7 @@ export default function SubscriptionManagementPage() {
             );
           })}
         </div>
-        {tab === "Subscription Plans" && (
+        {tab === "Subscription Plans" && canManagePlans && (
           <button
             type="button"
             onClick={() => setPlanModal({ mode: "create" })}
@@ -479,6 +481,7 @@ export default function SubscriptionManagementPage() {
                     <td style={{ padding: "16px 24px", fontSize: 14, color: "#121212" }}>{p.listings}</td>
                     <td style={{ padding: "16px 24px", fontSize: 14, color: "#121212" }}>{p.featured}</td>
                     <td style={{ padding: "16px 24px" }} onClick={(e) => e.stopPropagation()}>
+                      {canManagePlans ? (
                       <RowActionsMenu width={150} trigger={<Image src="/icons/admin/suspended-action.svg" alt="" width={28} height={28} />}>
                         {(close) => (
                           <>
@@ -491,6 +494,9 @@ export default function SubscriptionManagementPage() {
                           </>
                         )}
                       </RowActionsMenu>
+                      ) : (
+                        <span style={{ fontSize: 12, color: "#807E7E" }}>—</span>
+                      )}
                     </td>
                   </tr>
                 ))}

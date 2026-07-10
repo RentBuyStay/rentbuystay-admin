@@ -8,6 +8,7 @@ import type {
   UpdateProfileRequest,
   UpdateOrganizationRequest,
   KycSdkInitResponse,
+  MyPermissionsResponse,
 } from "./types";
 
 export const meApi = api.injectEndpoints({
@@ -34,6 +35,14 @@ export const meApi = api.injectEndpoints({
           /* unauthenticated or network error — handled by the caller */
         }
       },
+    }),
+
+    // Current admin's role + permissions ("MODULE:ACTION" list). Used to gate
+    // the admin UI. Super admins come back with the full permission set.
+    getMyPermissions: builder.query<MyPermissionsResponse, void>({
+      query: () => ({ url: endpoints.myPermissions, method: "GET" }),
+      transformResponse: (res: ApiEnvelope<MyPermissionsResponse>) => res.data,
+      providesTags: ["Me"],
     }),
 
     // Patch the caller's own profile (state/city/bio/company/whatsapp/avatar).
@@ -83,6 +92,7 @@ export const meApi = api.injectEndpoints({
 
 export const {
   useGetMeQuery,
+  useGetMyPermissionsQuery,
   useLazyGetMeQuery,
   useUpdateMyProfileMutation,
   useUpdateMyOrganizationMutation,
