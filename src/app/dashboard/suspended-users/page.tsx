@@ -12,6 +12,7 @@ import { unwrapApiError } from "@/services/api";
 import { Badge, EmptyState, ROLE_STYLE, VerificationCell, toRow } from "@/components/admin/userRows";
 import RowActionsMenu from "@/components/admin/RowActionsMenu";
 import { useToast } from "@/components/Toast";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function SuspendedUsersPage() {
   const router = useRouter();
@@ -25,6 +26,9 @@ export default function SuspendedUsersPage() {
     status: "SUSPENDED",
     q: query.trim() || undefined,
   });
+  const { can } = usePermissions();
+  const canEditUser = can("USER_MANAGEMENT", "EDIT");
+  const canDeleteUser = can("USER_MANAGEMENT", "DELETE");
   const [unsuspendUser] = useUnsuspendUserMutation();
   const [eraseUserData, { isLoading: erasing }] = useEraseUserDataMutation();
   const [confirmErase, setConfirmErase] = useState<{ id: string; name: string } | null>(null);
@@ -147,12 +151,16 @@ export default function SuspendedUsersPage() {
                     <RowActionsMenu width={180} trigger={<Image src="/icons/admin/suspended-action.svg" alt="" width={28} height={28} />}>
                       {(close) => (
                         <>
+                          {canEditUser && (
                           <button type="button" onClick={() => { close(); handleReactivate(r.id); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
                             <Image src="/icons/admin/menu-reactivate.svg" alt="" width={16} height={16} /> Reactivate User
                           </button>
+                          )}
+                          {canDeleteUser && (
                           <button type="button" onClick={() => { close(); setConfirmErase({ id: r.id, name: r.name }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa]" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
                             <Image src="/icons/admin/menu-delete.svg" alt="" width={16} height={16} /> Delete User Data
                           </button>
+                          )}
                         </>
                       )}
                     </RowActionsMenu>

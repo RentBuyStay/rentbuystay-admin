@@ -15,6 +15,7 @@ import {
 } from "@/services/adminApi";
 import { Badge, FilterDropdown, ROLE_STYLE, VerificationCell, pageItems, toRow, type UserRow } from "@/components/admin/userRows";
 import RowActionsMenu from "@/components/admin/RowActionsMenu";
+import { usePermissions } from "@/hooks/usePermissions";
 import NotifyUserModal from "@/components/admin/NotifyUserModal";
 import { CreateUserModal, type CreateUserValues } from "@/components/AdminModals";
 import { SuccessModal } from "@/components/PlanModals";
@@ -51,6 +52,9 @@ export default function UsersPage() {
     q: query.trim() || undefined,
   });
   const { data: stats } = useGetPlatformStatsQuery();
+  const { can } = usePermissions();
+  const canCreateUser = can("USER_MANAGEMENT", "CREATE");
+  const canEditUser = can("USER_MANAGEMENT", "EDIT");
   const [suspendUser] = useSuspendUserMutation();
   const [unsuspendUser] = useUnsuspendUserMutation();
   const [createNewUser, { isLoading: creatingUser }] = useCreateNewUserMutation();
@@ -136,6 +140,7 @@ export default function UsersPage() {
             );
           })}
         </div>
+        {canCreateUser && (
         <button
           type="button"
           onClick={() => { setCreateError(null); setCreateOpen(true); }}
@@ -144,6 +149,7 @@ export default function UsersPage() {
         >
           <Image src="/icons/admin/add-rounded.svg" alt="" width={20} height={20} /> Create User
         </button>
+        )}
       </div>
 
       {/* Filter row */}
@@ -233,9 +239,11 @@ export default function UsersPage() {
                           <button onClick={() => { close(); setNotifyFor(r); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium text-[#807e7e] hover:bg-[#fafafa]">
                             <Image src="/icons/admin/menu-notification.svg" alt="" width={16} height={16} /> Send Notification
                           </button>
+                          {canEditUser && (
                           <button onClick={() => { close(); handleSuspendToggle(r); }} className="flex items-center gap-2 w-full px-4 py-2.5 text-[12px] font-medium hover:bg-[#fafafa]" style={{ color: "#E30045" }}>
                             <Image src="/icons/admin/menu-suspend.svg" alt="" width={16} height={16} /> {r.status === "Suspended" ? "Unsuspend" : "Suspend"}
                           </button>
+                          )}
                         </>
                       )}
                     </RowActionsMenu>

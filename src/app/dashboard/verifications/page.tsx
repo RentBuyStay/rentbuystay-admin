@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { type Role } from "@/lib/demoUsers";
 import { roleFromUserType } from "@/lib/property";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   useDecideKycMutation,
   useGetBusinessKycQuery,
@@ -71,6 +72,8 @@ export default function VerificationManagementPage() {
   const [decideKyc, { isLoading: deciding }] = useDecideKycMutation();
 
   const isPending = tab === "Pending";
+  const { can } = usePermissions();
+  const canDecide = can("VERIFICATION_MANAGEMENT", "EDIT");
 
   const pending = (stats?.identityKyc?.pending ?? 0) + (stats?.businessKyc?.pending ?? 0);
   const approved = (stats?.identityKyc?.verified ?? 0) + (stats?.businessKyc?.verified ?? 0);
@@ -206,6 +209,7 @@ export default function VerificationManagementPage() {
               v={v}
               pending={isPending}
               verified={tab === "Approved"}
+              canDecide={canDecide}
               onApprove={() => handleDecision(v, true)}
               onReject={() => handleDecision(v, false)}
             />
@@ -258,12 +262,14 @@ function VerificationCard({
   v,
   pending,
   verified,
+  canDecide,
   onApprove,
   onReject,
 }: {
   v: QueueItem;
   pending?: boolean;
   verified?: boolean;
+  canDecide?: boolean;
   onApprove?: () => void;
   onReject?: () => void;
 }) {
@@ -301,7 +307,7 @@ function VerificationCard({
       </div>
 
       <div className="flex items-center" style={{ gap: 16 }}>
-        {pending && (
+        {pending && canDecide && (
           <>
             <button type="button" onClick={onReject} className="flex items-center justify-center hover:opacity-70" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
               <Image src="/icons/admin/verify/reject.svg" alt="" width={20} height={20} /> Reject

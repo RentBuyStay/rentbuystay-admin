@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, Trash2, Pencil, X } from "lucide-react";
 import { toSeekerListing, formatPrice, listerRoleOf, mediaItems } from "@/lib/property";
 import { PropertyGallery } from "@/components/PropertyGallery";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { PropertyStatus } from "@/services/types";
 import type { Role } from "@/lib/demoUsers";
 import { EmptyState } from "@/components/admin/userRows";
@@ -139,6 +140,9 @@ function DetailBody({
 }) {
   const listing = toSeekerListing(property);
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+  const { can } = usePermissions();
+  const canEdit = can("PROPERTY_MANAGEMENT", "EDIT");
+  const canDelete = can("PROPERTY_MANAGEMENT", "DELETE");
 
   const tagWord = listing.tag === "FOR SALE" ? "Sale" : listing.tag === "SHORTLET" ? "Shortlet" : "Rent";
   const displayTitle = `${property.title} for ${tagWord} in ${listing.location}`;
@@ -203,7 +207,8 @@ function DetailBody({
                 <Image src="/icons/dash/metric-eye.svg" alt="" width={24} height={24} />
                 <span style={{ fontSize: 14, lineHeight: "24px", letterSpacing: "-0.02em", color: "#807E7E" }}>{(property.viewCount ?? 0).toLocaleString()} views</span>
               </div>
-              {/* Move to: status */}
+              {/* Move to: status — only for admins who can edit or delete listings */}
+              {(canEdit || canDelete) && (
               <div className="relative flex items-center" style={{ gap: 8 }}>
                 <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "24px", color: "#305E82" }}>Move to:</span>
                 <button type="button" onClick={() => setStatusMenuOpen((v) => !v)} className="flex items-center hover:opacity-80" style={{ gap: 8, padding: "4px 12px", borderRadius: 20, background: status.bg }}>
@@ -222,6 +227,7 @@ function DetailBody({
                           apply to pending listings via the header buttons). */}
                       {property.status === "ACTIVE" ? (
                         <>
+                          {canEdit && (
                           <button
                             type="button"
                             disabled={actions.busy}
@@ -231,6 +237,8 @@ function DetailBody({
                           >
                             Archived
                           </button>
+                          )}
+                          {canDelete && (
                           <button
                             type="button"
                             disabled={actions.busy}
@@ -240,8 +248,9 @@ function DetailBody({
                           >
                             Removed
                           </button>
+                          )}
                         </>
-                      ) : property.status === "ARCHIVED" ? (
+                      ) : property.status === "ARCHIVED" && canEdit ? (
                         <button
                           type="button"
                           disabled={actions.busy}
@@ -260,6 +269,7 @@ function DetailBody({
                   </>
                 )}
               </div>
+              )}
             </div>
           )}
         </div>
@@ -270,6 +280,8 @@ function DetailBody({
             Rejected
           </span>
         ) : approvalFlow ? (
+          // Approve/reject a pending listing — requires edit permission.
+          canEdit ? (
           <div className="flex items-center" style={{ gap: 16 }}>
             <button type="button" onClick={actions.reject} disabled={actions.busy} className="flex items-center justify-center hover:opacity-70 disabled:opacity-50" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
               <X size={20} /> Reject
@@ -278,14 +290,19 @@ function DetailBody({
               <Image src="/icons/admin/verify/approve-check.svg" alt="" width={20} height={20} /> Approve
             </button>
           </div>
+          ) : null
         ) : (
           <div className="flex items-center" style={{ gap: 16 }}>
+            {canDelete && (
             <button type="button" onClick={actions.remove} disabled={actions.busy} className="flex items-center justify-center hover:opacity-70 disabled:opacity-50" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, color: "#E30045" }}>
               <Trash2 size={20} /> Remove Listing
             </button>
+            )}
+            {canEdit && (
             <button type="button" onClick={() => router.push(`/dashboard/properties/${propertyId}/edit`)} className="flex items-center justify-center text-white hover:opacity-90" style={{ height: 48, padding: "8px 24px", gap: 8, borderRadius: 12, fontSize: 14, fontWeight: 500, background: "linear-gradient(175deg, #75A3C7 0%, #305E82 100%)", border: "1px solid rgba(120,158,187,0.5)" }}>
               <Pencil size={20} /> Edit Property
             </button>
+            )}
           </div>
         )}
       </div>

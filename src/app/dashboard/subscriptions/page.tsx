@@ -18,6 +18,7 @@ import {
   type AdminSubscriptionPlan,
 } from "@/services/adminApi";
 import { useGetAgentsQuery } from "@/services/agentApi";
+import { usePermissions } from "@/hooks/usePermissions";
 import { formatPrice } from "@/lib/property";
 import { EmptyState, FilterDropdown, pageItems } from "@/components/admin/userRows";
 import RowActionsMenu from "@/components/admin/RowActionsMenu";
@@ -105,6 +106,8 @@ export default function SubscriptionManagementPage() {
   const [createPlan, { isLoading: creatingPlan }] = useCreateAdminPlanMutation();
   const [updatePlan, { isLoading: updatingPlan }] = useUpdateAdminPlanMutation();
   const [deletePlan, { isLoading: deletingPlan }] = useDeleteAdminPlanMutation();
+  const { can } = usePermissions();
+  const canEditSub = can("SUBSCRIPTIONS", "EDIT");
   const [cancelSub, { isLoading: cancelling }] = useCancelUserSubscriptionMutation();
   const [extendSub, { isLoading: extending }] = useExtendUserSubscriptionMutation();
 
@@ -397,12 +400,19 @@ export default function SubscriptionManagementPage() {
                         <RowActionsMenu width={190} trigger={<Image src="/icons/admin/suspended-action.svg" alt="" width={28} height={28} />}>
                           {(close) => (
                             <>
+                              {canEditSub && (
                               <button type="button" onClick={() => { close(); setAction({ type: "extend", sub: s }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa] whitespace-nowrap" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#807E7E" }}>
                                 <Image src="/icons/admin/menu-extend.svg" alt="" width={16} height={16} className="shrink-0" /> Extend Subscription
                               </button>
+                              )}
+                              {canEditSub && (
                               <button type="button" onClick={() => { close(); setAction({ type: "cancel", sub: s }); }} className="flex items-center gap-2 w-full px-4 hover:bg-[#fafafa] whitespace-nowrap" style={{ height: 42, fontSize: 12, fontWeight: 500, color: "#E30045" }}>
                                 <Image src="/icons/admin/menu-cancel.svg" alt="" width={16} height={16} className="shrink-0" /> Cancel Subscription
                               </button>
+                              )}
+                              {!canEditSub && (
+                                <span className="flex items-center px-4" style={{ height: 42, fontSize: 12, color: "#807E7E" }}>No actions available</span>
+                              )}
                             </>
                           )}
                         </RowActionsMenu>

@@ -22,11 +22,14 @@ import {
 import { useLogoutMutation } from "@/services/authApi";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logOut, selectRefreshToken } from "@/features/auth/authSlice";
+import { usePermissions } from "@/hooks/usePermissions";
+import type { PermModule } from "@/lib/permissions";
 
-type NavItem = { label: string; href: string; Icon: LucideIcon };
+// `perm` gates the item behind MODULE:VIEW. Items with no `perm` (Dashboard,
+// Analytics) are always shown. Super admins see everything.
+type NavItem = { label: string; href: string; Icon: LucideIcon; perm?: PermModule };
 type NavGroup = { label: string; items: NavItem[] };
 
-// Super Admin navigation (Figma "Admin" board sidebar).
 const adminGroups: NavGroup[] = [
   {
     label: "OVERVIEW",
@@ -35,21 +38,21 @@ const adminGroups: NavGroup[] = [
   {
     label: "USERS",
     items: [
-      { label: "User Management", href: "/dashboard/users", Icon: Users },
-      { label: "Verification Management", href: "/dashboard/verifications", Icon: ShieldCheck },
-      { label: "Suspended Users", href: "/dashboard/suspended-users", Icon: UserX },
+      { label: "User Management", href: "/dashboard/users", Icon: Users, perm: "USER_MANAGEMENT" },
+      { label: "Verification Management", href: "/dashboard/verifications", Icon: ShieldCheck, perm: "VERIFICATION_MANAGEMENT" },
+      { label: "Suspended Users", href: "/dashboard/suspended-users", Icon: UserX, perm: "USER_MANAGEMENT" },
     ],
   },
   {
     label: "LISTINGS",
     items: [
-      { label: "Property Management", href: "/dashboard/properties", Icon: Building2 },
-      { label: "Awaiting Approval", href: "/dashboard/awaiting-approval", Icon: ClipboardCheck },
+      { label: "Property Management", href: "/dashboard/properties", Icon: Building2, perm: "PROPERTY_MANAGEMENT" },
+      { label: "Awaiting Approval", href: "/dashboard/awaiting-approval", Icon: ClipboardCheck, perm: "AWAITING_APPROVAL" },
     ],
   },
   {
     label: "FINANCE",
-    items: [{ label: "Subscription Management", href: "/dashboard/subscriptions", Icon: CreditCard }],
+    items: [{ label: "Subscription Management", href: "/dashboard/subscriptions", Icon: CreditCard, perm: "SUBSCRIPTIONS" }],
   },
   {
     label: "REPORTS",
@@ -58,9 +61,9 @@ const adminGroups: NavGroup[] = [
   {
     label: "PLATFORM",
     items: [
-      { label: "Notification/Email", href: "/dashboard/notifications", Icon: Bell },
-      { label: "Blog Management", href: "/dashboard/blog", Icon: BookOpen },
-      { label: "Platform Settings", href: "/dashboard/settings", Icon: Settings },
+      { label: "Notification/Email", href: "/dashboard/notifications", Icon: Bell, perm: "SETTINGS" },
+      { label: "Blog Management", href: "/dashboard/blog", Icon: BookOpen, perm: "BLOG_MANAGEMENT" },
+      { label: "Platform Settings", href: "/dashboard/settings", Icon: Settings, perm: "SETTINGS" },
     ],
   },
 ];
@@ -80,6 +83,12 @@ export default function DashboardSidebar({
   const dispatch = useAppDispatch();
   const refreshToken = useAppSelector(selectRefreshToken);
   const [logout] = useLogoutMutation();
+  const { can, isSuperAdmin } = usePermissions();
+
+  // Hide nav items a scoped admin can't view; drop groups left empty.
+  const visibleGroups = adminGroups
+    .map((g) => ({ ...g, items: g.items.filter((it) => !it.perm || can(it.perm, "VIEW")) }))
+    .filter((g) => g.items.length > 0);
 
   async function handleLogout() {
     try {
@@ -115,13 +124,13 @@ export default function DashboardSidebar({
         >
           <ShieldUser size={20} strokeWidth={1.6} color="#FFFFFF" />
           <span style={{ fontSize: "12px", lineHeight: "20px", fontWeight: 500, color: "#FFFFFF" }}>
-            SUPER ADMIN
+            {isSuperAdmin ? "SUPER ADMIN" : "ADMIN"}
           </span>
         </div>
       </div>
 
       <nav className="flex flex-col" style={{ padding: "32px 16px 30px", gap: "16px", flex: 1, overflowY: "auto" }}>
-        {adminGroups.map((g) => (
+        {visibleGroups.map((g) => (
           <div key={g.label} className="flex flex-col" style={{ gap: "8px" }}>
             <div style={{ padding: "0 16px" }}>
               <span style={{ fontSize: "10px", lineHeight: "20px", fontWeight: 500, color: "#FFFFFF", letterSpacing: "2px" }}>

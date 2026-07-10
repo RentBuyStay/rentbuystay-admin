@@ -18,6 +18,7 @@ import {
 } from "@/services/adminApi";
 import { fmtRoleDate } from "@/lib/adminRoles";
 import { ConfirmModal, SuccessModal } from "@/components/PlanModals";
+import { usePermissions } from "@/hooks/usePermissions";
 import { SecurityTab, EmailTab, ModerationTab, SeoTab } from "@/components/SettingsTabs";
 
 const TABS = ["Administrators", "Roles & Permissions", "Security", "Email Config", "Moderation Rules", "SEO Settings"] as const;
@@ -45,6 +46,8 @@ export default function Page() {
   const { data: usersPage } = useGetAdminUsersQuery({ page: 0, size: 200 });
   const { data: roles = [] } = useGetAdminRolesQuery();
   const [addNewAdmin, { isLoading: addingAdmin }] = useAddNewAdminMutation();
+  const { can } = usePermissions();
+  const canManageSettings = can("SETTINGS", "CREATE");
   const [suspendUser] = useSuspendUserMutation();
   const [updateRole] = useUpdateAdminRoleMutation();
   const [deleteRoleMut, { isLoading: deletingRole }] = useDeleteAdminRoleMutation();
@@ -133,7 +136,7 @@ export default function Page() {
             );
           })}
         </div>
-        {tab === "Administrators" && (
+        {tab === "Administrators" && canManageSettings && (
           <button
             type="button"
             onClick={() => setAddOpen(true)}
@@ -143,7 +146,7 @@ export default function Page() {
             <Image src="/icons/admin/blog/blog-add.svg" alt="" width={20} height={20} /> New Admin
           </button>
         )}
-        {tab === "Roles & Permissions" && (
+        {tab === "Roles & Permissions" && canManageSettings && (
           <Link
             href="/dashboard/settings/roles/new"
             className="flex items-center justify-center text-white hover:opacity-90 shrink-0"
