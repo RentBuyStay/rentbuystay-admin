@@ -79,10 +79,19 @@ export default function AdminPropertyDetail({ propertyId }: { propertyId: string
   const [archiveProperty, { isLoading: archiving }] = useArchiveAdminPropertyMutation();
   const [restoreProperty, { isLoading: restoring }] = useRestoreAdminPropertyMutation();
 
-  const property =
-    single ??
+  const listItem =
     (awaitingPage?.content ?? []).find((p) => p.id === propertyId) ??
     (allPage?.content ?? []).find((p) => p.id === propertyId);
+  const base = single ?? listItem;
+  // Sources carry different photo counts (the single-property endpoint returns
+  // all photos; the summary lists carry only the first few). Use whichever source
+  // has the most photos so the gallery always shows every image — including on the
+  // Awaiting Approval detail, where the single endpoint may not resolve.
+  const richestPhotos = [single?.photos ?? [], listItem?.photos ?? []]
+    .sort((a, b) => b.length - a.length)[0];
+  const property = base
+    ? { ...base, photos: richestPhotos.length ? richestPhotos : base.photos }
+    : undefined;
 
   if (!property && (loadingSingle || loadingAll || loadingAwaiting)) {
     return (
