@@ -14,14 +14,29 @@ export const MODULES = [
 
 export const PERMISSIONS = ["Create", "View", "Edit", "Delete"] as const;
 
+// Only the permissions the backend actually enforces per module are shown in the
+// role editor — everything else is a no-op toggle, so we hide it. Derived from
+// the @PreAuthorize authorities across the admin controllers. (Destructive
+// actions — erase user, force-remove property, plan CRUD — are SUPER_ADMIN-only
+// and not delegable, so no *:DELETE except Blog.)
+export const ENFORCED_ACTIONS: Record<string, ReadonlyArray<(typeof PERMISSIONS)[number]>> = {
+  "User Management": ["Create", "View", "Edit"],
+  "Verification Management": ["View", "Edit"],
+  "Property Management": ["View", "Edit"],
+  "Awaiting Approval": ["View"],
+  Subscriptions: ["View", "Edit"],
+  "Blog Management": ["Create", "View", "Edit", "Delete"],
+};
+
 export type PermMatrix = Record<string, boolean[]>; // module -> [create, view, edit, delete]
 
+// [create, view, edit, delete] — only enforced actions are ever set true.
 export const DEFAULT_PERMS: PermMatrix = {
-  "User Management": [true, true, true, true],
+  "User Management": [true, true, true, false],
   "Verification Management": [false, true, true, false],
-  "Property Management": [true, true, true, true],
-  "Awaiting Approval": [false, true, true, false],
-  Subscriptions: [true, true, true, false],
+  "Property Management": [false, true, true, false],
+  "Awaiting Approval": [false, true, false, false],
+  Subscriptions: [false, true, true, false],
   "Blog Management": [false, true, false, false],
 };
 

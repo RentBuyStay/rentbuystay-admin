@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MODULES, PERMISSIONS, type PermMatrix } from "@/lib/demoRoles";
+import { MODULES, PERMISSIONS, ENFORCED_ACTIONS, type PermMatrix } from "@/lib/demoRoles";
 
 export default function RolePermissions({ initial, onChange }: { initial: PermMatrix; onChange?: (m: PermMatrix) => void }) {
   const [state, setState] = useState<PermMatrix>(() => Object.fromEntries(MODULES.map((m) => [m, [...(initial[m] ?? [false, false, false, false])]])));
@@ -18,12 +18,15 @@ export default function RolePermissions({ initial, onChange }: { initial: PermMa
         <div key={m} className="flex flex-col gap-2.5" style={{ background: "#F6F6F6", borderRadius: 15, padding: 24 }}>
           <span style={{ fontSize: 14, fontWeight: 500, lineHeight: "24px", color: "#121212" }}>{m}</span>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {PERMISSIONS.map((p, i) => (
-              <div key={p} className="flex items-center justify-between bg-white" style={{ height: 48, borderRadius: 10, padding: "0 12px" }}>
-                <span style={{ fontSize: 13, fontWeight: 400, color: "#121212" }}>{p}</span>
-                <Toggle on={state[m][i]} onChange={() => toggle(m, i)} />
-              </div>
-            ))}
+            {PERMISSIONS.map((p, i) =>
+              // Only show the actions the backend enforces for this module.
+              (ENFORCED_ACTIONS[m] ?? PERMISSIONS).includes(p) ? (
+                <div key={p} className="flex items-center justify-between bg-white" style={{ height: 48, borderRadius: 10, padding: "0 12px" }}>
+                  <span style={{ fontSize: 13, fontWeight: 400, color: "#121212" }}>{p}</span>
+                  <Toggle on={state[m][i]} onChange={() => toggle(m, i)} />
+                </div>
+              ) : null,
+            )}
           </div>
         </div>
       ))}
