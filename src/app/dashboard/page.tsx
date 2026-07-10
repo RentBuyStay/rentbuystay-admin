@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { usePermissions } from "@/hooks/usePermissions";
+import { firstAccessibleHref } from "@/lib/adminNav";
 import { Users, Home, CircleDollarSign, Eye, Building2, ArrowUp, type LucideIcon } from "lucide-react";
 import {
   Tooltip, ResponsiveContainer,
@@ -101,14 +104,27 @@ const relativeTime = (iso: string): string => {
 };
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
+  // The platform overview is a super-admin view (privileged, platform-wide
+  // stats). Scoped admins are sent to their first accessible section instead of
+  // a dashboard full of data they can't load.
+  const { isSuperAdmin, can } = usePermissions();
+  const redirectTarget = firstAccessibleHref({ isSuperAdmin, can });
+  useEffect(() => {
+    if (!isSuperAdmin && redirectTarget && redirectTarget !== "/dashboard") {
+      router.replace(redirectTarget);
+    }
+  }, [isSuperAdmin, redirectTarget, router]);
+
   const [rangeDays, setRangeDays] = useState<number>(7);
   const [rangeOpen, setRangeOpen] = useState(false);
   const rangeLabel = RANGE_OPTIONS.find((r) => r.days === rangeDays)?.label ?? "Last 7 Days";
 
-  const { data: stats } = useGetPlatformStatsQuery();
-  const { data: registrations, isLoading: regLoading, isError: regError } = useGetRegistrationStatsQuery({ days: rangeDays });
-  const { data: revenue } = useGetRevenueStatsQuery();
-  const { data: activity } = useGetRecentActivityQuery({ size: 10 });
+  // Only fetch the privileged stats for super admins.
+  const { data: stats } = useGetPlatformStatsQuery(undefined, { skip: !isSuperAdmin });
+  const { data: registrations, isLoading: regLoading, isError: regError } = useGetRegistrationStatsQuery({ days: rangeDays }, { skip: !isSuperAdmin });
+  const { data: revenue } = useGetRevenueStatsQuery(undefined, { skip: !isSuperAdmin });
+  const { data: activity } = useGetRecentActivityQuery({ size: 10 }, { skip: !isSuperAdmin });
 
   // User-registrations bar chart — real per-day counts.
   const REG_DATA = (registrations ?? []).map((d) => ({
@@ -152,6 +168,20 @@ export default function AdminDashboardPage() {
     { ...BANNER_STYLES[0], count: stats?.awaitingApproval ?? 0, title: `${fmt(stats?.awaitingApproval, "0")} listings awaiting approval` },
     { ...BANNER_STYLES[1], count: stats?.identityKyc?.pending ?? 0, title: `${fmt(stats?.identityKyc?.pending, "0")} identity verifications pending Qore ID manual review` },
   ].filter((b) => b.count > 0);
+
+  // Scoped admins never render the platform overview — they're being redirected
+  // to their first section, or shown a friendly note if their role has no access.
+  if (!isSuperAdmin) {
+    if (redirectTarget && redirectTarget !== "/dashboard") return null;
+    return (
+      <div className="bg-white flex flex-col items-center justify-center text-center" style={{ border: "1px solid #F6F6F6", borderRadius: 20, padding: "64px 24px", gap: 8 }}>
+        <span style={{ fontSize: 18, fontWeight: 600, color: "#121212" }}>No sections assigned yet</span>
+        <span style={{ fontSize: 14, color: "#807E7E", maxWidth: 420 }}>
+          Your role doesn&rsquo;t have access to any sections. Ask a super admin to grant your role the permissions you need.
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

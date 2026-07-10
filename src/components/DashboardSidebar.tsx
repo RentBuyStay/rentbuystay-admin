@@ -3,82 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  LayoutDashboard,
-  Users,
-  ShieldCheck,
-  UserX,
-  Building2,
-  ClipboardCheck,
-  CreditCard,
-  TrendingUp,
-  Bell,
-  BookOpen,
-  Settings,
-  LogOut,
-  ShieldUser,
-  type LucideIcon,
-} from "lucide-react";
+import { LogOut, ShieldUser } from "lucide-react";
 import { useLogoutMutation } from "@/services/authApi";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logOut, selectRefreshToken } from "@/features/auth/authSlice";
 import { usePermissions } from "@/hooks/usePermissions";
-import type { PermModule } from "@/lib/permissions";
-
-// Gating (super admins always pass):
-//  - perm          → needs MODULE:VIEW
-//  - anyPerm       → needs VIEW on ANY of the listed modules
-//  - superAdminOnly→ super admin only (backend endpoints are SUPER_ADMIN-gated)
-//  - none          → always shown (Dashboard)
-type NavItem = {
-  label: string;
-  href: string;
-  Icon: LucideIcon;
-  perm?: PermModule;
-  anyPerm?: PermModule[];
-  superAdminOnly?: boolean;
-};
-type NavGroup = { label: string; items: NavItem[] };
-
-const adminGroups: NavGroup[] = [
-  {
-    label: "OVERVIEW",
-    items: [{ label: "Dashboard", href: "/dashboard", Icon: LayoutDashboard }],
-  },
-  {
-    label: "USERS",
-    items: [
-      { label: "User Management", href: "/dashboard/users", Icon: Users, perm: "USER_MANAGEMENT" },
-      { label: "Verification Management", href: "/dashboard/verifications", Icon: ShieldCheck, perm: "VERIFICATION_MANAGEMENT" },
-      { label: "Suspended Users", href: "/dashboard/suspended-users", Icon: UserX, perm: "USER_MANAGEMENT" },
-    ],
-  },
-  {
-    label: "LISTINGS",
-    items: [
-      { label: "Property Management", href: "/dashboard/properties", Icon: Building2, perm: "PROPERTY_MANAGEMENT" },
-      { label: "Awaiting Approval", href: "/dashboard/awaiting-approval", Icon: ClipboardCheck, perm: "AWAITING_APPROVAL" },
-    ],
-  },
-  {
-    label: "FINANCE",
-    items: [{ label: "Subscription Management", href: "/dashboard/subscriptions", Icon: CreditCard, perm: "SUBSCRIPTIONS" }],
-  },
-  {
-    label: "REPORTS",
-    // Analytics needs subscriptions- or user-view (matches AdminAnalyticsController).
-    items: [{ label: "Analytics", href: "/dashboard/analytics", Icon: TrendingUp, anyPerm: ["SUBSCRIPTIONS", "USER_MANAGEMENT"] }],
-  },
-  {
-    label: "PLATFORM",
-    items: [
-      // Notifications and Platform Settings (admin/role mgmt) are super-admin-only endpoints.
-      { label: "Notification/Email", href: "/dashboard/notifications", Icon: Bell, superAdminOnly: true },
-      { label: "Blog Management", href: "/dashboard/blog", Icon: BookOpen, perm: "BLOG_MANAGEMENT" },
-      { label: "Platform Settings", href: "/dashboard/settings", Icon: Settings, superAdminOnly: true },
-    ],
-  },
-];
+import { visibleNavGroups } from "@/lib/adminNav";
 
 const TINT = "rgba(117,163,199,0.4)";
 
@@ -99,15 +29,7 @@ export default function DashboardSidebar({
   const roleBadge = isSuperAdmin ? "SUPER ADMIN" : (roleName?.toUpperCase() || "ADMIN");
 
   // Hide nav items a scoped admin can't view; drop groups left empty.
-  const showItem = (it: NavItem) => {
-    if (it.superAdminOnly) return isSuperAdmin;
-    if (it.anyPerm) return isSuperAdmin || it.anyPerm.some((m) => can(m, "VIEW"));
-    if (it.perm) return can(it.perm, "VIEW");
-    return true;
-  };
-  const visibleGroups = adminGroups
-    .map((g) => ({ ...g, items: g.items.filter(showItem) }))
-    .filter((g) => g.items.length > 0);
+  const visibleGroups = visibleNavGroups({ isSuperAdmin, can });
 
   async function handleLogout() {
     try {
